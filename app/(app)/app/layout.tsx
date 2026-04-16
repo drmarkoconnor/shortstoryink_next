@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import { AppFrame } from '@/components/layout/app-frame'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 
 export default async function AuthenticatedLayout({
 	children,
 }: {
 	children: ReactNode
 }) {
-	await getCurrentUser()
-	return <AppFrame>{children}</AppFrame>
+	const profile = await getCurrentProfile()
+	return <AppFrame role={profile.role}>{children}</AppFrame>
 }
+

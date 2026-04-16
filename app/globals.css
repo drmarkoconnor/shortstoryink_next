@@ -44,3 +44,8 @@ body {
 .mark-craft {
 	background-color: color-mix(in srgb, #7a2f45 26%, transparent);
 }
+
+.mark-structure {
+	background-color: color-mix(in srgb, #49615a 30%, transparent);
+}
+
