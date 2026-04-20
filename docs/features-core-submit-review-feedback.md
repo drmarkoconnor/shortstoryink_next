@@ -19,7 +19,7 @@ This list intentionally excludes Eleventy-era implementation assumptions.
 
 - Default sign-in method should be **email + password** for established
   accounts.
-- Magic link may remain as an optional fallback, not the primary path.
+
 - Middleware/session handling in `lib/supabase/middleware.ts` is auth-method
   agnostic and should remain unchanged.
 
@@ -34,8 +34,7 @@ This list intentionally excludes Eleventy-era implementation assumptions.
 
 1. Writer submission surface (`/app/writer`)
 2. Teacher review queue (`/app/teacher`)
-3. Teacher review detail with inline feedback (`/app/workshop/[submissionId]` or
-   equivalent)
+3. Teacher review detail with inline feedback (`/app/workshop/[submissionId]`)
 4. Writer feedback view (`/app/writer/feedback`)
 5. Minimal status trail for submission lifecycle
 
@@ -88,6 +87,19 @@ Minimum entities required:
   author_id, created_at)
 - `feedback_summaries` (submission_id, summary, author_id, published_at)
 
+### Inline anchor contract (locked)
+
+Inline feedback anchors should use a **selection-range JSON shape** tied to a
+block/paragraph identifier:
+
+- `blockId` (string)
+- `startOffset` (number)
+- `endOffset` (number)
+- `quote` (string)
+- optional context strings for resilience (`prefix`, `suffix`)
+
+This range model is now the default for first-pass implementation.
+
 Notes:
 
 - Keep model minimal for first release.
@@ -111,6 +123,9 @@ workspace prototypes.
   - wider central reading lane,
   - compact comment popout above the reading panel,
   - queue + tools in left rail.
+- **Review detail route shape is locked**:
+  - queue items open into `/app/workshop/[submissionId]`,
+  - this route is the canonical inline review detail surface.
 - **Snippets desk is locked as-is** (commonplace / craft snippet workflow).
 - **Resources desk is intentionally different from snippets** and should be
   implemented as a **Finder-style media library**:
@@ -121,6 +136,12 @@ workspace prototypes.
     reader/site handoff when needed.
 - Category management (add/rename/delete with safe fallback category) remains a
   useful teacher tool in both snippets and resources.
+
+### UX follow-up note (review detail)
+
+- Revisit right-hand feedback panel behavior for reading mode:
+  - allow panel collapse/hide when user wants uninterrupted reading,
+  - allow quick reveal/pop-out when user wants full comment list context.
 
 ### Resource open-mode policy
 

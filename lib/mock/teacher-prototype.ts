@@ -1,30 +1,58 @@
+import type {
+	SelectionRangeAnchor,
+	SubmissionStatus,
+} from '@/lib/domain/core-flow'
+
 export const teacherTabs = [
-	{ href: '/app/teacher', label: 'Overview' },
-	{ href: '/app/teacher/review-desk', label: 'Review Desk' },
-	{ href: '/app/teacher/snippets-desk', label: 'Snippets' },
-	{ href: '/app/teacher/resources-desk', label: 'Resources' },
+	{ href: '/app/teacher', label: 'Home' },
+	{ href: '/app/teacher/review-desk', label: 'Review' },
+	{ href: '/app/teacher/archive', label: 'Archive' },
 ]
+
+export type SubmissionFeedbackItem = {
+	id: string
+	submissionId: string
+	type: 'grammar' | 'craft'
+	title: string
+	note: string
+	anchor: SelectionRangeAnchor
+}
+
+export type SubmissionBlock = {
+	id: string
+	text: string
+}
+
+export type SubmissionDetail = {
+	id: string
+	title: string
+	writer: string
+	status: SubmissionStatus
+	submitted: string
+	body: SubmissionBlock[]
+	feedback: SubmissionFeedbackItem[]
+}
 
 export const reviewQueue = [
 	{
 		id: 'sub-101',
 		writer: 'A. Moore',
 		title: 'The Orchard at Dusk',
-		status: 'Awaiting review',
+		status: 'submitted' as SubmissionStatus,
 		submitted: '14 Apr',
 	},
 	{
 		id: 'sub-102',
 		writer: 'J. Clarke',
 		title: 'The Narrow Street',
-		status: 'In review',
+		status: 'in_review' as SubmissionStatus,
 		submitted: '13 Apr',
 	},
 	{
 		id: 'sub-103',
 		writer: 'S. Patel',
 		title: 'After the Bell',
-		status: 'Awaiting review',
+		status: 'submitted' as SubmissionStatus,
 		submitted: '12 Apr',
 	},
 ]
@@ -52,6 +80,77 @@ export const linkedFeedback = [
 		note: 'Strong final beat. You might trim one clause for cleaner cadence.',
 	},
 ]
+
+export const submissionDetails: Record<string, SubmissionDetail> = {
+	'sub-101': {
+		id: 'sub-101',
+		title: 'The Orchard at Dusk',
+		writer: 'A. Moore',
+		status: 'in_review',
+		submitted: '14 Apr',
+		body: [
+			{
+				id: 'para-1',
+				text: 'We walked down the lane before evening had properly arrived, each hedge holding the last small light and a smell of wet leaves. He don’t notice the frost glazing the gate, only the dog waiting on the far side.',
+			},
+			{
+				id: 'para-2',
+				text: "At the bend, the orchard opened like a chapel: branches arched, apples gone to windfall, and a hush so full I could hear my own sleeve brush against itself. I thought of my mother's hands, red from washing pears in a bowl too small for the season.",
+			},
+			{
+				id: 'para-3',
+				text: 'We stood there longer than the weather allowed. Then he said the one sentence I had rehearsed never hearing, and the air seemed to tilt, not violently, but with the quiet certainty of a page turned for good.',
+			},
+		],
+		feedback: [
+			{
+				id: 'c1',
+				submissionId: 'sub-101',
+				type: 'grammar',
+				title: 'Typo / Grammar',
+				note: 'Tense shift in this sentence. Keep past tense for consistency.',
+				anchor: {
+					blockId: 'para-1',
+					startOffset: 128,
+					endOffset: 142,
+					quote: "He don't notice",
+					prefix: 'a smell of wet leaves. ',
+					suffix: ' the frost glazing the gate',
+				},
+			},
+			{
+				id: 'c2',
+				submissionId: 'sub-101',
+				type: 'craft',
+				title: 'Craft note',
+				note: 'Excellent sensory image. Consider one more concrete detail to sharpen setting.',
+				anchor: {
+					blockId: 'para-2',
+					startOffset: 153,
+					endOffset: 181,
+					quote: "I thought of my mother's hands",
+					prefix: 'sleeve brush against itself. ',
+					suffix: ', red from washing pears',
+				},
+			},
+			{
+				id: 'c3',
+				submissionId: 'sub-101',
+				type: 'craft',
+				title: 'Craft note',
+				note: 'Strong final beat. You might trim one clause for cleaner cadence.',
+				anchor: {
+					blockId: 'para-3',
+					startOffset: 182,
+					endOffset: 201,
+					quote: 'page turned for good',
+					prefix: 'quiet certainty of a ',
+					suffix: '.',
+				},
+			},
+		],
+	},
+}
 
 export const snippetCards = [
 	{
@@ -112,4 +211,3 @@ export const bookLinks = [
 		url: 'https://www.amazon.co.uk/',
 	},
 ]
-

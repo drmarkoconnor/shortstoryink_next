@@ -3,13 +3,15 @@ import type { ReactNode } from 'react'
 export function StoryFolio({
 	title,
 	children,
+	footer,
 }: {
 	title: string
 	children: ReactNode
+	footer?: ReactNode
 }) {
 	return (
-		<article className="folio-page p-8 lg:p-10">
-			<header className="mb-8 border-b border-ink-900/10 pb-5">
+		<article className="folio-page p-6 sm:p-7 lg:p-9 xl:p-10">
+			<header className="mb-6 border-b border-ink-900/10 pb-5">
 				<p className="text-xs uppercase tracking-[0.14em] text-ink-900/55">
 					Submission draft
 				</p>
@@ -17,10 +19,10 @@ export function StoryFolio({
 					{title}
 				</h2>
 			</header>
-			<div className="max-w-[75ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90">
+			<div className="max-w-[78ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90 lg:text-[18px] lg:leading-[1.95rem]">
 				{children}
 			</div>
+			{footer ? <div className="mt-6 border-t border-ink-900/10 pt-4">{footer}</div> : null}
 		</article>
 	)
 }
-

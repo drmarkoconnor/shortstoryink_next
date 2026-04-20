@@ -13,7 +13,7 @@ This phase intentionally ships only the application shell and route scaffolding.
 ## What exists in Phase 1
 
 - Public landing shell: `/`
-- Auth routes: `/auth/sign-in`, `/auth/callback`
+- Auth routes: `/auth/sign-in`, `/auth/sign-up`
 - Authenticated application shell: `/app`
 - Role/workflow placeholders:
   - `/app/workshop`

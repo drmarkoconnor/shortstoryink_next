@@ -6,6 +6,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ['/app/:path*', '/auth/callback'],
+	matcher: [
+		'/app/:path*',
+		'/writer/:path*',
+		'/teacher/:path*',
+		'/teacher-studio/:path*',
+		'/account/:path*',
+		'/auth/callback',
+	],
 }
-
