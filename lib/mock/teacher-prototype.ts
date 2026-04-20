@@ -5,7 +5,7 @@ import type {
 
 export const teacherTabs = [
 	{ href: '/app/teacher', label: 'Home' },
-	{ href: '/app/teacher/review-desk', label: 'Workshop' },
+	{ href: '/app/teacher/review-desk', label: 'Review' },
 	{ href: '/app/teacher/archive', label: 'Archive' },
 ]
 
@@ -211,4 +211,3 @@ export const bookLinks = [
 		url: 'https://www.amazon.co.uk/',
 	},
 ]
-

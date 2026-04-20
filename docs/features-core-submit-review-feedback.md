@@ -19,7 +19,7 @@ This list intentionally excludes Eleventy-era implementation assumptions.
 
 - Default sign-in method should be **email + password** for established
   accounts.
-- Magic link may remain as an optional fallback, not the primary path.
+
 - Middleware/session handling in `lib/supabase/middleware.ts` is auth-method
   agnostic and should remain unchanged.
 

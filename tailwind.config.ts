@@ -21,11 +21,12 @@ const config: Config = {
 					300: '#a45a70',
 					200: '#bf8799',
 				},
-				parchment: {
-					100: '#f8f6f2',
-					200: '#efebe3',
-					300: '#e3ddd1',
-				},
+				   parchment: {
+					   100: '#fcfbf8', // lighter for higher contrast
+					   200: '#efebe3',
+					   300: '#e3ddd1',
+					   50: '#f9f7f2', // new, for softer backgrounds
+				   },
 				silver: {
 					300: '#8f96ab',
 					200: '#a7aec2',

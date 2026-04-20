@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { ensureAbuMembership } from '@/lib/workshop/access-groups'
 
 export type AppRole = 'writer' | 'teacher' | 'admin'
 
 export async function getCurrentProfile() {
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
+	const adminSupabase = createAdminSupabaseClient()
 
-	const { data, error } = await supabase
+	const { data, error } = await adminSupabase
 		.from('profiles')
 		.select('role')
 		.eq('id', user.id)
@@ -18,19 +19,41 @@ export async function getCurrentProfile() {
 		return { user, role: 'writer' as AppRole, profileFound: false }
 	}
 
+	let profileFound = Boolean(data?.role)
+	let role: AppRole = (data?.role as AppRole | undefined) ?? 'writer'
+
 	if (!data?.role) {
-		const { error: insertError } = await supabase
+		const fallbackDisplayName =
+			(user.user_metadata?.display_name as string | undefined) ||
+			(user.user_metadata?.name as string | undefined) ||
+			String(user.email ?? 'Writer').split('@')[0]
+
+		const { error: insertError } = await adminSupabase
 			.from('profiles')
-			.insert({ id: user.id, role: 'writer' })
+			.insert({
+				id: user.id,
+				role: 'writer',
+				display_name: fallbackDisplayName,
+			})
 
 		if (insertError) {
 			return { user, role: 'writer' as AppRole, profileFound: false }
 		}
 
-		return { user, role: 'writer' as AppRole, profileFound: true }
+		profileFound = true
+		role = 'writer'
 	}
 
-	return { user, role: data.role as AppRole, profileFound: true }
+	try {
+		await ensureAbuMembership(user.id)
+	} catch (membershipError) {
+		console.error('[getCurrentProfile] Failed to ensure ABU membership:', {
+			userId: user.id,
+			membershipError,
+		})
+	}
+
+	return { user, role, profileFound }
 }
 
 export async function requireTeacher() {
@@ -54,4 +77,3 @@ export async function requireWriter() {
 
 	return profile
 }
-

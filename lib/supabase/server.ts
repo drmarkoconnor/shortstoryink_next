@@ -1,6 +1,5 @@
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
-import type { CookieOptions } from '@supabase/ssr'
 import { getSupabaseEnv } from '@/lib/supabase/env'
 
 export async function createServerSupabaseClient() {
@@ -12,14 +11,10 @@ export async function createServerSupabaseClient() {
 			getAll() {
 				return cookieStore.getAll()
 			},
-			setAll(
-				cookieList: { name: string; value: string; options?: CookieOptions }[],
-			) {
-				cookieList.forEach(({ name, value, options }) => {
-					cookieStore.set(name, value, options)
-				})
+			setAll() {
+				// No-op: Cookie writes are only allowed in Server Actions or Route Handlers
+				// This prevents runtime errors in layouts/pages
 			},
 		},
 	})
 }
-

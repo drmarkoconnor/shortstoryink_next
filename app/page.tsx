@@ -15,21 +15,16 @@ export default function HomePage() {
 			</p>
 
 			<div className="mt-10 flex flex-wrap gap-3">
-				<Link
-					href="/try-writing"
-					className="rounded-full border border-accent-400/60 bg-accent-400/15 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/25">
-					Try writing
-				</Link>
-				<Link
-					href="/auth/sign-in"
-					className="rounded-full border border-white/20 px-5 py-2.5 text-sm text-silver-200 transition hover:border-white/30 hover:text-parchment-100">
-					Sign in
-				</Link>
-				<Link
-					href="/app"
-					className="rounded-full border border-white/10 px-5 py-2.5 text-sm text-silver-300 transition hover:border-white/20 hover:text-parchment-100">
-					Enter workshop
-				</Link>
+				       <Link
+					       href="/auth/sign-up"
+					       className="rounded-full border border-accent-400/60 bg-accent-400/15 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/25">
+					       Sign up
+				       </Link>
+				       <Link
+					       href="/auth/sign-in"
+					       className="rounded-full border border-white/20 px-5 py-2.5 text-sm text-silver-200 transition hover:border-white/30 hover:text-parchment-100">
+					       Sign in
+				       </Link>
 			</div>
 		</main>
 	)

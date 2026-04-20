@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
+import { paginateManuscript } from '@/lib/manuscript/paging'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
@@ -12,6 +13,8 @@ type FeedbackAnchor = {
 	prefix?: string
 	suffix?: string
 	kind?: FeedbackKind
+	categoryLabel?: string
+	categorySlug?: string
 }
 
 type FeedbackItem = {
@@ -52,22 +55,47 @@ function kindLabel(kind: FeedbackKind) {
 	return 'Structure'
 }
 
+function feedbackLabel(anchor: FeedbackAnchor | null | undefined) {
+	if (anchor?.categoryLabel?.trim()) {
+		return anchor.categoryLabel
+	}
+	return kindLabel(anchor?.kind ?? 'craft')
+}
+
 function formatQuote(quote: string) {
 	return quote.trim() ? `"${quote}"` : 'General note'
 }
 
 export function WriterFeedbackReadingWorkspace({
 	title,
+	summary,
+	publishedAt,
 	paragraphs,
 	feedback,
 }: {
 	title: string
+	summary?: string | null
+	publishedAt?: string | null
 	paragraphs: Array<{ id: string; text: string }>
 	feedback: FeedbackItem[]
 }) {
-	const [activeCommentId, setActiveCommentId] = useState<string | null>(
-		feedback[0]?.id ?? null,
+	const pagedManuscript = useMemo(
+		() => paginateManuscript(paragraphs),
+		[paragraphs],
 	)
+	const initialCommentId = feedback[0]?.id ?? null
+	const initialPageIndex = (() => {
+		const firstAnchorBlockId = feedback[0]?.anchor?.blockId
+		if (!firstAnchorBlockId) {
+			return 0
+		}
+		return pagedManuscript.paragraphIdToPageIndex[firstAnchorBlockId] ?? 0
+	})()
+
+	const [activeCommentId, setActiveCommentId] = useState<string | null>(
+		initialCommentId,
+	)
+	const [pageIndex, setPageIndex] = useState(initialPageIndex)
 	const [isPanelOpen, setIsPanelOpen] = useState(false)
 
 	const feedbackByBlock = useMemo(() => {
@@ -109,6 +137,32 @@ export function WriterFeedbackReadingWorkspace({
 		}
 	}, [activeCommentId, feedback])
 
+	const totalPages = pagedManuscript.pages.length
+	const currentPage =
+		pagedManuscript.pages[Math.min(pageIndex, totalPages - 1)] ??
+		pagedManuscript.pages[0]
+
+	const goToPage = (nextPage: number) => {
+		if (totalPages === 0) {
+			return
+		}
+		const clamped = Math.max(0, Math.min(nextPage, totalPages - 1))
+		setPageIndex(clamped)
+	}
+
+	const focusComment = (commentId: string) => {
+		setActiveCommentId(commentId)
+		const item = feedback.find((entry) => entry.id === commentId)
+		const blockId = item?.anchor?.blockId
+		if (!blockId) {
+			return
+		}
+		const targetPage = pagedManuscript.paragraphIdToPageIndex[blockId]
+		if (Number.isFinite(targetPage)) {
+			goToPage(targetPage)
+		}
+	}
+
 	const renderParagraph = (paragraphId: string, text: string) => {
 		const items = feedbackByBlock[paragraphId] ?? []
 		if (items.length === 0) {
@@ -140,18 +194,11 @@ export function WriterFeedbackReadingWorkspace({
 						type="button"
 						key={item.id}
 						onClick={() => setActiveCommentId(item.id)}
-						onMouseEnter={() => setActiveCommentId(item.id)}
-						onFocus={() => setActiveCommentId(item.id)}
+						onMouseEnter={() => focusComment(item.id)}
+						onFocus={() => focusComment(item.id)}
 						className={`group relative isolate ${getMarkClass(kind)} rounded px-1 transition hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300/70`}
 						aria-label={`${kindLabel(kind)} comment: ${item.comment}`}>
 						{markedText}
-						<span className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-20 w-[240px] -translate-x-1/2 rounded-2xl border border-ink-900/20 bg-parchment-100 px-3 py-2 text-left text-[12px] leading-5 text-ink-900 opacity-0 shadow-[0_10px_30px_rgba(11,14,23,0.22)] transition duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-							<span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-900/65">
-								{kindLabel(kind)}
-							</span>
-							<span>{item.comment}</span>
-							<span className="absolute left-1/2 top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink-900/20 bg-parchment-100" />
-						</span>
 					</button>,
 				)
 			}
@@ -166,17 +213,86 @@ export function WriterFeedbackReadingWorkspace({
 		return nodes
 	}
 
-	return (
-		<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-			<main className="space-y-3">
+		return (
+		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_300px] 2xl:grid-cols-[minmax(0,1.65fr)_320px]">
+			<main className="min-w-0 space-y-4">
+				<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-900/25 px-4 py-3">
+					<div>
+						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+							Reading pages
+						</p>
+						<p className="mt-1 text-sm text-silver-200">
+							Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
+						</p>
+					</div>
+				</div>
+				<article className="folio-page p-6 sm:p-7 lg:p-9 xl:p-10">
+					<header className="mb-6 border-b border-ink-900/10 pb-5">
+						<p className="text-xs uppercase tracking-[0.14em] text-ink-900/55">
+							Published feedback draft
+						</p>
+						<h2 className="literary-title mt-2 text-3xl leading-tight text-ink-900">
+							{title}
+						</h2>
+					</header>
+					<div className="max-w-[78ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90 lg:text-[18px] lg:leading-[1.95rem]">
+						{(currentPage?.paragraphs ?? []).map((paragraph) => {
+							const isSceneBreak = paragraph.text.trim() === '**'
+
+							return (
+								<p
+									key={paragraph.id}
+									id={paragraph.id}
+									className={
+										isSceneBreak
+											? 'text-center tracking-[0.22em] text-ink-900/60'
+											: 'whitespace-pre-wrap'
+									}>
+									{isSceneBreak
+										? '***'
+										: renderParagraph(paragraph.id, paragraph.text)}
+								</p>
+							)
+						})}
+					</div>
+					<div className="mt-6 border-t border-ink-900/10 pt-4">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<button
+								type="button"
+								onClick={() => goToPage(pageIndex - 1)}
+								disabled={pageIndex === 0}
+								className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
+								← Previous page
+							</button>
+							<p className="text-xs uppercase tracking-[0.12em] text-ink-900/55">
+								Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
+							</p>
+							<button
+								type="button"
+								onClick={() => goToPage(pageIndex + 1)}
+								disabled={pageIndex >= totalPages - 1}
+								className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
+								Next page →
+							</button>
+						</div>
+					</div>
+				</article>
+			</main>
+
+			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
 				{activeComment ? (
-					<div className="surface border-burgundy-300/35 p-4">
+					<div className="rounded-2xl border border-burgundy-300/20 bg-ink-900/35 px-4 py-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)] backdrop-blur-sm">
 						<div className="mb-3 flex items-start justify-between gap-3">
 							<div className="space-y-2">
-								<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
-									{kindLabel(activeComment.kind)}
+								<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+									Active feedback context
 								</p>
-								<p className="max-w-[42ch] font-serif text-sm italic leading-relaxed text-parchment-100/90">
+								<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+									{feedbackLabel(
+										feedback.find((item) => item.id === activeComment.id)?.anchor,
+									)}
+								</p>
+								<p className="font-serif text-sm italic leading-relaxed text-parchment-100/90">
 									{formatQuote(activeComment.quote)}
 								</p>
 							</div>
@@ -196,78 +312,72 @@ export function WriterFeedbackReadingWorkspace({
 					</div>
 				) : null}
 
-				<article className="folio-page p-8 lg:p-10">
-					<header className="mb-8 border-b border-ink-900/10 pb-5">
-						<p className="text-xs uppercase tracking-[0.14em] text-ink-900/55">
-							Published feedback draft
+				<div className="rounded-2xl border border-white/10 bg-ink-900/28 p-4">
+					<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						Published summary
+					</p>
+					<p className="mt-2 text-sm leading-relaxed text-silver-100">
+						{summary || 'No summary published.'}
+					</p>
+					{publishedAt ? (
+						<p className="mt-3 text-xs text-silver-300">
+							Published {new Date(publishedAt).toLocaleString()}
 						</p>
-						<h2 className="literary-title mt-2 text-3xl leading-tight text-ink-900">
-							{title}
-						</h2>
-					</header>
-					<div className="max-w-[75ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90">
-						{paragraphs.map((paragraph) => {
-							const isSceneBreak = paragraph.text.trim() === '**'
+					) : null}
+				</div>
 
-							return (
-								<p
-									key={paragraph.id}
-									id={paragraph.id}
-									className={
-										isSceneBreak
-											? 'text-center tracking-[0.22em] text-ink-900/60'
-											: 'whitespace-pre-wrap'
-									}>
-									{isSceneBreak
-										? '***'
-										: renderParagraph(paragraph.id, paragraph.text)}
-								</p>
-							)
-						})}
-					</div>
-				</article>
-			</main>
-
-			<aside className="space-y-3">
-				<button
-					type="button"
-					onClick={() => setIsPanelOpen((value) => !value)}
-					className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/30 hover:text-parchment-100">
-					{isPanelOpen
-						? 'Hide full comments panel'
-						: 'Open full comments panel'}
-				</button>
+				<div className="rounded-2xl border border-white/8 bg-ink-900/25 p-4">
+					<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						Feedback navigation
+					</p>
+					<p className="mt-2 text-sm leading-relaxed text-silver-200">
+						Use inline highlights for focused reading, or open the full panel
+						when you want the complete comment list beside the draft.
+					</p>
+					<button
+						type="button"
+						onClick={() => setIsPanelOpen((value) => !value)}
+						className="mt-4 rounded-full border border-white/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						{isPanelOpen
+							? 'Hide full comments panel'
+							: 'Open full comments panel'}
+					</button>
+				</div>
 
 				{isPanelOpen ? (
-					<div className="surface p-5">
-						<h3 className="literary-title text-lg text-parchment-100">
-							All comments
-						</h3>
+					<div className="rounded-2xl border border-white/10 bg-ink-800/55 p-5 shadow-glow">
+						<div className="flex items-baseline justify-between gap-3">
+							<h3 className="literary-title text-lg text-parchment-100">
+								All comments
+							</h3>
+							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								{feedback.length} total
+							</p>
+						</div>
 						{feedback.length === 0 ? (
 							<p className="mt-3 text-sm text-silver-300">No comments found.</p>
 						) : (
-							<ul className="mt-3 space-y-2">
+							<ul className="mt-3 space-y-2.5">
 								{feedback.map((item) => {
-									const kind = item.anchor?.kind ?? 'craft'
 									return (
 										<li
 											key={item.id}
-											className="rounded-xl border border-white/10 bg-ink-900/40 p-3">
+											className="rounded-xl border border-white/8 bg-ink-900/28 p-3.5">
 											<div className="flex flex-wrap items-center gap-2">
 												<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
-													{kindLabel(kind)}
+													{feedbackLabel(item.anchor)}
 												</p>
 												<p className="font-serif text-sm italic text-parchment-100/90">
 													{formatQuote(item.anchor?.quote ?? '')}
 												</p>
 											</div>
-											<p className="mt-2 text-sm text-parchment-100">
+											<p className="mt-2 text-sm leading-relaxed text-parchment-100">
 												{item.comment}
 											</p>
 											<button
 												type="button"
-												onClick={() => setActiveCommentId(item.id)}
-												className="mt-2 text-xs text-accent-200 hover:text-accent-100">
+												onClick={() => focusComment(item.id)}
+												className="mt-3 text-xs text-accent-200 hover:text-accent-100">
 												Focus in reading panel
 											</button>
 										</li>
@@ -277,13 +387,14 @@ export function WriterFeedbackReadingWorkspace({
 						)}
 					</div>
 				) : (
-					<p className="text-xs text-silver-300">
-						Reading mode active. Inline popout stays above the folio while the
-						full panel is hidden.
-					</p>
+					<div className="rounded-2xl border border-white/8 bg-ink-900/18 px-4 py-3">
+						<p className="text-xs leading-relaxed text-silver-300">
+							Reading mode active. The manuscript stays central while inline
+							feedback remains available above the folio.
+						</p>
+					</div>
 				)}
 			</aside>
 		</div>
 	)
 }
-
