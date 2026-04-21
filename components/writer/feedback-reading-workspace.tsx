@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
-import { paginateManuscript } from '@/lib/manuscript/paging'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { StoryFolio } from '@/components/prototype/story-folio'
+import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
+import { paginateManuscript, readingPageOptions } from '@/lib/manuscript/paging'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
@@ -80,7 +82,7 @@ export function WriterFeedbackReadingWorkspace({
 	feedback: FeedbackItem[]
 }) {
 	const pagedManuscript = useMemo(
-		() => paginateManuscript(paragraphs),
+		() => paginateManuscript(paragraphs, readingPageOptions),
 		[paragraphs],
 	)
 	const initialCommentId = feedback[0]?.id ?? null
@@ -142,13 +144,19 @@ export function WriterFeedbackReadingWorkspace({
 		pagedManuscript.pages[Math.min(pageIndex, totalPages - 1)] ??
 		pagedManuscript.pages[0]
 
-	const goToPage = (nextPage: number) => {
+	const goToPage = useCallback((nextPage: number) => {
 		if (totalPages === 0) {
 			return
 		}
 		const clamped = Math.max(0, Math.min(nextPage, totalPages - 1))
 		setPageIndex(clamped)
-	}
+	}, [totalPages])
+
+	usePagedArrowNavigation({
+		pageIndex,
+		totalPages,
+		onPageChange: goToPage,
+	})
 
 	const focusComment = (commentId: string) => {
 		setActiveCommentId(commentId)
@@ -213,7 +221,7 @@ export function WriterFeedbackReadingWorkspace({
 		return nodes
 	}
 
-		return (
+	return (
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_300px] 2xl:grid-cols-[minmax(0,1.65fr)_320px]">
 			<main className="min-w-0 space-y-4">
 				<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-900/25 px-4 py-3">
@@ -226,36 +234,11 @@ export function WriterFeedbackReadingWorkspace({
 						</p>
 					</div>
 				</div>
-				<article className="folio-page p-6 sm:p-7 lg:p-9 xl:p-10">
-					<header className="mb-6 border-b border-ink-900/10 pb-5">
-						<p className="text-xs uppercase tracking-[0.14em] text-ink-900/55">
-							Published feedback draft
-						</p>
-						<h2 className="literary-title mt-2 text-3xl leading-tight text-ink-900">
-							{title}
-						</h2>
-					</header>
-					<div className="max-w-[78ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90 lg:text-[18px] lg:leading-[1.95rem]">
-						{(currentPage?.paragraphs ?? []).map((paragraph) => {
-							const isSceneBreak = paragraph.text.trim() === '**'
-
-							return (
-								<p
-									key={paragraph.id}
-									id={paragraph.id}
-									className={
-										isSceneBreak
-											? 'text-center tracking-[0.22em] text-ink-900/60'
-											: 'whitespace-pre-wrap'
-									}>
-									{isSceneBreak
-										? '***'
-										: renderParagraph(paragraph.id, paragraph.text)}
-								</p>
-							)
-						})}
-					</div>
-					<div className="mt-6 border-t border-ink-900/10 pt-4">
+				<StoryFolio
+					title={title}
+					eyebrow="Published feedback draft"
+					paged
+					footer={
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<button
 								type="button"
@@ -275,8 +258,26 @@ export function WriterFeedbackReadingWorkspace({
 								Next page →
 							</button>
 						</div>
-					</div>
-				</article>
+					}>
+					{(currentPage?.paragraphs ?? []).map((paragraph) => {
+						const isSceneBreak = paragraph.text.trim() === '**'
+
+						return (
+							<p
+								key={paragraph.id}
+								id={paragraph.id}
+								className={
+									isSceneBreak
+										? 'text-center tracking-[0.22em] text-ink-900/60'
+										: 'whitespace-pre-wrap'
+								}>
+								{isSceneBreak
+									? '***'
+									: renderParagraph(paragraph.id, paragraph.text)}
+							</p>
+						)
+					})}
+				</StoryFolio>
 			</main>
 
 			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
+import { PendingSubmitButton } from '@/components/prototype/pending-submit-button'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -26,7 +27,6 @@ type FeedbackCategoryRow = {
 	id: string
 	name: string
 	slug: string
-	tone: 'typo' | 'craft' | 'pacing' | 'structure'
 }
 
 function toMessage(value: string | string[] | undefined) {
@@ -138,14 +138,6 @@ export default async function TeacherStudioPage({
 		const serverSupabase = await createServerSupabaseClient()
 		const name = String(formData.get('name') ?? '').trim()
 		const slug = slugifyCategoryName(name)
-		const toneInput = String(formData.get('tone') ?? '').trim()
-		const tone: 'typo' | 'craft' | 'pacing' | 'structure' =
-			toneInput === 'typo' ||
-			toneInput === 'craft' ||
-			toneInput === 'pacing' ||
-			toneInput === 'structure'
-				? toneInput
-				: 'craft'
 
 		if (!name || !slug) {
 			redirect('/app/teacher-studio?error=Enter+a+feedback+category+name.')
@@ -155,7 +147,6 @@ export default async function TeacherStudioPage({
 			owner_id: teacher.user.id,
 			name,
 			slug,
-			tone,
 		})
 
 		if (error) {
@@ -174,14 +165,6 @@ export default async function TeacherStudioPage({
 		const categoryId = String(formData.get('categoryId') ?? '').trim()
 		const name = String(formData.get('name') ?? '').trim()
 		const slug = slugifyCategoryName(name)
-		const toneInput = String(formData.get('tone') ?? '').trim()
-		const tone: 'typo' | 'craft' | 'pacing' | 'structure' =
-			toneInput === 'typo' ||
-			toneInput === 'craft' ||
-			toneInput === 'pacing' ||
-			toneInput === 'structure'
-				? toneInput
-				: 'craft'
 
 		if (!categoryId || !name || !slug) {
 			redirect('/app/teacher-studio?error=Enter+a+valid+feedback+category.')
@@ -189,7 +172,7 @@ export default async function TeacherStudioPage({
 
 		const { error } = await serverSupabase
 			.from('feedback_categories')
-			.update({ name, slug, tone })
+			.update({ name, slug })
 			.eq('id', categoryId)
 			.eq('owner_id', teacher.user.id)
 
@@ -247,7 +230,7 @@ export default async function TeacherStudioPage({
 
 	const feedbackCategoriesResult = await supabase
 		.from('feedback_categories')
-		.select('id, name, slug, tone')
+		.select('id, name, slug')
 		.eq('owner_id', profile.user.id)
 		.order('name', { ascending: true })
 
@@ -394,33 +377,37 @@ export default async function TeacherStudioPage({
 										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
 										placeholder="Dialogue, character, image..."
 									/>
-									<button
-										type="submit"
-										className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+									<PendingSubmitButton
+										className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30"
+										pendingChildren="Adding...">
 										Add category
-									</button>
+									</PendingSubmitButton>
 								</form>
 
-								<div className="mt-5 flex flex-wrap gap-2">
-									<Link
-										href="/app/teacher-studio"
-										className={`inline-flex rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition ${
-											!activeCategoryFilter
-												? 'border-accent-300/60 bg-accent-400/15 text-parchment-100'
-												: 'border-white/10 bg-white/5 text-silver-300 hover:text-parchment-100'
-										}`}>
-										All snippets
-									</Link>
-									<Link
-										href="/app/teacher-studio?category=uncategorised"
-										className={`inline-flex rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition ${
-											activeCategoryFilter === 'uncategorised'
-												? 'border-accent-300/60 bg-accent-400/15 text-parchment-100'
-												: 'border-white/10 bg-white/5 text-silver-300 hover:text-parchment-100'
-										}`}>
-										Uncategorised
-									</Link>
-								</div>
+								<form
+									action="/app/teacher-studio"
+									className="mt-5 space-y-2">
+									<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+										Show snippets
+									</label>
+									<select
+										name="category"
+										defaultValue={activeCategoryFilter ?? ''}
+										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+										<option value="">All snippets</option>
+										<option value="uncategorised">Uncategorised</option>
+										{categories.map((category) => (
+											<option key={category.id} value={category.id}>
+												{category.name}
+											</option>
+										))}
+									</select>
+									<PendingSubmitButton
+										className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100"
+										pendingChildren="Filtering...">
+										Apply filter
+									</PendingSubmitButton>
+								</form>
 
 								{categories.length === 0 ? (
 									<p className="mt-4 text-sm text-silver-300">
@@ -428,56 +415,64 @@ export default async function TeacherStudioPage({
 										them while saving snippets from review.
 									</p>
 								) : (
-									<ul className="mt-4 space-y-3">
-										{categories.map((category) => (
-											<li
-												key={category.id}
-												className="rounded-2xl border border-white/10 bg-ink-900/35 p-3">
-												<Link
-													href={`/app/teacher-studio?category=${category.id}`}
-													className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.1em] ${
-														activeCategoryFilter === category.id
-															? 'border-accent-300/60 bg-accent-400/15 text-parchment-100'
-															: 'border-white/10 bg-white/5 text-silver-300 hover:text-parchment-100'
-													}`}>
-													{category.name}
-												</Link>
-												<form
-													action={renameCategoryAction}
-													className="mt-3 flex gap-2">
-													<input
-														type="hidden"
-														name="categoryId"
-														value={category.id}
-													/>
-													<input
-														type="text"
-														name="name"
-														required
-														defaultValue={category.name}
-														className="min-w-0 flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-													/>
-													<button
-														type="submit"
-														className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-														Rename
-													</button>
-												</form>
-												<form action={deleteCategoryAction} className="mt-2">
-													<input
-														type="hidden"
-														name="categoryId"
-														value={category.id}
-													/>
-													<button
-														type="submit"
-														className="text-[11px] uppercase tracking-[0.1em] text-silver-400 transition hover:text-amber-100">
-														Delete
-													</button>
-												</form>
-											</li>
-										))}
-									</ul>
+									<div className="mt-5 space-y-4 border-t border-white/10 pt-4">
+										<form action={renameCategoryAction} className="space-y-2">
+											<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+												Rename category
+											</label>
+											<select
+												name="categoryId"
+												required
+												defaultValue=""
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+												<option value="" disabled>
+													Choose a category
+												</option>
+												{categories.map((category) => (
+													<option key={category.id} value={category.id}>
+														{category.name}
+													</option>
+												))}
+											</select>
+											<input
+												type="text"
+												name="name"
+												required
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+												placeholder="New category name"
+											/>
+											<PendingSubmitButton
+												className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100"
+												pendingChildren="Renaming...">
+												Rename selected
+											</PendingSubmitButton>
+										</form>
+
+										<form action={deleteCategoryAction} className="space-y-2">
+											<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+												Delete category
+											</label>
+											<select
+												name="categoryId"
+												required
+												defaultValue=""
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+												<option value="" disabled>
+													Choose a category
+												</option>
+												{categories.map((category) => (
+													<option key={category.id} value={category.id}>
+														{category.name}
+													</option>
+												))}
+											</select>
+											<PendingSubmitButton
+												className="text-[11px] uppercase tracking-[0.1em] text-silver-400 transition hover:text-amber-100"
+												pendingChildren="Deleting...">
+												Delete selected
+											</PendingSubmitButton>
+										</form>
+									</div>
 								)}
 							</>
 						)}
@@ -511,20 +506,11 @@ export default async function TeacherStudioPage({
 										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
 										placeholder="Dialogue, image, openings..."
 									/>
-									<select
-										name="tone"
-										defaultValue="craft"
-										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-										<option value="craft">Craft tone</option>
-										<option value="typo">Typo / Grammar tone</option>
-										<option value="pacing">Pacing tone</option>
-										<option value="structure">Structure tone</option>
-									</select>
-									<button
-										type="submit"
-										className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+									<PendingSubmitButton
+										className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30"
+										pendingChildren="Adding...">
 										Add feedback category
-									</button>
+									</PendingSubmitButton>
 								</form>
 
 								{feedbackCategories.length === 0 ? (
@@ -533,58 +519,66 @@ export default async function TeacherStudioPage({
 										then use them while commenting in review.
 									</p>
 								) : (
-									<ul className="mt-4 space-y-3">
-										{feedbackCategories.map((category) => (
-											<li
-												key={category.id}
-												className="rounded-2xl border border-white/10 bg-ink-900/35 p-3">
-												<form
-													action={updateFeedbackCategoryAction}
-													className="space-y-2">
-													<input
-														type="hidden"
-														name="categoryId"
-														value={category.id}
-													/>
-													<input
-														type="text"
-														name="name"
-														required
-														defaultValue={category.name}
-														className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-													/>
-													<select
-														name="tone"
-														defaultValue={category.tone}
-														className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-														<option value="craft">Craft tone</option>
-														<option value="typo">Typo / Grammar tone</option>
-														<option value="pacing">Pacing tone</option>
-														<option value="structure">Structure tone</option>
-													</select>
-													<div className="flex items-center gap-3">
-														<button
-															type="submit"
-															className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-															Update
-														</button>
-													</div>
-												</form>
-												<form action={deleteFeedbackCategoryAction} className="mt-2">
-													<input
-														type="hidden"
-														name="categoryId"
-														value={category.id}
-													/>
-													<button
-														type="submit"
-														className="text-[11px] uppercase tracking-[0.1em] text-silver-400 transition hover:text-amber-100">
-														Delete
-													</button>
-												</form>
-											</li>
-										))}
-									</ul>
+									<div className="mt-5 space-y-4 border-t border-white/10 pt-4">
+										<form
+											action={updateFeedbackCategoryAction}
+											className="space-y-2">
+											<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+												Rename feedback category
+											</label>
+											<select
+												name="categoryId"
+												required
+												defaultValue=""
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+												<option value="" disabled>
+													Choose a category
+												</option>
+												{feedbackCategories.map((category) => (
+													<option key={category.id} value={category.id}>
+														{category.name}
+													</option>
+												))}
+											</select>
+											<input
+												type="text"
+												name="name"
+												required
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+												placeholder="New category name"
+											/>
+											<PendingSubmitButton
+												className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100"
+												pendingChildren="Renaming...">
+												Rename selected
+											</PendingSubmitButton>
+										</form>
+
+										<form action={deleteFeedbackCategoryAction} className="space-y-2">
+											<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+												Delete feedback category
+											</label>
+											<select
+												name="categoryId"
+												required
+												defaultValue=""
+												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+												<option value="" disabled>
+													Choose a category
+												</option>
+												{feedbackCategories.map((category) => (
+													<option key={category.id} value={category.id}>
+														{category.name}
+													</option>
+												))}
+											</select>
+											<PendingSubmitButton
+												className="text-[11px] uppercase tracking-[0.1em] text-silver-400 transition hover:text-amber-100"
+												pendingChildren="Deleting...">
+												Delete selected
+											</PendingSubmitButton>
+										</form>
+									</div>
 								)}
 							</>
 						)}

@@ -1,9 +1,11 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { PendingSubmitButton } from '@/components/prototype/pending-submit-button'
 import { StoryFolio } from '@/components/prototype/story-folio'
+import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
 import { ProtoCard } from '@/components/prototype/card'
-import { paginateManuscript } from '@/lib/manuscript/paging'
+import { paginateManuscript, readingPageOptions } from '@/lib/manuscript/paging'
 
 type FeedbackAnchor = {
 	blockId: string
@@ -122,10 +124,12 @@ export function TeacherReviewWorkspace({
 	notice,
 	errorNotice,
 	canSaveSnippets,
+	canDeleteFeedback,
 	snippetCategories,
 	feedbackCategories,
 	createFeedbackAction,
 	createSnippetAction,
+	deleteFeedbackAction,
 }: {
 	title: string
 	paragraphs: Array<{ id: string; text: string }>
@@ -133,21 +137,19 @@ export function TeacherReviewWorkspace({
 	notice: string | null
 	errorNotice: string | null
 	canSaveSnippets: boolean
+	canDeleteFeedback: boolean
 	snippetCategories: Array<{ id: string; name: string }>
-	feedbackCategories: Array<{
-		id: string
-		name: string
-		tone: 'typo' | 'craft' | 'pacing' | 'structure'
-	}>
+	feedbackCategories: Array<{ id: string; name: string }>
 	createFeedbackAction: (formData: FormData) => void
 	createSnippetAction: (formData: FormData) => void
+	deleteFeedbackAction: (formData: FormData) => void
 }) {
 	const [selectedAnchor, setSelectedAnchor] = useState<SelectedAnchor | null>(
 		null,
 	)
 
 	const pagedManuscript = useMemo(
-		() => paginateManuscript(paragraphs),
+		() => paginateManuscript(paragraphs, readingPageOptions),
 		[paragraphs],
 	)
 	const [pageIndex, setPageIndex] = useState(0)
@@ -175,7 +177,7 @@ export function TeacherReviewWorkspace({
 		pagedManuscript.pages[Math.min(pageIndex, totalPages - 1)] ??
 		pagedManuscript.pages[0]
 
-	const goToPage = (nextPage: number) => {
+	const goToPage = useCallback((nextPage: number) => {
 		if (totalPages === 0) {
 			return
 		}
@@ -183,7 +185,13 @@ export function TeacherReviewWorkspace({
 		const clamped = Math.max(0, Math.min(nextPage, totalPages - 1))
 		setSelectedAnchor(null)
 		setPageIndex(clamped)
-	}
+	}, [totalPages])
+
+	usePagedArrowNavigation({
+		pageIndex,
+		totalPages,
+		onPageChange: goToPage,
+	})
 
 	const focusFeedbackItem = (item: FeedbackItem) => {
 		const blockId = item.anchor?.blockId
@@ -284,6 +292,7 @@ export function TeacherReviewWorkspace({
 				</div>
 				<StoryFolio
 					title={title}
+					paged
 					footer={
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<button
@@ -368,20 +377,12 @@ export function TeacherReviewWorkspace({
 									name="feedbackCategoryId"
 									defaultValue=""
 									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-									{feedbackCategories.length === 0 ? (
-										<>
-											<option value="legacy:craft">Craft</option>
-											<option value="legacy:typo">Typo / Grammar</option>
-											<option value="legacy:pacing">Pacing</option>
-											<option value="legacy:structure">Structure</option>
-										</>
-									) : (
-										feedbackCategories.map((category) => (
-											<option key={category.id} value={category.id}>
-												{category.name}
-											</option>
-										))
-									)}
+									<option value="">General feedback</option>
+									{feedbackCategories.map((category) => (
+										<option key={category.id} value={category.id}>
+											{category.name}
+										</option>
+									))}
 								</select>
 							</div>
 
@@ -406,11 +407,11 @@ export function TeacherReviewWorkspace({
 								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
 								placeholder="Add comment for selected text"
 							/>
-							<button
-								type="submit"
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30">
+							<PendingSubmitButton
+								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30"
+								pendingChildren="Saving comment...">
 								Save comment
-							</button>
+							</PendingSubmitButton>
 						</form>
 					) : (
 						<p className="text-sm text-silver-300">
@@ -470,11 +471,11 @@ export function TeacherReviewWorkspace({
 								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
 								placeholder="Optional note about why this passage matters"
 							/>
-							<button
-								type="submit"
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30">
+							<PendingSubmitButton
+								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30"
+								pendingChildren="Saving snippet...">
 								Save snippet
-							</button>
+							</PendingSubmitButton>
 						</form>
 					) : (
 						<p className="text-sm text-silver-300">
@@ -499,6 +500,20 @@ export function TeacherReviewWorkspace({
 										<p className="font-serif text-sm italic text-parchment-100/90">
 											{formatQuote(item.anchor?.quote)}
 										</p>
+										{canDeleteFeedback ? (
+											<form action={deleteFeedbackAction} className="ml-auto">
+												<input
+													type="hidden"
+													name="feedbackItemId"
+													value={item.id}
+												/>
+												<PendingSubmitButton
+													className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-400 transition hover:border-amber-200/40 hover:text-amber-100"
+													pendingChildren="Deleting...">
+													Delete
+												</PendingSubmitButton>
+											</form>
+										) : null}
 									</div>
 									<p className="mt-2 text-sm text-parchment-100">
 										{item.comment}

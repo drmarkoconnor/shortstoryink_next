@@ -10,6 +10,11 @@ export type PagedManuscript = {
 	paragraphIdToPageIndex: Record<string, number>
 }
 
+export const readingPageOptions = {
+	targetCharacters: 2600,
+	maxParagraphs: 9,
+}
+
 export function paginateManuscript(
 	paragraphs: ManuscriptParagraph[],
 	options?: {

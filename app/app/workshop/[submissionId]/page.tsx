@@ -117,11 +117,7 @@ export default async function WorkshopSubmissionPage({
 	let rootSubmissionId: string | null = null
 	let currentAuthorId: string | null = null
 	let snippetCategories: Array<{ id: string; name: string }> = []
-	let feedbackCategories: Array<{
-		id: string
-		name: string
-		tone: 'typo' | 'craft' | 'pacing' | 'structure'
-	}> = []
+	let feedbackCategories: Array<{ id: string; name: string }> = []
 	let paragraphs: Array<{ id: string; text: string }> = []
 	let versionHistory: Array<{
 		id: string
@@ -375,7 +371,7 @@ export default async function WorkshopSubmissionPage({
 	if (schemaMode === 'modern') {
 		const feedbackCategoriesResult = await supabase
 			.from('feedback_categories')
-			.select('id, name, tone')
+			.select('id, name')
 			.order('name', { ascending: true })
 
 		if (
@@ -386,21 +382,10 @@ export default async function WorkshopSubmissionPage({
 			)
 		) {
 			feedbackCategories = (
-				(feedbackCategoriesResult.data ?? []) as Array<{
-					id: string
-					name: string
-					tone: 'typo' | 'craft' | 'pacing' | 'structure'
-				}>
+				(feedbackCategoriesResult.data ?? []) as Array<{ id: string; name: string }>
 			).map((item) => ({
 				id: item.id,
 				name: item.name,
-				tone:
-					item.tone === 'typo' ||
-					item.tone === 'craft' ||
-					item.tone === 'pacing' ||
-					item.tone === 'structure'
-						? item.tone
-						: 'craft',
 			}))
 		}
 	}
@@ -424,23 +409,14 @@ export default async function WorkshopSubmissionPage({
 		const suffix = String(formData.get('suffix') ?? '').trim()
 		const startOffset = Number(formData.get('startOffset') ?? -1)
 		const endOffset = Number(formData.get('endOffset') ?? -1)
-		let kind: 'typo' | 'craft' | 'pacing' | 'structure' = 'craft'
+		const kind: 'typo' | 'craft' | 'pacing' | 'structure' = 'craft'
 		let categoryLabel: string | undefined
 		let categorySlug: string | undefined
 
-		if (feedbackCategoryIdInput.startsWith('legacy:')) {
-			const legacyKind = feedbackCategoryIdInput.replace('legacy:', '')
-			kind =
-				legacyKind === 'typo' ||
-				legacyKind === 'craft' ||
-				legacyKind === 'pacing' ||
-				legacyKind === 'structure'
-					? legacyKind
-					: 'craft'
-		} else if (feedbackCategoryIdInput) {
+		if (feedbackCategoryIdInput) {
 			const categoryResult = await serverSupabase
 				.from('feedback_categories')
-				.select('name, slug, tone')
+				.select('name, slug')
 				.eq('id', feedbackCategoryIdInput)
 				.eq('owner_id', profile.user.id)
 				.maybeSingle()
@@ -448,14 +424,6 @@ export default async function WorkshopSubmissionPage({
 			if (categoryResult.data) {
 				categoryLabel = String(categoryResult.data.name ?? '').trim() || undefined
 				categorySlug = String(categoryResult.data.slug ?? '').trim() || undefined
-				const toneInput = String(categoryResult.data.tone ?? '').trim()
-				kind =
-					toneInput === 'typo' ||
-					toneInput === 'craft' ||
-					toneInput === 'pacing' ||
-					toneInput === 'structure'
-						? toneInput
-						: 'craft'
 			}
 		}
 
@@ -622,6 +590,57 @@ export default async function WorkshopSubmissionPage({
 		revalidatePath(`/app/workshop/${submissionId}`)
 		revalidatePath('/app/teacher-studio')
 		redirect(`/app/workshop/${submissionId}?notice=Snippet+saved.`)
+	}
+
+	async function deleteFeedbackItemAction(formData: FormData) {
+		'use server'
+
+		await requireTeacher()
+		const serverSupabase = await createServerSupabaseClient()
+		const feedbackItemId = String(formData.get('feedbackItemId') ?? '').trim()
+
+		if (!feedbackItemId) {
+			redirect(`/app/workshop/${submissionId}?error=Choose+a+comment+to+delete.`)
+		}
+
+		const submissionResult = await serverSupabase
+			.from('submissions')
+			.select('id, status')
+			.eq('id', submissionId)
+			.maybeSingle()
+
+		const currentStatus = submissionResult.data?.status as string | undefined
+		if (currentStatus === 'feedback_published') {
+			redirect(
+				`/app/workshop/${submissionId}?error=Published+feedback+comments+cannot+be+deleted+from+this+draft+pane.`,
+			)
+		}
+
+		if (schemaMode === 'modern') {
+			const { error: deleteError } = await serverSupabase
+				.from('feedback_items')
+				.delete()
+				.eq('id', feedbackItemId)
+				.eq('submission_id', submissionId)
+
+			if (deleteError) {
+				redirect(`/app/workshop/${submissionId}?error=Unable+to+delete+comment.`)
+			}
+		} else {
+			const { error: deleteError } = await serverSupabase
+				.from('comments')
+				.delete()
+				.eq('id', feedbackItemId)
+				.eq('submission_id', submissionId)
+
+			if (deleteError) {
+				redirect(`/app/workshop/${submissionId}?error=Unable+to+delete+comment.`)
+			}
+		}
+
+		revalidatePath(`/app/workshop/${submissionId}`)
+		revalidatePath('/app/teacher/review-desk')
+		redirect(`/app/workshop/${submissionId}?notice=Comment+deleted.`)
 	}
 
 	async function publishFeedbackAction(formData: FormData) {
@@ -816,10 +835,12 @@ export default async function WorkshopSubmissionPage({
 				notice={notice}
 				errorNotice={errorNotice}
 				canSaveSnippets={schemaMode === 'modern' && Boolean(currentAuthorId)}
+				canDeleteFeedback={submissionStatus !== 'feedback_published'}
 				snippetCategories={snippetCategories}
 				feedbackCategories={feedbackCategories}
 				createFeedbackAction={createFeedbackItemAction}
 				createSnippetAction={createSnippetAction}
+				deleteFeedbackAction={deleteFeedbackItemAction}
 			/>
 
 			<form
