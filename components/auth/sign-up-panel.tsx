@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { buildClientAuthCallbackUrl } from '@/lib/site/client-urls';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export function SignUpPanel() {
@@ -18,7 +19,7 @@ export function SignUpPanel() {
       setMessage('Passwords do not match.');
       return;
     }
-    const emailRedirectTo = `${window.location.origin}/auth/callback?next=/app`;
+    const emailRedirectTo = buildClientAuthCallbackUrl('/app');
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.auth.signUp({
       email,

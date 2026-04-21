@@ -30,6 +30,7 @@ Required now:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_AUTH_REDIRECT_BASE_URL`
 
 Expected soon (server-side workflows):
 
@@ -58,4 +59,3 @@ Before merging foundation changes, run:
 
 Netlify must have the same environment variables configured as local
 development.
-

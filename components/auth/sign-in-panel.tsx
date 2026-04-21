@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { buildClientAuthCallbackUrl } from '@/lib/site/client-urls'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 
 export function SignInPanel({
@@ -25,7 +26,9 @@ export function SignInPanel({
 	       setStatus('resetting')
 	       setMessage(null)
 	       const supabase = createBrowserSupabaseClient()
-	       const { error } = await supabase.auth.resetPasswordForEmail(email)
+	       const { error } = await supabase.auth.resetPasswordForEmail(email, {
+		       redirectTo: buildClientAuthCallbackUrl('/app/account'),
+	       })
 
 		       if (error) {
 			       setStatus('error')
