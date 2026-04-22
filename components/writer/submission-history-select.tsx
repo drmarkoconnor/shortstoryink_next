@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 type WriterSubmission = {
 	id: string
@@ -25,6 +25,10 @@ function formatDate(value: string) {
 	return new Date(value).toLocaleString()
 }
 
+function versionLabel(version?: number) {
+	return `v${version ?? 1}`
+}
+
 export function SubmissionHistorySelect({
 	submissions,
 	submissionsError,
@@ -35,6 +39,7 @@ export function SubmissionHistorySelect({
 	deleteSubmissionAction: (formData: FormData) => void
 }) {
 	const [selectedSubmissionId, setSelectedSubmissionId] = useState('')
+	const selectedSubmissionRef = useRef<HTMLDivElement>(null)
 
 	const selectedSubmission = useMemo(
 		() =>
@@ -43,6 +48,14 @@ export function SubmissionHistorySelect({
 			) ?? null,
 		[submissions, selectedSubmissionId],
 	)
+	const scrollToSelectedSubmission = () => {
+		window.requestAnimationFrame(() => {
+			selectedSubmissionRef.current?.scrollIntoView({
+				behavior: 'smooth',
+				block: 'end',
+			})
+		})
+	}
 
 	return (
 		<section className="surface p-4 lg:p-5">
@@ -75,22 +88,31 @@ export function SubmissionHistorySelect({
 						</span>
 						<select
 							value={selectedSubmissionId}
-							onChange={(event) => setSelectedSubmissionId(event.target.value)}
+							onChange={(event) => {
+								setSelectedSubmissionId(event.target.value)
+								if (event.target.value) {
+									scrollToSelectedSubmission()
+								}
+							}}
 							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring">
 							<option value="">Choose from your submitted pieces</option>
 							{submissions.map((submission) => (
 								<option key={submission.id} value={submission.id}>
-									{submission.title} - {statusLabel(submission.status)}
+									{versionLabel(submission.version)} - {submission.title} -{' '}
+									{statusLabel(submission.status)}
 								</option>
 							))}
 						</select>
 					</label>
 
 					{selectedSubmission ? (
-						<div className="rounded-2xl border border-white/10 bg-ink-900/45 p-4 text-sm text-silver-100 lg:min-w-[19rem]">
+						<div
+							ref={selectedSubmissionRef}
+							className="rounded-2xl border border-white/10 bg-ink-900/45 p-4 text-sm text-silver-100 lg:min-w-[19rem]">
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div>
 									<p className="font-medium text-parchment-100">
+										{versionLabel(selectedSubmission.version)} -{' '}
 										{selectedSubmission.title}
 									</p>
 									<p className="mt-1 text-xs uppercase tracking-[0.1em] text-accent-300">

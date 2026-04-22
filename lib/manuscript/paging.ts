@@ -12,7 +12,7 @@ export type PagedManuscript = {
 
 export const readingPageOptions = {
 	targetCharacters: 2600,
-	maxParagraphs: 9,
+	maxParagraphs: 7,
 }
 
 export function paginateManuscript(

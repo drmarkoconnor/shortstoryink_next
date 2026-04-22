@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -9,7 +9,7 @@ import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 const writerNavItems = [
 	{ href: '/app/writer', label: 'Write' },
 	{ href: '/app/writer/feedback', label: 'Feedback' },
-	{ href: '/app/account', label: 'Account' },
+	{ href: '/app/account', label: 'Account', disabled: true },
 ]
 
 const teacherNavItems = [
@@ -52,25 +52,22 @@ export async function AppFrame({
 	return (
 		<div className="min-h-screen bg-ink-900 text-parchment-100">
 			<header className="app-shell-header border-b border-white/15 bg-ink-950/35">
-				<div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-					<BrandWordmark />
-					<nav className="flex flex-wrap items-center gap-2 text-sm text-silver-100">
-						{visibleNav.map((item) => (
-							<Link
-								key={item.href}
-								href={item.href}
-								className="rounded-full px-3 py-1.5 transition hover:bg-white/10 hover:text-parchment-100">
-								{item.label}
-							</Link>
-						))}
-						<span
-							className={`ml-2 rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.11em] ${identityClass}`}>
-							{role}
-						</span>
-						<span
-							className={`ml-2 rounded-full border px-3 py-1.5 text-xs tracking-tight ${identityClass}`}>
-							{displayName || userEmail}
-						</span>
+				<div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-4 px-6 py-5">
+					<div>
+						<BrandWordmark />
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							<span
+								className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${identityClass}`}>
+								{role}
+							</span>
+							<span
+								className={`rounded-full border px-2.5 py-1 text-[11px] tracking-tight ${identityClass}`}>
+								{displayName || userEmail}
+							</span>
+						</div>
+					</div>
+					<div className="flex flex-wrap items-center justify-end gap-2">
+						<AppNav items={visibleNav} />
 						<form action={signOutAction}>
 							<button
 								type="submit"
@@ -78,7 +75,7 @@ export async function AppFrame({
 								Log out
 							</button>
 						</form>
-					</nav>
+					</div>
 				</div>
 			</header>
 			<main className="app-shell-main mx-auto w-full max-w-6xl px-6 py-8 lg:py-10">

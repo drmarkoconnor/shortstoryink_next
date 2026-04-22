@@ -1,10 +1,12 @@
-import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
-import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
+import { RevisionDraftForm } from '@/components/writer/revision-draft-form'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
+
+const ABU_SUBMISSION_WORD_LIMIT = 2000
 
 type RevisionSubmission = {
 	id: string
@@ -25,12 +27,60 @@ type RevisionHistoryItem = {
 	created_at: string
 }
 
+type RevisionWorkshop = {
+	title: string
+	slug: string | null
+}
+
 function toMessage(value: string | string[] | undefined) {
 	return typeof value === 'string' && value.trim() ? value : null
 }
 
 function buildRevisionScopeFilter(rootSubmissionId: string) {
 	return `id.eq.${rootSubmissionId},parent_submission_id.eq.${rootSubmissionId}`
+}
+
+function countWords(value: string) {
+	return value.trim().split(/\s+/).filter(Boolean).length
+}
+
+function statusLabel(value: string) {
+	return value.replaceAll('_', ' ')
+}
+
+function isActiveReviewStatus(value: string) {
+	return value === 'submitted' || value === 'in_review'
+}
+
+function getRevisionBlockReason(
+	submission: Pick<RevisionSubmission, 'version'>,
+	revisionHistory: RevisionHistoryItem[],
+) {
+	const latestPublishedVersion = revisionHistory.reduce(
+		(latestVersion, item) =>
+			item.status === 'feedback_published'
+				? Math.max(latestVersion, item.version)
+				: latestVersion,
+		submission.version,
+	)
+	const activeNewerVersion = revisionHistory
+		.filter(
+			(item) =>
+				item.version > submission.version && isActiveReviewStatus(item.status),
+		)
+		.sort((a, b) => a.version - b.version)[0]
+
+	if (activeNewerVersion) {
+		return `Version ${activeNewerVersion.version} is already ${statusLabel(
+			activeNewerVersion.status,
+		)}. Wait for teacher feedback before starting another revision.`
+	}
+
+	if (submission.version < latestPublishedVersion) {
+		return `Start from the latest published feedback, version ${latestPublishedVersion}, before making another revision.`
+	}
+
+	return null
 }
 
 export default async function WriterRevisionPage({
@@ -81,6 +131,18 @@ export default async function WriterRevisionPage({
 			(highestVersion, item) => Math.max(highestVersion, item.version),
 			submission.version,
 		) + 1
+	const blockedReason = getRevisionBlockReason(submission, revisionHistory)
+
+	const workshopResult = await supabase
+		.from('workshops')
+		.select('title, slug')
+		.eq('id', submission.workshop_id)
+		.maybeSingle()
+	const workshop = workshopResult.data as RevisionWorkshop | null
+	const isAbuRevision =
+		isAbuWorkshopSlug(workshop?.slug) ||
+		String(workshop?.title ?? '').trim().toLowerCase() ===
+			'authorised basic user'
 
 	async function submitRevisionAction(formData: FormData) {
 		'use server'
@@ -91,6 +153,7 @@ export default async function WriterRevisionPage({
 		const title = String(formData.get('title') ?? '').trim()
 		const rawBody = String(formData.get('body') ?? '')
 		const body = rawBody.trim()
+		const wordCount = countWords(body)
 
 		if (!title || !body) {
 			redirect(
@@ -129,13 +192,51 @@ export default async function WriterRevisionPage({
 
 		const currentHistoryResult = await serverSupabase
 			.from('submissions')
-			.select('version')
+			.select('id, version, status, created_at')
 			.eq('author_id', revisionUser.id)
 			.or(buildRevisionScopeFilter(currentRootSubmissionId))
 
 		const currentHistory = (currentHistoryResult.data ?? []) as Array<{
+			id: string
 			version: number
+			status: string
+			created_at: string
 		}>
+		const currentBlockingReason = getRevisionBlockReason(
+			{
+				version: currentSubmission.version,
+			},
+			currentHistory.map((item) => ({
+				id: item.id,
+				version: item.version,
+				status: item.status,
+				created_at: item.created_at,
+			})),
+		)
+
+		if (currentBlockingReason) {
+			redirect(
+				`/app/writer/revise/${submissionId}?error=${encodeURIComponent(currentBlockingReason)}`,
+			)
+		}
+
+		const currentWorkshopResult = await serverSupabase
+			.from('workshops')
+			.select('title, slug')
+			.eq('id', currentSubmission.workshop_id)
+			.maybeSingle()
+		const currentWorkshop = currentWorkshopResult.data as RevisionWorkshop | null
+		const isCurrentAbuRevision =
+			isAbuWorkshopSlug(currentWorkshop?.slug) ||
+			String(currentWorkshop?.title ?? '').trim().toLowerCase() ===
+				'authorised basic user'
+
+		if (isCurrentAbuRevision && wordCount > ABU_SUBMISSION_WORD_LIMIT) {
+			redirect(
+				`/app/writer/revise/${submissionId}?error=Authorised+Basic+User+revisions+are+currently+limited+to+${ABU_SUBMISSION_WORD_LIMIT}+words.`,
+			)
+		}
+
 		const currentNextVersion =
 			currentHistory.reduce(
 				(highestVersion, item) => Math.max(highestVersion, item.version),
@@ -169,169 +270,29 @@ export default async function WriterRevisionPage({
 	}
 
 	return (
-		<section className="space-y-5">
-			<div className="surface p-5 lg:p-6">
-				<div className="flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-							Revision workspace
-						</p>
-						<h1 className="literary-title mt-2 text-3xl text-parchment-100">
-							{submission.title}
-						</h1>
-					</div>
-					<Link
-						href={`/app/writer/feedback/${submission.id}`}
-						className="text-sm text-accent-200 hover:text-accent-100">
-						Back to published feedback
-					</Link>
-				</div>
-				<div className="mt-3 flex flex-wrap gap-2 text-xs text-silver-200">
-					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-						Revising from version {submission.version}
-					</p>
-					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-						New draft becomes version {nextVersion}
-					</p>
-					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-						Current status {submission.status.replaceAll('_', ' ')}
-					</p>
-					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-						Published draft date {new Date(submission.created_at).toLocaleString()}
-					</p>
-				</div>
-				<p className="muted mt-3 max-w-[52rem] text-sm leading-relaxed">
-					Revise directly from the published draft. When you submit, the new
-					version returns to the review queue as a fresh `submitted` draft while
-					this published version remains preserved with its feedback.
-				</p>
-
-				{notice ? (
-					<p className="mt-4 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
-						{notice}
-					</p>
-				) : null}
-				{errorNotice ? (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-						{errorNotice}
-					</p>
-				) : null}
-			</div>
-
-			{revisionHistory.length > 0 ? (
-				<div className="surface p-5 lg:p-6">
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<div>
-							<h2 className="literary-title text-xl text-parchment-100">
-								Version history
-							</h2>
-							<p className="mt-1 text-sm text-silver-300">
-								Open earlier published feedback without losing your current revision source.
-							</p>
-						</div>
-						<p className="text-xs uppercase tracking-[0.11em] text-silver-300">
-							{revisionHistory.length} versions
-						</p>
-					</div>
-					<ul className="mt-4 flex flex-wrap gap-2.5">
-						{revisionHistory.map((item) => (
-							<li
-								key={item.id}
-								className={`rounded-2xl border px-3 py-2.5 ${
-									item.id === submission.id
-										? 'border-accent-300/40 bg-accent-300/10'
-										: 'border-white/10 bg-ink-900/30'
-								}`}>
-								<div className="flex flex-wrap items-center gap-2">
-									<p className="text-[11px] uppercase tracking-[0.11em] text-silver-300">
-										Version {item.version}
-									</p>
-									<p className="text-xs text-parchment-100">
-										{item.status.replaceAll('_', ' ')}
-									</p>
-									<p className="text-xs text-silver-300">
-										{new Date(item.created_at).toLocaleDateString()}
-									</p>
-								</div>
-								<div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-									{item.status === 'feedback_published' ? (
-										<Link
-											href={`/app/writer/feedback/${item.id}`}
-											className="text-accent-200 hover:text-accent-100">
-											Open feedback
-										</Link>
-									) : (
-										<p className="text-silver-300">
-											Feedback not published
-										</p>
-									)}
-									{item.id === submission.id ? (
-										<p className="rounded-full border border-accent-300/50 bg-accent-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-accent-100">
-											Current source
-										</p>
-									) : null}
-								</div>
-							</li>
-						))}
-					</ul>
-				</div>
-			) : null}
-
-			<div className="surface p-5 lg:p-6">
-				<div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-					<div className="max-w-[42rem]">
-						<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-							New revision draft
-						</p>
-						<p className="mt-2 text-sm leading-relaxed text-silver-200">
-							Make the next version here. This draft does not overwrite the
-							published source version you are revising from.
-						</p>
-					</div>
-					<p className="rounded-2xl border border-white/10 bg-ink-900/35 px-4 py-3 text-right">
-						<span className="block text-[11px] uppercase tracking-[0.1em] text-silver-300">
-							Next review state
-						</span>
-						<span className="mt-1 block text-sm text-parchment-100">
-							Submitted for teacher review
-						</span>
-					</p>
-				</div>
-				<form action={submitRevisionAction} className="space-y-4">
-					<label className="block">
-						<span className="mb-2 block text-sm text-silver-200">Title</span>
-						<input
-							name="title"
-							required
-							defaultValue={submission.title}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
-							placeholder="Draft title"
-						/>
-					</label>
-
-					<label className="block">
-						<span className="mb-2 block text-sm text-silver-200">
-							Revised body text
-						</span>
-						<div className="folio-page p-5">
-							<ManuscriptTextarea
-								name="body"
-								required
-								defaultValue={submission.body}
-								rows={14}
-								className="w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-ink-900/90 outline-none"
-								placeholder="Revise your draft here"
-							/>
-						</div>
-					</label>
-
-					<button
-						type="submit"
-						className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30">
-						Submit revision
-					</button>
-				</form>
-			</div>
+		<section>
+			<RevisionDraftForm
+				title={submission.title}
+				body={submission.body}
+				status={submission.status}
+				sourceVersion={submission.version}
+				nextVersion={nextVersion}
+				sourceCreatedAt={submission.created_at}
+				submitRevisionAction={submitRevisionAction}
+				canSubmitRevision={!blockedReason}
+				blockedReason={blockedReason}
+				isAbuRevision={isAbuRevision}
+				abuSubmissionWordLimit={ABU_SUBMISSION_WORD_LIMIT}
+				revisionHistory={revisionHistory.map((item) => ({
+					id: item.id,
+					version: item.version,
+					status: item.status,
+					createdAt: item.created_at,
+				}))}
+				currentSubmissionId={submission.id}
+				notice={notice}
+				errorNotice={errorNotice}
+			/>
 		</section>
 	)
 }

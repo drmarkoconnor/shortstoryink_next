@@ -49,6 +49,31 @@ body {
 	background-color: color-mix(in srgb, #49615a 30%, transparent);
 }
 
+@keyframes feedback-panel-pulse {
+	0% {
+		border-color: rgba(191, 135, 153, 1);
+		box-shadow:
+			0 0 0 8px rgba(191, 135, 153, 0.34),
+			0 18px 42px rgba(0, 0, 0, 0.34);
+	}
+	42% {
+		border-color: rgba(191, 135, 153, 1);
+		box-shadow:
+			0 0 0 6px rgba(191, 135, 153, 0.22),
+			0 18px 42px rgba(0, 0, 0, 0.34);
+	}
+	100% {
+		border-color: rgba(191, 135, 153, 0.8);
+		box-shadow:
+			0 0 0 1px rgba(252, 251, 248, 0.06),
+			0 16px 36px rgba(0, 0, 0, 0.32);
+	}
+}
+
+.feedback-panel-pulse {
+	animation: feedback-panel-pulse 750ms ease-out;
+}
+
 @media print {
 	body {
 		background: #fff !important;

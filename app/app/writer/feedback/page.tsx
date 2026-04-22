@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { FeedbackSubmissionSelector } from '@/components/writer/feedback-submission-selector'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -9,6 +9,15 @@ type FeedbackSubmission = {
 	status: string
 	created_at: string
 	version: number
+}
+
+function getAnchorField(anchor: unknown, field: 'quote' | 'categoryLabel') {
+	if (!anchor || typeof anchor !== 'object' || !(field in anchor)) {
+		return ''
+	}
+
+	const value = (anchor as Record<string, unknown>)[field]
+	return typeof value === 'string' ? value : ''
 }
 
 export default async function WriterFeedbackPage() {
@@ -35,6 +44,15 @@ export default async function WriterFeedbackPage() {
 	const submissionIds = submissions.map((item) => item.id)
 	let summariesBySubmission: Record<string, string> = {}
 	let feedbackCountBySubmission: Record<string, number> = {}
+	let feedbackCommentsBySubmission: Record<
+		string,
+		Array<{
+			id: string
+			comment: string
+			quote: string
+			categoryLabel?: string
+		}>
+	> = {}
 
 	if (!loadError && submissionIds.length > 0) {
 		const summariesResult = await supabase
@@ -51,7 +69,7 @@ export default async function WriterFeedbackPage() {
 
 		const feedbackItemsResult = await supabase
 			.from('feedback_items')
-			.select('submission_id')
+			.select('id, submission_id, comment, anchor')
 			.in('submission_id', submissionIds)
 
 		feedbackCountBySubmission = (feedbackItemsResult.data ?? []).reduce(
@@ -62,11 +80,46 @@ export default async function WriterFeedbackPage() {
 			},
 			{} as Record<string, number>,
 		)
+
+		feedbackCommentsBySubmission = (feedbackItemsResult.data ?? []).reduce(
+			(acc, row) => {
+				const key = row.submission_id as string
+				if (!acc[key]) {
+					acc[key] = []
+				}
+				acc[key].push({
+					id: row.id as string,
+					comment: (row.comment as string | null) ?? '',
+					quote: getAnchorField(row.anchor, 'quote'),
+					categoryLabel: getAnchorField(row.anchor, 'categoryLabel'),
+				})
+				return acc
+			},
+			{} as Record<
+				string,
+				Array<{
+					id: string
+					comment: string
+					quote: string
+					categoryLabel?: string
+				}>
+			>,
+		)
 	}
+
+	const feedbackSubmissions = submissions.map((submission) => ({
+		id: submission.id,
+		title: submission.title,
+		createdAt: submission.created_at,
+		version: submission.version,
+		summary: summariesBySubmission[submission.id] ?? '',
+		commentCount: feedbackCountBySubmission[submission.id] ?? 0,
+		comments: feedbackCommentsBySubmission[submission.id] ?? [],
+	}))
 
 	return (
 		<section className="space-y-5">
-			<div className="surface p-6 lg:p-8">
+			<div className="surface p-5 lg:p-6">
 				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
 					Feedback
 				</p>
@@ -78,56 +131,13 @@ export default async function WriterFeedbackPage() {
 				</p>
 			</div>
 
-			<div className="surface p-6 lg:p-8">
+			<div className="surface p-5 lg:p-6">
 				{loadError ? (
 					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
 						Unable to load published feedback: {loadError}
 					</p>
-				) : submissions.length === 0 ? (
-					<p className="text-sm text-silver-300">No published feedback yet.</p>
 				) : (
-					<ul className="space-y-2.5">
-						{submissions.map((submission) => (
-							<li
-								key={submission.id}
-								className="rounded-2xl border border-white/10 bg-ink-900/35 p-4 transition hover:border-white/15 hover:bg-ink-900/45">
-								<div className="flex flex-wrap items-start justify-between gap-2">
-									<div>
-										<p className="text-sm font-medium text-parchment-100">
-											{submission.title}
-										</p>
-										<p className="mt-1 text-xs text-silver-300">
-											{submission.created_at
-												? new Date(submission.created_at).toLocaleString()
-												: 'Unknown date'}
-											{' · '}
-											{feedbackCountBySubmission[submission.id] ?? 0} comments {' · '}
-											Version {submission.version}
-										</p>
-									</div>
-									<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-										Published
-									</p>
-								</div>
-								<p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-silver-100">
-									{summariesBySubmission[submission.id] ||
-										'No summary published.'}
-								</p>
-								<div className="mt-3 flex flex-wrap gap-3 text-xs">
-									<Link
-										href={`/app/writer/feedback/${submission.id}`}
-										className="text-accent-200 hover:text-accent-100">
-										Open full inline feedback
-									</Link>
-									<Link
-										href={`/app/writer/revise/${submission.id}`}
-										className="text-silver-200 hover:text-parchment-100">
-										Start revision
-									</Link>
-								</div>
-							</li>
-						))}
-					</ul>
+					<FeedbackSubmissionSelector submissions={feedbackSubmissions} />
 				)}
 			</div>
 		</section>
