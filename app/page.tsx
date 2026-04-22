@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import penImage from '@/assets/images/piltopen.jpg'
+import { BrandWordmark } from '@/components/brand/brand-wordmark'
 
 const steps = [
 	{
@@ -25,19 +26,15 @@ export default function HomePage() {
 					src={penImage}
 					alt=""
 					priority
-					className="absolute inset-0 -z-20 h-full w-full object-cover opacity-[0.62]"
+					className="absolute inset-0 -z-20 h-full w-full object-cover opacity-[0.88] brightness-[1.32] contrast-[1.04]"
 				/>
-				<div className="absolute inset-0 -z-10 bg-ink-950/45" />
-				<div className="absolute inset-y-0 left-0 -z-10 w-full bg-gradient-to-r from-ink-950 via-ink-950/75 to-ink-950/15" />
-				<div className="absolute inset-x-0 bottom-0 -z-10 h-2/5 bg-gradient-to-t from-ink-900 to-transparent" />
+				<div className="absolute inset-0 -z-10 bg-ink-950/20" />
+				<div className="absolute inset-y-0 left-0 -z-10 w-full bg-gradient-to-r from-ink-950/95 via-ink-950/55 to-ink-950/5" />
+				<div className="absolute inset-x-0 bottom-0 -z-10 h-2/5 bg-gradient-to-t from-ink-900/90 to-transparent" />
 
 				<div className="mx-auto flex min-h-[88vh] w-full max-w-6xl flex-col justify-center px-6 py-20 sm:py-24">
 					<nav className="mb-16 flex flex-wrap items-center justify-between gap-4">
-						<Link
-							href="/"
-							className="literary-title text-xl text-parchment-100">
-							shortstory.ink
-						</Link>
+						<BrandWordmark />
 						<div className="flex flex-wrap items-center gap-2 text-sm text-silver-100">
 							<Link
 								href="/auth/sign-in"

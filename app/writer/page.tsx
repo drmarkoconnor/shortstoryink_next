@@ -1,18 +1,21 @@
-import Link from 'next/link'
 import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
+import { WriterSubmissionComposer } from '@/components/writer/writer-submission-composer'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
+
+const ABU_SUBMISSION_WORD_LIMIT = 2000
 
 type SchemaMode = 'modern' | 'legacy'
 
 type WriterWorkshop = {
 	id: string
 	title: string
+	slug?: string | null
 }
 
 type WriterSubmission = {
@@ -22,14 +25,11 @@ type WriterSubmission = {
 	createdAt: string
 	workshopTitle?: string | null
 	version?: number
+	commentCount?: number
 }
 
 function toMessage(value: string | string[] | undefined) {
 	return typeof value === 'string' && value.trim() ? value : null
-}
-
-function statusLabel(value: string) {
-	return value.replaceAll('_', ' ')
 }
 
 function isLegacySchemaError(message: string | null | undefined) {
@@ -75,7 +75,8 @@ async function createSubmissionAction(formData: FormData) {
 	const title = String(formData.get('title') ?? '').trim()
 	const rawBody = String(formData.get('body') ?? '')
 	const body = rawBody.trim()
-		const workshopId = String(formData.get('workshopId') ?? '').trim()
+	const workshopId = String(formData.get('workshopId') ?? '').trim()
+	const wordCount = body.split(/\s+/).filter(Boolean).length
 
 	if (!title || !body) {
 		redirect('/app/writer?error=Please+complete+title+and+body.')
@@ -100,6 +101,27 @@ async function createSubmissionAction(formData: FormData) {
 		if (!membership) {
 			redirect(
 				'/app/writer?error=You+can+only+submit+to+your+assigned+groups.',
+			)
+		}
+
+		const { data: workshop, error: workshopReadError } = await supabase
+			.from('workshops')
+			.select('slug, title')
+			.eq('id', workshopId)
+			.maybeSingle()
+
+		if (workshopReadError) {
+			redirect('/app/writer?error=Unable+to+validate+group+settings.')
+		}
+
+		const isAbuSubmission =
+			isAbuWorkshopSlug(workshop?.slug as string | null | undefined) ||
+			String(workshop?.title ?? '').trim().toLowerCase() ===
+				'authorised basic user'
+
+		if (isAbuSubmission && wordCount > ABU_SUBMISSION_WORD_LIMIT) {
+			redirect(
+				`/app/writer?error=Authorised+Basic+User+submissions+are+currently+limited+to+${ABU_SUBMISSION_WORD_LIMIT}+words.`,
 			)
 		}
 
@@ -144,8 +166,6 @@ async function createSubmissionAction(formData: FormData) {
 		}
 
 		const submissionId = submissionRows.id as string
-		const words = body.trim().split(/\s+/).filter(Boolean)
-		const wordCount = words.length
 
 		const { data: versionRows, error: versionInsertError } = await supabase
 			.from('submission_versions')
@@ -306,7 +326,7 @@ export default async function WriterPage({
 		} else if (workshopIds.length > 0) {
 			const { data: workshopRows, error } = await supabase
 				.from('workshops')
-				.select('id, title')
+				.select('id, title, slug')
 				.in('id', workshopIds)
 				.order('title', { ascending: true })
 
@@ -349,6 +369,29 @@ export default async function WriterPage({
 				workshopTitle:
 					workshopTitleById[submission.workshop_id] ?? 'Group unknown',
 			}))
+
+			const submissionIds = submissions.map((submission) => submission.id)
+
+			if (submissionIds.length > 0) {
+				const { data: feedbackRows } = await supabase
+					.from('feedback_items')
+					.select('submission_id')
+					.in('submission_id', submissionIds)
+
+				const commentCountBySubmission = (feedbackRows ?? []).reduce(
+					(acc, row) => {
+						const key = row.submission_id as string
+						acc[key] = (acc[key] ?? 0) + 1
+						return acc
+					},
+					{} as Record<string, number>,
+				)
+
+				submissions = submissions.map((submission) => ({
+					...submission,
+					commentCount: commentCountBySubmission[submission.id] ?? 0,
+				}))
+			}
 		}
 	} else {
 		const { data: submissionRows, error } = await supabase
@@ -375,11 +418,20 @@ export default async function WriterPage({
 				status: submission.status,
 				createdAt: submission.submitted_at ?? submission.created_at,
 				workshopTitle: 'Default group queue',
+				commentCount: 0,
 			}))
 		}
 	}
 
 	const isWorkshopRequired = mode === 'modern'
+	const defaultWorkshopId =
+		workshops.find((workshop) => isAbuWorkshopSlug(workshop.slug))?.id ??
+		workshops.find(
+			(workshop) =>
+				workshop.title.trim().toLowerCase() === 'authorised basic user',
+		)?.id ??
+		workshops[0]?.id ??
+		''
 	const submittedCount = submissions.filter(
 		(submission) => submission.status === 'submitted',
 	).length
@@ -389,206 +441,32 @@ export default async function WriterPage({
 	const publishedCount = submissions.filter(
 		(submission) => submission.status === 'feedback_published',
 	).length
+	const composerWorkshops = workshops.map((workshop) => ({
+		id: workshop.id,
+		title: workshop.title,
+		isAbu:
+			isAbuWorkshopSlug(workshop.slug) ||
+			workshop.title.trim().toLowerCase() === 'authorised basic user',
+	}))
 
 	return (
 		<section className="space-y-5">
-			<div className="surface p-4 lg:p-5">
-				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-					Writer home
-				</p>
-				<div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-					<div>
-						<h1 className="literary-title text-3xl text-parchment-100">
-							Groups
-						</h1>
-						<p className="muted mt-2 max-w-[42rem] text-sm leading-relaxed">
-							Start a new piece, choose the right group, and keep the draft in
-							view while you track the review loop.
-						</p>
-					</div>
-					<div className="flex flex-wrap gap-2 text-xs text-silver-200">
-						<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-							Awaiting reply: {submittedCount}
-						</p>
-						<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-							In review: {inReviewCount}
-						</p>
-						<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-							Published feedback: {publishedCount}
-						</p>
-					</div>
-				</div>
-			</div>
-
-			<div className="surface p-6 lg:p-8">
-				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-					New submission
-				</p>
-				<h2 className="literary-title mt-2 text-3xl text-parchment-100">
-					Submit a draft
-				</h2>
-				<p className="muted mt-2 max-w-prose text-sm leading-relaxed">
-					Paste the piece as you want it read. Formatting is preserved.
-				</p>
-
-				{notice && (
-					<p className="mt-4 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
-						{notice}
-					</p>
-				)}
-				{errorNotice && (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-						{errorNotice}
-					</p>
-				)}
-				{workshopError && (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-						{workshopError}
-					</p>
-				)}
-				{isWorkshopRequired && !workshopError && workshops.length === 0 && (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-						No group membership found yet. Your baseline group may still be
-						loading, or a teacher/admin may need to assign an additional group.
-					</p>
-				)}
-				{!isWorkshopRequired && (
-					<p className="mt-4 rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-2 text-sm text-sky-100">
-						Legacy schema detected. Submissions currently route through a
-						default queue until group tables are migrated.
-					</p>
-				)}
-
-				<form action={createSubmissionAction} className="mt-6 space-y-3">
-					<div className="grid gap-3 md:grid-cols-2">
-						<label className="block">
-							<span className="mb-2 block text-sm text-silver-200">Title</span>
-							<input
-								name="title"
-								required
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
-								placeholder="Draft title"
-							/>
-						</label>
-
-						{isWorkshopRequired ? (
-							<label className="block">
-								<span className="mb-2 block text-sm text-silver-200">
-									Group
-								</span>
-								<select
-									name="workshopId"
-									required
-									disabled={workshops.length === 0}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
-									<option value="">
-										{workshops.length === 0
-											? 'No group membership found'
-											: 'Select group'}
-									</option>
-									{workshops.map((workshop) => (
-										<option key={workshop.id} value={workshop.id}>
-											{workshop.title}
-										</option>
-									))}
-								</select>
-							</label>
-						) : (
-							<div className="rounded-xl border border-white/10 bg-ink-900/35 px-4 py-2.5 text-sm text-silver-200">
-								Default queue (no group selection in legacy mode)
-							</div>
-						)}
-					</div>
-
-					<label className="block">
-						<span className="mb-2 block text-sm text-silver-200">
-							Body text
-						</span>
-						<div className="folio-page p-5">
-							<ManuscriptTextarea
-								name="body"
-								required
-								rows={12}
-								className="w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-ink-900/90 outline-none"
-								placeholder="Paste your draft text here"
-							/>
-						</div>
-					</label>
-
-					<button
-						type="submit"
-						disabled={isWorkshopRequired && workshops.length === 0}
-						className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
-						Save submission
-					</button>
-				</form>
-			</div>
-
-			<div className="surface p-6 lg:p-8">
-				<div className="flex items-center justify-between gap-3">
-					<h2 className="literary-title text-2xl text-parchment-100">
-						Submission history
-					</h2>
-					<p className="text-xs uppercase tracking-[0.11em] text-silver-300">
-						{submissions.length} total
-					</p>
-				</div>
-
-				{submissionsError ? (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-						{submissionsError}
-					</p>
-				) : submissions.length === 0 ? (
-					<p className="muted mt-4 text-sm">No submissions yet.</p>
-				) : (
-					<ul className="mt-4 space-y-2.5">
-						{submissions.map((submission) => (
-							<li
-								key={submission.id}
-								className="rounded-2xl border border-white/10 bg-ink-900/35 p-4 transition hover:border-white/15 hover:bg-ink-900/45">
-								<div className="flex flex-wrap items-start justify-between gap-2">
-									<p className="text-sm font-medium text-parchment-100">
-										{submission.title}
-									</p>
-									<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-										{statusLabel(submission.status)}
-									</p>
-								</div>
-								<p className="mt-2 text-xs text-silver-300">
-									{submission.workshopTitle ?? 'Default group queue'} {' · '}
-									{submission.createdAt
-										? new Date(submission.createdAt).toLocaleString()
-										: 'Unknown date'}
-									{submission.version ? ` · Version ${submission.version}` : ''}
-								</p>
-								<div className="mt-3 flex flex-wrap gap-3 text-xs">
-									{submission.status === 'feedback_published' ? (
-										<Link
-											href={`/app/writer/feedback/${submission.id}`}
-											className="text-accent-200 hover:text-accent-100">
-											Open feedback
-										</Link>
-									) : null}
-									{submission.status === 'submitted' ? (
-										<form action={deleteSubmissionAction}>
-											<input
-												type="hidden"
-												name="submissionId"
-												value={submission.id}
-											/>
-											<button
-												type="submit"
-												className="rounded-full border border-rose-300/50 bg-rose-300/10 px-3 py-1.5 uppercase tracking-[0.09em] text-rose-100 transition hover:bg-rose-300/20">
-												Delete draft
-											</button>
-										</form>
-									) : null}
-								</div>
-							</li>
-						))}
-					</ul>
-				)}
-			</div>
+			<WriterSubmissionComposer
+				createSubmissionAction={createSubmissionAction}
+				deleteSubmissionAction={deleteSubmissionAction}
+				workshops={composerWorkshops}
+				isWorkshopRequired={isWorkshopRequired}
+				defaultWorkshopId={defaultWorkshopId}
+				submissions={submissions}
+				submissionsError={submissionsError}
+				notice={notice}
+				errorNotice={errorNotice}
+				workshopError={workshopError}
+				submittedCount={submittedCount}
+				inReviewCount={inReviewCount}
+				publishedCount={publishedCount}
+				abuSubmissionWordLimit={ABU_SUBMISSION_WORD_LIMIT}
+			/>
 		</section>
 	)
 }

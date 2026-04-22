@@ -1,6 +1,6 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
+import type { ChangeEvent, KeyboardEvent } from 'react'
 
 function indentSelectedLines(
 	value: string,
@@ -59,6 +59,8 @@ export function ManuscriptTextarea({
 	rows,
 	className,
 	required,
+	form,
+	onValueChange,
 }: {
 	name: string
 	defaultValue?: string
@@ -66,7 +68,13 @@ export function ManuscriptTextarea({
 	rows?: number
 	className?: string
 	required?: boolean
+	form?: string
+	onValueChange?: (value: string) => void
 }) {
+	const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+		onValueChange?.(event.currentTarget.value)
+	}
+
 	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
 		if (event.key !== 'Tab') {
 			return
@@ -87,6 +95,7 @@ export function ManuscriptTextarea({
 				result.nextSelectionStart,
 				result.nextSelectionEnd,
 			)
+			onValueChange?.(textarea.value)
 			return
 		}
 
@@ -107,12 +116,14 @@ export function ManuscriptTextarea({
 				selectionStart - removeLength,
 				selectionEnd - removeLength,
 			)
+			onValueChange?.(textarea.value)
 			return
 		}
 
 		textarea.value =
 			value.slice(0, selectionStart) + '\t' + value.slice(selectionEnd)
 		textarea.setSelectionRange(selectionStart + 1, selectionStart + 1)
+		onValueChange?.(textarea.value)
 	}
 
 	return (
@@ -123,6 +134,8 @@ export function ManuscriptTextarea({
 			rows={rows}
 			className={className}
 			required={required}
+			form={form}
+			onChange={handleChange}
 			onKeyDown={handleKeyDown}
 		/>
 	)
