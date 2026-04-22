@@ -21,15 +21,17 @@ const config: Config = {
 					300: '#a45a70',
 					200: '#bf8799',
 				},
-				   parchment: {
-					   100: '#fcfbf8', // lighter for higher contrast
-					   200: '#efebe3',
-					   300: '#e3ddd1',
-					   50: '#f9f7f2', // new, for softer backgrounds
-				   },
+				parchment: {
+					100: '#fcfbf8',
+					200: '#efebe3',
+					300: '#e3ddd1',
+					50: '#f9f7f2',
+				},
 				silver: {
-					300: '#8f96ab',
-					200: '#a7aec2',
+					100: '#d7dbea',
+					200: '#c1c7d8',
+					300: '#a6aec4',
+					400: '#8992ab',
 				},
 				mark: {
 					grammar: '#5b6f99',

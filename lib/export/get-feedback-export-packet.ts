@@ -40,7 +40,7 @@ export type FeedbackExportPacket = {
 	writerName: string
 	status: string
 	version: number
-	source: 'workshop' | 'try_writing'
+	source: 'workshop'
 	createdAt: string
 	paragraphs: Array<{ id: string; text: string }>
 	summary: {
@@ -244,7 +244,7 @@ export async function getFeedbackExportPacket(
 			(writerResult.data?.display_name as string | null | undefined) ?? 'Writer',
 		status: submission.status,
 		version: submission.version,
-		source: submission.source === 'try_writing' ? 'try_writing' : 'workshop',
+		source: 'workshop',
 		createdAt: submission.created_at,
 		paragraphs: toManuscriptParagraphs(submission.body),
 		summary: summaryResult.data

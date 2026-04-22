@@ -1,14 +1,12 @@
 "use client";
-// Account page scaffold with top tabs and section routing
 import React, { useState } from 'react';
 import ProfileSection from '@/components/account/profile-section';
 import ContactPreferencesSection from '@/components/account/contact-preferences-section';
 import SecuritySection from '@/components/account/security-section';
 
-// Placeholder components
-const PaymentsSection = () => <div className="p-6 text-gray-400">Payments section coming soon.</div>;
-const PrivacySection = () => <div className="p-6 text-gray-400">Privacy & GDPR section coming soon.</div>;
-const OtherSettingsSection = () => <div className="p-6 text-gray-400">Other settings coming soon.</div>;
+const PaymentsSection = () => <div className="rounded-xl border border-white/15 bg-ink-900/45 p-5 text-sm text-silver-200">Payments section coming soon.</div>;
+const PrivacySection = () => <div className="rounded-xl border border-white/15 bg-ink-900/45 p-5 text-sm text-silver-200">Privacy & GDPR section coming soon.</div>;
+const OtherSettingsSection = () => <div className="rounded-xl border border-white/15 bg-ink-900/45 p-5 text-sm text-silver-200">Other settings coming soon.</div>;
 
 const TABS = [
   { key: 'profile', label: 'Profile' },
@@ -23,13 +21,14 @@ export default function AccountPage() {
   const [tab, setTab] = useState('profile');
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-6">Account Settings</h1>
-      <div className="flex border-b mb-6">
+    <div className="surface mx-auto mt-4 max-w-2xl p-6 lg:p-8">
+      <p className="text-xs uppercase tracking-[0.12em] text-silver-300">Account</p>
+      <h1 className="literary-title mt-2 text-3xl text-parchment-100">Settings</h1>
+      <div className="mt-6 mb-6 flex flex-wrap gap-1 border-b border-white/15 pb-2">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
-            className={`px-4 py-2 -mb-px border-b-2 transition-colors ${tab === key ? 'border-blue-500 text-blue-600 font-semibold' : 'border-transparent text-gray-500'}`}
+            className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.09em] transition ${tab === key ? 'bg-burgundy-500/80 text-parchment-100' : 'text-silver-100 hover:bg-white/10 hover:text-parchment-100'}`}
             onClick={() => setTab(key)}
           >
             {label}

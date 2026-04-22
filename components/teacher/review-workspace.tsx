@@ -280,12 +280,12 @@ export function TeacherReviewWorkspace({
 	return (
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_300px] 2xl:grid-cols-[minmax(0,1.65fr)_320px]">
 			<main onMouseUp={captureSelection} onKeyUp={captureSelection}>
-				<div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-900/25 px-4 py-3">
+				<div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/15 bg-ink-800/70 px-4 py-3">
 					<div>
 						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 							Reading pages
 						</p>
-						<p className="mt-1 text-sm text-silver-200">
+						<p className="mt-1 text-sm text-silver-100">
 							Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
 						</p>
 					</div>
@@ -370,7 +370,7 @@ export function TeacherReviewWorkspace({
 							/>
 							<input type="hidden" name="quote" value={selectedAnchor.quote} />
 							<div className="grid gap-2">
-								<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								<label className="text-xs uppercase tracking-[0.1em] text-silver-200">
 									Comment category
 								</label>
 								<select
@@ -397,7 +397,7 @@ export function TeacherReviewWorkspace({
 								value={selectedAnchor.suffix}
 							/>
 
-							<p className="rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2 text-xs text-silver-200">
+							<p className="rounded-lg border border-white/15 bg-ink-900/55 px-3 py-2 text-sm leading-relaxed text-silver-100">
 								{selectedAnchor.quote}
 							</p>
 							<textarea
@@ -414,7 +414,7 @@ export function TeacherReviewWorkspace({
 							</PendingSubmitButton>
 						</form>
 					) : (
-						<p className="text-sm text-silver-300">
+						<p className="text-sm leading-relaxed text-silver-200">
 							Highlight a passage in the reading panel to start a comment.
 						</p>
 					)}
@@ -422,7 +422,7 @@ export function TeacherReviewWorkspace({
 
 				<ProtoCard title="Save snippet" meta="Private by default">
 					{!canSaveSnippets ? (
-						<p className="text-sm text-silver-300">
+						<p className="text-sm leading-relaxed text-silver-200">
 							Snippet saving is only available in the modern submission schema.
 						</p>
 					) : selectedAnchor ? (
@@ -446,11 +446,11 @@ export function TeacherReviewWorkspace({
 							<input type="hidden" name="prefix" value={selectedAnchor.prefix} />
 							<input type="hidden" name="suffix" value={selectedAnchor.suffix} />
 
-							<p className="rounded-lg border border-white/10 bg-ink-900/40 px-3 py-2 text-xs text-silver-200">
+							<p className="rounded-lg border border-white/15 bg-ink-900/55 px-3 py-2 text-sm leading-relaxed text-silver-100">
 								{selectedAnchor.quote}
 							</p>
 							<div className="grid gap-2">
-								<label className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								<label className="text-xs uppercase tracking-[0.1em] text-silver-200">
 									Category
 								</label>
 								<select
@@ -478,7 +478,7 @@ export function TeacherReviewWorkspace({
 							</PendingSubmitButton>
 						</form>
 					) : (
-						<p className="text-sm text-silver-300">
+						<p className="text-sm leading-relaxed text-silver-200">
 							Highlight a passage in the reading panel to save it as a snippet.
 						</p>
 					)}
@@ -486,15 +486,15 @@ export function TeacherReviewWorkspace({
 
 				<ProtoCard title="Feedback items" meta="Teacher annotations">
 					{feedback.length === 0 ? (
-						<p className="text-sm text-silver-300">No comments yet.</p>
+						<p className="text-sm text-silver-200">No comments yet.</p>
 					) : (
 						<ul className="space-y-2">
 							{feedback.map((item) => (
 								<li
 									key={item.id}
-									className="rounded-xl border border-white/10 bg-ink-900/40 p-3">
+									className="rounded-xl border border-white/15 bg-ink-900/55 p-3">
 									<div className="flex flex-wrap items-center gap-2">
-										<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+										<p className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200">
 											{feedbackLabel(item.anchor)}
 										</p>
 										<p className="font-serif text-sm italic text-parchment-100/90">
@@ -508,7 +508,7 @@ export function TeacherReviewWorkspace({
 													value={item.id}
 												/>
 												<PendingSubmitButton
-													className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-400 transition hover:border-amber-200/40 hover:text-amber-100"
+													className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300 transition hover:border-amber-200/40 hover:text-amber-100"
 													pendingChildren="Deleting...">
 													Delete
 												</PendingSubmitButton>

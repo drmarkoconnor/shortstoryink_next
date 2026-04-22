@@ -112,7 +112,7 @@ export default async function WorkshopSubmissionPage({
 	let createdAt = new Date().toISOString()
 	let currentVersion = 1
 	let writerName = 'Writer'
-	let submissionSource: 'workshop' | 'try_writing' = 'workshop'
+	let submissionSource = 'workshop'
 	let latestVersionId: string | null = null
 	let rootSubmissionId: string | null = null
 	let currentAuthorId: string | null = null
@@ -180,8 +180,7 @@ export default async function WorkshopSubmissionPage({
 		currentVersion = submission.version
 		currentAuthorId = submission.author_id
 		rootSubmissionId = submission.parent_submission_id ?? submission.id
-		submissionSource =
-			submission.source === 'try_writing' ? 'try_writing' : 'workshop'
+		submissionSource = 'workshop'
 
 		const { data: profileData } = await supabase
 			.from('profiles')
@@ -714,8 +713,6 @@ export default async function WorkshopSubmissionPage({
 		const authorId = submissionRow?.author_id as string | undefined
 		const submissionTitleForEmail =
 			(submissionRow?.title as string | undefined) ?? submissionTitle
-		const sourceForEmail =
-			submissionRow?.source === 'try_writing' ? 'try_writing' : 'workshop'
 
 		if (authorId) {
 			const { data: userData, error: userError } =
@@ -729,7 +726,6 @@ export default async function WorkshopSubmissionPage({
 						email,
 						title: submissionTitleForEmail,
 						submissionId,
-						useMagicLink: sourceForEmail === 'try_writing',
 					})
 				} catch {
 					publishNotice =
@@ -782,7 +778,7 @@ export default async function WorkshopSubmissionPage({
 						{submissionStatus.replaceAll('_', ' ')}
 					</p>
 					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-						{submissionSource === 'try_writing' ? 'try writing' : 'workshop'}
+						{submissionSource}
 					</p>
 					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
 						{new Date(createdAt).toLocaleString()}

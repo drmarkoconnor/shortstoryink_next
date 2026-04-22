@@ -224,12 +224,12 @@ export function WriterFeedbackReadingWorkspace({
 	return (
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_300px] 2xl:grid-cols-[minmax(0,1.65fr)_320px]">
 			<main className="min-w-0 space-y-4">
-				<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-900/25 px-4 py-3">
+				<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/15 bg-ink-800/70 px-4 py-3">
 					<div>
 						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 							Reading pages
 						</p>
-						<p className="mt-1 text-sm text-silver-200">
+						<p className="mt-1 text-sm text-silver-100">
 							Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
 						</p>
 					</div>
@@ -282,13 +282,13 @@ export function WriterFeedbackReadingWorkspace({
 
 			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
 				{activeComment ? (
-					<div className="rounded-2xl border border-burgundy-300/20 bg-ink-900/35 px-4 py-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+					<div className="rounded-2xl border border-burgundy-300/35 bg-ink-800/85 px-4 py-4 shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-sm">
 						<div className="mb-3 flex items-start justify-between gap-3">
 							<div className="space-y-2">
 								<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 									Active feedback context
 								</p>
-								<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<p className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200">
 									{feedbackLabel(
 										feedback.find((item) => item.id === activeComment.id)?.anchor,
 									)}
@@ -304,7 +304,7 @@ export function WriterFeedbackReadingWorkspace({
 								Dismiss
 							</button>
 						</div>
-						<p className="text-sm leading-relaxed text-silver-100">
+						<p className="text-[15px] leading-relaxed text-silver-100">
 							{activeComment.comment}
 						</p>
 						<p className="mt-2 text-xs text-silver-300">
@@ -313,11 +313,11 @@ export function WriterFeedbackReadingWorkspace({
 					</div>
 				) : null}
 
-				<div className="rounded-2xl border border-white/10 bg-ink-900/28 p-4">
+				<div className="rounded-2xl border border-white/15 bg-ink-800/80 p-4">
 					<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 						Published summary
 					</p>
-					<p className="mt-2 text-sm leading-relaxed text-silver-100">
+					<p className="mt-2 text-[15px] leading-relaxed text-silver-100">
 						{summary || 'No summary published.'}
 					</p>
 					{publishedAt ? (
@@ -327,18 +327,18 @@ export function WriterFeedbackReadingWorkspace({
 					) : null}
 				</div>
 
-				<div className="rounded-2xl border border-white/8 bg-ink-900/25 p-4">
+				<div className="rounded-2xl border border-white/15 bg-ink-800/70 p-4">
 					<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 						Feedback navigation
 					</p>
-					<p className="mt-2 text-sm leading-relaxed text-silver-200">
+					<p className="mt-2 text-[15px] leading-relaxed text-silver-100">
 						Use inline highlights for focused reading, or open the full panel
 						when you want the complete comment list beside the draft.
 					</p>
 					<button
 						type="button"
 						onClick={() => setIsPanelOpen((value) => !value)}
-						className="mt-4 rounded-full border border-white/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						className="mt-4 rounded-full border border-white/25 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/35 hover:bg-white/10 hover:text-parchment-100">
 						{isPanelOpen
 							? 'Hide full comments panel'
 							: 'Open full comments panel'}
@@ -346,7 +346,7 @@ export function WriterFeedbackReadingWorkspace({
 				</div>
 
 				{isPanelOpen ? (
-					<div className="rounded-2xl border border-white/10 bg-ink-800/55 p-5 shadow-glow">
+					<div className="rounded-2xl border border-white/15 bg-ink-800/90 p-5 shadow-glow">
 						<div className="flex items-baseline justify-between gap-3">
 							<h3 className="literary-title text-lg text-parchment-100">
 								All comments
@@ -356,16 +356,16 @@ export function WriterFeedbackReadingWorkspace({
 							</p>
 						</div>
 						{feedback.length === 0 ? (
-							<p className="mt-3 text-sm text-silver-300">No comments found.</p>
+							<p className="mt-3 text-sm text-silver-200">No comments found.</p>
 						) : (
 							<ul className="mt-3 space-y-2.5">
 								{feedback.map((item) => {
 									return (
 										<li
 											key={item.id}
-											className="rounded-xl border border-white/8 bg-ink-900/28 p-3.5">
+											className="rounded-xl border border-white/15 bg-ink-900/50 p-3.5">
 											<div className="flex flex-wrap items-center gap-2">
-												<p className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+												<p className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200">
 													{feedbackLabel(item.anchor)}
 												</p>
 												<p className="font-serif text-sm italic text-parchment-100/90">
@@ -388,8 +388,8 @@ export function WriterFeedbackReadingWorkspace({
 						)}
 					</div>
 				) : (
-					<div className="rounded-2xl border border-white/8 bg-ink-900/18 px-4 py-3">
-						<p className="text-xs leading-relaxed text-silver-300">
+					<div className="rounded-2xl border border-white/15 bg-ink-900/40 px-4 py-3">
+						<p className="text-sm leading-relaxed text-silver-200">
 							Reading mode active. The manuscript stays central while inline
 							feedback remains available above the folio.
 						</p>

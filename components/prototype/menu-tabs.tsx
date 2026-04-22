@@ -15,10 +15,10 @@ export function MenuTabs({
 					<Link
 						key={tab.href}
 						href={tab.href}
-						className={`rounded-full px-3 py-1.5 text-xs uppercase tracking-[0.09em] transition ${
+						className={`rounded-full px-3.5 py-2 text-xs uppercase tracking-[0.09em] transition ${
 							isActive
-								? 'bg-burgundy-500/70 text-parchment-100'
-								: 'text-silver-200 hover:bg-white/5'
+								? 'bg-burgundy-500/80 text-parchment-100 shadow-[0_0_0_1px_rgba(248,246,242,0.08)]'
+								: 'text-silver-100 hover:bg-white/10 hover:text-parchment-100'
 						}`}>
 						{tab.label}
 					</Link>
@@ -27,4 +27,3 @@ export function MenuTabs({
 		</nav>
 	)
 }
-

@@ -24,8 +24,9 @@ export function ProtoCard({
 				</div>
 				{action}
 			</div>
-			<div className="text-sm leading-relaxed text-silver-200">{children}</div>
+			<div className="text-[15px] leading-relaxed text-silver-100">
+				{children}
+			</div>
 		</section>
 	)
 }
-

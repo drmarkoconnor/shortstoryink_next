@@ -185,7 +185,7 @@ export default async function WorkshopSubmissionExportPage({
 						Version {packet.version}
 					</p>
 					<p className="rounded-full border border-ink-900/10 bg-parchment-50 px-3 py-1.5">
-						Source {packet.source === 'try_writing' ? 'try writing' : 'workshop'}
+						Source {packet.source}
 					</p>
 					<p className="rounded-full border border-ink-900/10 bg-parchment-50 px-3 py-1.5">
 						{packet.status.replaceAll('_', ' ')}

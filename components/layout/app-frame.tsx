@@ -48,30 +48,30 @@ export async function AppFrame({
 
 	       return (
 		       <div className="min-h-screen bg-ink-900 text-parchment-100">
-			       <header className="app-shell-header border-b border-white/10">
+			       <header className="app-shell-header border-b border-white/15 bg-ink-950/35">
 				       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
 					       <Link href="/" className="literary-title text-lg text-parchment-100">
 						       shortstory.ink
 					       </Link>
-					       <nav className="flex flex-wrap items-center gap-2 text-sm text-silver-200">
+					       <nav className="flex flex-wrap items-center gap-2 text-sm text-silver-100">
 						       {visibleNav.map((item) => (
 							       <Link
 								       key={item.href}
 								       href={item.href}
-								       className="rounded-full px-3 py-1.5 transition hover:bg-white/5">
+								       className="rounded-full px-3 py-1.5 transition hover:bg-white/10 hover:text-parchment-100">
 								       {item.label}
 							       </Link>
 						       ))}
-						       <span className="ml-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-300">
+						       <span className="ml-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-300">
 							       {role}
 						       </span>
-						       <span className="ml-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs tracking-tight text-silver-200">
+						       <span className="ml-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs tracking-tight text-silver-100">
 							       {displayName || userEmail}
 						       </span>
 						       <form action={signOutAction}>
 							       <button
 								       type="submit"
-								       className="rounded-full border border-white/20 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-200 transition hover:border-white/30 hover:text-parchment-100">
+								       className="rounded-full border border-white/25 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-100 transition hover:border-white/35 hover:bg-white/5 hover:text-parchment-100">
 								       Log out
 							       </button>
 						       </form>

@@ -11,7 +11,6 @@ type QueueSubmission = {
 	status: string
 	createdAt: string
 	writerLabel: string
-	source: 'workshop' | 'try_writing'
 	version?: number
 }
 
@@ -108,7 +107,6 @@ export default async function TeacherReviewDeskPage() {
 			createdAt: item.created_at,
 			writerLabel: writerById[item.author_id] ?? 'Writer',
 			version: item.version,
-			source: item.source === 'try_writing' ? 'try_writing' : 'workshop',
 		}))
 	} else if (isSchemaCacheMissing(modernResult.error.message)) {
 		schemaMode = 'legacy'
@@ -140,7 +138,6 @@ export default async function TeacherReviewDeskPage() {
 				status: item.status,
 				createdAt: item.submitted_at ?? item.created_at,
 				writerLabel: item.writer_first_name || item.writer_email || 'Writer',
-				source: 'workshop',
 			}))
 		}
 	} else {
@@ -190,11 +187,6 @@ export default async function TeacherReviewDeskPage() {
 											<p className="text-xs uppercase tracking-[0.09em] text-silver-300">
 												{item.status.replaceAll('_', ' ')}
 											</p>
-											{item.source === 'try_writing' ? (
-												<p className="mt-1 inline-flex rounded-full border border-accent-300/30 bg-accent-300/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-accent-200">
-													Try writing
-												</p>
-											) : null}
 											{item.version && item.version > 1 ? (
 												<p className="mt-1 inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
 													Revision v{item.version}
