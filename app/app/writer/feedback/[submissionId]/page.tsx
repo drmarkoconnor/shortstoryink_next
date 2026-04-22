@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-reading-workspace'
 import { requireWriter } from '@/lib/auth/get-current-profile'
@@ -125,30 +124,13 @@ export default async function WriterFeedbackDetailPage({
 		.maybeSingle()
 
 	return (
-		<section className="space-y-4">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div>
-					<p className="text-xs uppercase tracking-[0.11em] text-silver-300">
-						Writer feedback detail
-					</p>
-					<h1 className="literary-title mt-1 text-3xl text-parchment-100">
-						{submission.title}
-					</h1>
-					<p className="mt-2 text-xs text-silver-300">
-						{submission.status.replaceAll('_', ' ')} {' · '}Version{' '}
-						{submission.version} {' · '}
-						{new Date(submission.created_at).toLocaleString()}
-					</p>
-				</div>
-				<Link
-					href={`/app/writer/revise/${submission.id}`}
-					className="rounded-full border border-accent-400/60 bg-accent-400/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/25">
-					Start revision
-				</Link>
-			</div>
-
+		<section>
 			<WriterFeedbackReadingWorkspace
+				submissionId={submission.id}
 				title={submission.title}
+				status={submission.status}
+				version={submission.version}
+				createdAt={submission.created_at}
 				summary={summaryResult.data?.summary ?? null}
 				publishedAt={summaryResult.data?.published_at ?? null}
 				paragraphs={paragraphs}
