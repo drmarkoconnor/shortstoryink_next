@@ -17,6 +17,7 @@ type FeedbackAnchor = {
 	kind?: FeedbackKind
 	categoryLabel?: string
 	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 type FeedbackItem = {
@@ -105,6 +106,10 @@ export default async function WriterFeedbackDetailPage({
 					categorySlug:
 						typeof item.anchor.categorySlug === 'string'
 							? item.anchor.categorySlug
+							: undefined,
+					suggestedAction:
+						item.anchor.suggestedAction === 'cut'
+							? 'cut'
 							: undefined,
 					kind:
 						item.anchor.kind === 'typo' ||

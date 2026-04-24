@@ -37,7 +37,9 @@ export function FeedbackSubmissionSelector({
 }: {
 	submissions: FeedbackSubmission[]
 }) {
-	const [selectedSubmissionId, setSelectedSubmissionId] = useState('')
+	const [selectedSubmissionId, setSelectedSubmissionId] = useState(
+		submissions[0]?.id ?? '',
+	)
 	const selectedSubmissionRef = useRef<HTMLElement>(null)
 
 	const selectedSubmission = useMemo(
@@ -94,7 +96,7 @@ export function FeedbackSubmissionSelector({
 							<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
 								Published response
 							</p>
-							<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+							<h2 className="literary-title mt-2 line-clamp-2 text-2xl text-parchment-100">
 								{versionLabel(selectedSubmission.version)} -{' '}
 								{selectedSubmission.title}
 							</h2>

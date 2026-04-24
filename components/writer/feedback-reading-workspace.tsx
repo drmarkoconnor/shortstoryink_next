@@ -19,6 +19,7 @@ type FeedbackAnchor = {
 	kind?: FeedbackKind
 	categoryLabel?: string
 	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 type FeedbackItem = {
@@ -33,6 +34,9 @@ type ActiveInlineComment = {
 	quote: string
 	comment: string
 	createdAt: string
+	label: string
+	kind: FeedbackKind
+	suggestedAction?: 'cut'
 }
 
 function getMarkClass(kind: FeedbackKind) {
@@ -67,6 +71,30 @@ function feedbackLabel(anchor: FeedbackAnchor | null | undefined) {
 
 function formatQuote(quote: string) {
 	return quote.trim() ? `\u201c${quote.trim()}\u201d` : 'General note'
+}
+
+function markerClass(kind: FeedbackKind, active: boolean) {
+	if (kind === 'structure') {
+		return active
+			? 'border-accent-300 bg-accent-300 text-ink-950'
+			: 'border-accent-300/55 bg-accent-300/18 text-accent-100'
+	}
+	return active
+		? 'border-burgundy-200 bg-burgundy-300 text-parchment-100'
+		: 'border-burgundy-300/55 bg-burgundy-500/18 text-burgundy-100'
+}
+
+function inlineCardClass(kind: FeedbackKind) {
+	if (kind === 'structure') {
+		return 'border-accent-300/35 bg-ink-950 text-accent-50'
+	}
+	return 'border-burgundy-300/35 bg-ink-950 text-parchment-100'
+}
+
+function cutMarkClass(active: boolean) {
+	return active
+		? 'bg-transparent text-ink-900/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
+		: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
 }
 
 export function WriterFeedbackReadingWorkspace({
@@ -106,8 +134,10 @@ export function WriterFeedbackReadingWorkspace({
 	const [activeCommentId, setActiveCommentId] = useState<string | null>(
 		initialCommentId,
 	)
+	const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null)
 	const [pageIndex, setPageIndex] = useState(initialPageIndex)
 	const [isCommentsOpen, setIsCommentsOpen] = useState(true)
+	const [showInstruction, setShowInstruction] = useState(true)
 
 	const feedbackByBlock = useMemo(() => {
 		const map: Record<string, FeedbackItem[]> = {}
@@ -130,11 +160,13 @@ export function WriterFeedbackReadingWorkspace({
 		return map
 	}, [feedback])
 
-	const activeComment = useMemo<ActiveInlineComment | null>(() => {
-		if (!activeCommentId) {
+	const effectiveCommentId = hoveredCommentId ?? activeCommentId
+
+	const effectiveComment = useMemo<ActiveInlineComment | null>(() => {
+		if (!effectiveCommentId) {
 			return null
 		}
-		const found = feedback.find((item) => item.id === activeCommentId)
+		const found = feedback.find((item) => item.id === effectiveCommentId)
 		if (!found) {
 			return null
 		}
@@ -143,8 +175,11 @@ export function WriterFeedbackReadingWorkspace({
 			quote: found.anchor?.quote || 'General note',
 			comment: found.comment,
 			createdAt: found.createdAt,
+			label: feedbackLabel(found.anchor),
+			kind: found.anchor?.kind ?? 'craft',
+			suggestedAction: found.anchor?.suggestedAction,
 		}
-	}, [activeCommentId, feedback])
+	}, [effectiveCommentId, feedback])
 
 	const totalPages = pagedManuscript.pages.length
 	const currentPage =
@@ -166,7 +201,8 @@ export function WriterFeedbackReadingWorkspace({
 	})
 
 	const focusComment = (commentId: string) => {
-		setActiveCommentId(commentId)
+		setShowInstruction(false)
+		setActiveCommentId((current) => (current === commentId ? null : commentId))
 		const item = feedback.find((entry) => entry.id === commentId)
 		const blockId = item?.anchor?.blockId
 		if (!blockId) {
@@ -176,6 +212,15 @@ export function WriterFeedbackReadingWorkspace({
 		if (Number.isFinite(targetPage)) {
 			goToPage(targetPage)
 		}
+	}
+
+	const previewComment = (commentId: string) => {
+		setShowInstruction(false)
+		setHoveredCommentId(commentId)
+	}
+
+	const clearPreviewComment = () => {
+		setHoveredCommentId(null)
 	}
 
 	const renderParagraph = (paragraphId: string, text: string) => {
@@ -204,17 +249,39 @@ export function WriterFeedbackReadingWorkspace({
 			const markedText = text.slice(start, end)
 			if (markedText) {
 				const kind = item.anchor.kind ?? 'craft'
+				const isActive = effectiveCommentId === item.id
+				const markClass =
+					item.anchor.suggestedAction === 'cut'
+						? cutMarkClass(isActive)
+						: getMarkClass(kind)
 				nodes.push(
-					<button
-						type="button"
-						key={item.id}
-						onClick={() => focusComment(item.id)}
-						onMouseEnter={() => focusComment(item.id)}
-						onFocus={() => focusComment(item.id)}
-						className={`group relative isolate ${getMarkClass(kind)} rounded px-1 transition hover:opacity-90 hover:ring-2 hover:ring-burgundy-300/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300/70`}
-						aria-label={`${kindLabel(kind)} comment: ${item.comment}`}>
-						{markedText}
-					</button>,
+					<span key={item.id} className="inline">
+						<button
+							type="button"
+							onClick={() => focusComment(item.id)}
+							onMouseEnter={() => previewComment(item.id)}
+							onMouseLeave={clearPreviewComment}
+							onFocus={() => previewComment(item.id)}
+							onBlur={clearPreviewComment}
+							className={`group relative isolate ${markClass} rounded px-1 transition hover:opacity-90 hover:ring-2 hover:ring-burgundy-300/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300/70`}
+							aria-label={`${kindLabel(kind)} comment: ${item.comment}`}>
+							{markedText}
+						</button>
+						<button
+							type="button"
+							onClick={() => focusComment(item.id)}
+							onMouseEnter={() => previewComment(item.id)}
+							onMouseLeave={clearPreviewComment}
+							onFocus={() => previewComment(item.id)}
+							onBlur={clearPreviewComment}
+							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-medium transition ${markerClass(
+								kind,
+								isActive,
+							)}`}
+							aria-label={`${kindLabel(kind)} marker`}>
+							•
+						</button>
+					</span>,
 				)
 			}
 
@@ -229,11 +296,11 @@ export function WriterFeedbackReadingWorkspace({
 	}
 
 	return (
-		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_300px] 2xl:grid-cols-[minmax(0,1.65fr)_320px]">
+		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_300px] 2xl:grid-cols-[minmax(0,1.7fr)_320px]">
 			<main className="min-w-0">
 				<StoryFolio
 					title={title}
-					eyebrow="Published feedback draft"
+					eyebrow="Published feedback"
 					paged
 					footer={
 						<div className="flex flex-wrap items-center justify-between gap-3">
@@ -258,20 +325,53 @@ export function WriterFeedbackReadingWorkspace({
 					}>
 					{(currentPage?.paragraphs ?? []).map((paragraph) => {
 						const isSceneBreak = paragraph.text.trim() === '**'
+						const blockItems = feedbackByBlock[paragraph.id] ?? []
+						const activeBlockItem =
+							blockItems.find((item) => item.id === effectiveCommentId) ?? null
 
 						return (
-							<p
-								key={paragraph.id}
-								id={paragraph.id}
-								className={
-									isSceneBreak
-										? 'text-center tracking-[0.22em] text-ink-900/60'
-										: 'whitespace-pre-wrap'
-								}>
-								{isSceneBreak
-									? '***'
-									: renderParagraph(paragraph.id, paragraph.text)}
-							</p>
+							<div key={paragraph.id} className="space-y-3">
+								<p
+									id={paragraph.id}
+									className={
+										isSceneBreak
+											? 'text-center tracking-[0.22em] text-ink-900/60'
+											: 'whitespace-pre-wrap'
+									}>
+									{isSceneBreak
+										? '***'
+										: renderParagraph(paragraph.id, paragraph.text)}
+								</p>
+								{activeBlockItem?.anchor ? (
+									<div
+										className={`max-w-[44rem] rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.08)] ${inlineCardClass(
+											activeBlockItem.anchor.kind ?? 'craft',
+										)}`}>
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<div className="flex flex-wrap items-center gap-2">
+												<p className="text-[11px] uppercase tracking-[0.12em]">
+													Published comment
+												</p>
+												<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+													{feedbackLabel(activeBlockItem.anchor)}
+												</p>
+											</div>
+											<button
+												type="button"
+												onClick={() => setActiveCommentId(null)}
+												className="text-xs text-current/85 transition hover:text-current">
+												Close
+											</button>
+										</div>
+										<p className="mt-2 font-serif italic text-current/90">
+											{formatQuote(activeBlockItem.anchor.quote)}
+										</p>
+										<p className="mt-3 leading-relaxed text-current">
+											{activeBlockItem.comment}
+										</p>
+									</div>
+								) : null}
+							</div>
 						)
 					})}
 				</StoryFolio>
@@ -283,13 +383,10 @@ export function WriterFeedbackReadingWorkspace({
 			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
 				<div className="surface p-4">
 					<div className="flex flex-wrap items-start justify-between gap-3">
-						<div>
+						<div className="min-w-0">
 							<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
 								Published feedback
 							</p>
-							<h1 className="literary-title mt-2 text-2xl text-parchment-100">
-								{title}
-							</h1>
 						</div>
 						<Link
 							href="/app/writer/feedback"
@@ -298,27 +395,29 @@ export function WriterFeedbackReadingWorkspace({
 						</Link>
 					</div>
 					<p className="mt-3 text-xs leading-relaxed text-silver-300">
-						{status.replaceAll('_', ' ')} {' · '} Version {version} {' · '}
+						{status.replaceAll('_', ' ')} {' · '} Feedback on version {version} {' · '}
 						{new Date(createdAt).toLocaleString()}
 					</p>
-					<div className="mt-4 border-l border-accent-300/50 pl-3">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
-							Overview
-						</p>
-						<p className="mt-2 text-[15px] leading-relaxed text-silver-100">
-							{summary || 'No summary published.'}
-						</p>
-						{publishedAt ? (
-							<p className="mt-3 text-xs text-silver-300">
-								Published {new Date(publishedAt).toLocaleString()}
+					{summary ? (
+						<div className="mt-4 border-l border-accent-300/50 pl-3">
+							<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+								Overview
 							</p>
-						) : null}
-					</div>
+							<p className="mt-2 text-[15px] leading-relaxed text-silver-100">
+								{summary}
+							</p>
+						</div>
+					) : null}
+					{publishedAt ? (
+						<p className="mt-3 text-xs text-silver-300">
+							Published {new Date(publishedAt).toLocaleString()}
+						</p>
+					) : null}
 				</div>
 
-				{activeComment ? (
+				{effectiveComment ? (
 					<div
-						key={activeComment.id}
+						key={effectiveComment.id}
 						className="feedback-panel-pulse rounded-2xl border-2 border-burgundy-200/80 bg-ink-700/95 px-4 py-4 shadow-[0_0_0_1px_rgba(252,251,248,0.06),0_16px_36px_rgba(0,0,0,0.32)] transition">
 						<div className="mb-3 flex items-start justify-between gap-3">
 							<div className="space-y-2">
@@ -326,9 +425,7 @@ export function WriterFeedbackReadingWorkspace({
 									Selected feedback
 								</p>
 								<p className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200">
-									{feedbackLabel(
-										feedback.find((item) => item.id === activeComment.id)?.anchor,
-									)}
+									{effectiveComment.label}
 								</p>
 							</div>
 							<button
@@ -343,14 +440,14 @@ export function WriterFeedbackReadingWorkspace({
 								Quoted passage
 							</p>
 							<p className="mt-1 text-[15px] leading-relaxed text-silver-100">
-								{formatQuote(activeComment.quote)}
+								{formatQuote(effectiveComment.quote)}
 							</p>
 						</div>
 						<p className="mt-4 border-l border-burgundy-200 pl-3 font-serif text-[16px] italic leading-relaxed text-parchment-100">
-							{activeComment.comment}
+							{effectiveComment.comment}
 						</p>
 						<p className="mt-2 text-xs text-silver-300">
-							{new Date(activeComment.createdAt).toLocaleString()}
+							{new Date(effectiveComment.createdAt).toLocaleString()}
 						</p>
 					</div>
 				) : (
@@ -358,9 +455,14 @@ export function WriterFeedbackReadingWorkspace({
 						<p className="text-[11px] uppercase tracking-[0.12em] text-accent-300">
 							Selected feedback
 						</p>
+						{showInstruction ? (
+							<div className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+								Hover over highlighted passages to read your teacher&apos;s comments.
+							</div>
+						) : null}
 						<p className="mt-2 text-sm leading-relaxed text-silver-100">
-							Hover over or select a highlighted passage to see the teacher&apos;s
-							comment here.
+							Hover previews a comment. Click a marker to keep it open while you
+							read.
 						</p>
 					</div>
 				)}
