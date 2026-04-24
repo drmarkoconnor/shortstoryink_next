@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
@@ -5,6 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type AnnotationPayload = {
 	type?: 'comment' | 'snippet'
+	id?: string
 	blockId?: string
 	startOffset?: number
 	endOffset?: number
@@ -12,10 +14,97 @@ type AnnotationPayload = {
 	prefix?: string
 	suffix?: string
 	comment?: string
+	note?: string
+	feedbackCategoryId?: string
+	snippetCategoryId?: string
+	suggestedAction?: 'cut'
+}
+
+type SelectionAnchor = {
+	blockId?: string
+	startOffset?: number
+	endOffset?: number
+	quote?: string
+	prefix?: string
+	suffix?: string
+	kind?: 'typo' | 'craft' | 'pacing' | 'structure'
+	categoryLabel?: string
+	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 function isNonEmptyString(value: unknown) {
 	return typeof value === 'string' && value.trim().length > 0
+}
+
+function isSelectionAnchor(value: unknown): value is SelectionAnchor {
+	if (!value || typeof value !== 'object') {
+		return false
+	}
+
+	return 'blockId' in value || 'quote' in value
+}
+
+function toSnippetResponse(row: {
+	id: string
+	note: string | null
+	created_at: string
+	anchor: unknown
+	snippet_category_id: string | null
+}) {
+	return {
+		id: row.id,
+		note: row.note ?? '',
+		createdAt: row.created_at,
+		snippetCategoryId: row.snippet_category_id ?? null,
+		anchor: row.anchor as {
+			blockId: string
+			startOffset: number
+			endOffset: number
+			quote: string
+			prefix?: string
+			suffix?: string
+		},
+	}
+}
+
+function toFeedbackResponse(row: {
+	id: string
+	comment: string
+	created_at: string
+	anchor: unknown
+}) {
+	return {
+		id: row.id,
+		comment: row.comment,
+		createdAt: row.created_at,
+		anchor: row.anchor as {
+			blockId: string
+			startOffset: number
+			endOffset: number
+			quote: string
+			prefix?: string
+			suffix?: string
+			kind?: 'typo' | 'craft' | 'pacing' | 'structure'
+			categoryLabel?: string
+			categorySlug?: string
+			suggestedAction?: 'cut'
+		},
+	}
+}
+
+async function loadModernSubmission(submissionId: string) {
+	const supabase = await createServerSupabaseClient()
+	const submissionResult = await supabase
+		.from('submissions')
+		.select('id, author_id, status')
+		.eq('id', submissionId)
+		.maybeSingle()
+
+	return {
+		supabase,
+		submissionResult,
+	}
 }
 
 export async function POST(
@@ -24,7 +113,7 @@ export async function POST(
 ) {
 	const profile = await requireTeacher()
 	const { submissionId } = await params
-	const supabase = await createServerSupabaseClient()
+	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
 	const payload = (await request.json()) as AnnotationPayload
 
 	const type = payload.type
@@ -33,6 +122,7 @@ export async function POST(
 	const prefix = String(payload.prefix ?? '').trim()
 	const suffix = String(payload.suffix ?? '').trim()
 	const comment = String(payload.comment ?? '')
+	const suggestedAction = payload.suggestedAction === 'cut' ? 'cut' : undefined
 	const startOffset = Number(payload.startOffset ?? -1)
 	const endOffset = Number(payload.endOffset ?? -1)
 
@@ -50,12 +140,6 @@ export async function POST(
 			{ status: 400 },
 		)
 	}
-
-	const submissionResult = await supabase
-		.from('submissions')
-		.select('id, author_id, status')
-		.eq('id', submissionId)
-		.maybeSingle()
 
 	if (submissionResult.error || !submissionResult.data?.author_id) {
 		return NextResponse.json(
@@ -84,8 +168,9 @@ export async function POST(
 		const feedbackAnchor = {
 			...anchor,
 			kind: 'craft' as const,
-			categoryLabel: 'Uncategorised',
-			categorySlug: 'uncategorised',
+			categoryLabel: suggestedAction === 'cut' ? 'Cut' : 'Uncategorised',
+			categorySlug: suggestedAction === 'cut' ? 'cut' : 'uncategorised',
+			suggestedAction,
 		}
 
 		const insertResult = await supabase
@@ -112,24 +197,18 @@ export async function POST(
 			.eq('id', submissionId)
 			.eq('status', 'submitted')
 
+		revalidatePath('/app/teacher/review-desk')
+
 		return NextResponse.json({
 			notice: 'Comment saved.',
-			feedback: {
-				id: insertResult.data.id as string,
-				comment: insertResult.data.comment as string,
-				createdAt: insertResult.data.created_at as string,
-				anchor: insertResult.data.anchor as {
-					blockId: string
-					startOffset: number
-					endOffset: number
-					quote: string
-					prefix?: string
-					suffix?: string
-					kind?: 'typo' | 'craft' | 'pacing' | 'structure'
-					categoryLabel?: string
-					categorySlug?: string
+			feedback: toFeedbackResponse(
+				insertResult.data as {
+					id: string
+					comment: string
+					created_at: string
+					anchor: unknown
 				},
-			},
+			),
 		})
 	}
 
@@ -158,22 +237,242 @@ export async function POST(
 		)
 	}
 
+	revalidatePath('/app/teacher-studio')
+
 	return NextResponse.json({
 		notice: 'Snippet saved.',
-		snippet: {
-			id: snippetResult.data.id as string,
-			note: (snippetResult.data.note as string | null) ?? '',
-			createdAt: snippetResult.data.created_at as string,
-			snippetCategoryId:
-				(snippetResult.data.snippet_category_id as string | null) ?? null,
-			anchor: snippetResult.data.anchor as {
-				blockId: string
-				startOffset: number
-				endOffset: number
-				quote: string
-				prefix?: string
-				suffix?: string
+		snippet: toSnippetResponse(
+			snippetResult.data as {
+				id: string
+				note: string | null
+				created_at: string
+				anchor: unknown
+				snippet_category_id: string | null
 			},
-		},
+		),
+	})
+}
+
+export async function PATCH(
+	request: Request,
+	{ params }: { params: Promise<{ submissionId: string }> },
+) {
+	await requireTeacher()
+	const { submissionId } = await params
+	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
+	const payload = (await request.json()) as AnnotationPayload
+	const type = payload.type
+	const id = String(payload.id ?? '').trim()
+
+	if (submissionResult.error || !submissionResult.data?.author_id) {
+		return NextResponse.json(
+			{ error: 'Inline editing is only available in the modern submission workspace.' },
+			{ status: 400 },
+		)
+	}
+
+	if (!id || (type !== 'comment' && type !== 'snippet')) {
+		return NextResponse.json(
+			{ error: 'Choose a saved annotation before editing.' },
+			{ status: 400 },
+		)
+	}
+
+	if (type === 'comment') {
+		const comment = String(payload.comment ?? '').trim()
+		const feedbackCategoryIdInput = String(payload.feedbackCategoryId ?? '').trim()
+
+		if (!comment) {
+			return NextResponse.json(
+				{ error: 'Enter a comment before saving.' },
+				{ status: 400 },
+			)
+		}
+
+		const feedbackItemResult = await supabase
+			.from('feedback_items')
+			.select('id, anchor, created_at')
+			.eq('id', id)
+			.eq('submission_id', submissionId)
+			.maybeSingle()
+
+		if (!feedbackItemResult.data || !isSelectionAnchor(feedbackItemResult.data.anchor)) {
+			return NextResponse.json(
+				{ error: 'Unable to load that comment for editing.' },
+				{ status: 404 },
+			)
+		}
+
+		let categoryLabel = 'Uncategorised'
+		let categorySlug = 'uncategorised'
+		const suggestedAction = payload.suggestedAction === 'cut' ? 'cut' : undefined
+
+		if (suggestedAction !== 'cut' && feedbackCategoryIdInput) {
+			const categoryResult = await supabase
+				.from('feedback_categories')
+				.select('name, slug')
+				.eq('id', feedbackCategoryIdInput)
+				.maybeSingle()
+
+			if (categoryResult.data) {
+				categoryLabel =
+					String(categoryResult.data.name ?? '').trim() || 'Uncategorised'
+				categorySlug =
+					String(categoryResult.data.slug ?? '').trim() || 'uncategorised'
+			}
+		}
+
+		const updatedAnchor = {
+			...feedbackItemResult.data.anchor,
+			categoryLabel: suggestedAction === 'cut' ? 'Cut' : categoryLabel,
+			categorySlug: suggestedAction === 'cut' ? 'cut' : categorySlug,
+			suggestedAction,
+		}
+
+		const updateResult = await supabase
+			.from('feedback_items')
+			.update({
+				comment,
+				anchor: updatedAnchor,
+			})
+			.eq('id', id)
+			.eq('submission_id', submissionId)
+			.select('id, comment, anchor, created_at')
+			.single()
+
+		if (updateResult.error || !updateResult.data) {
+			return NextResponse.json(
+				{ error: 'Unable to update comment.' },
+				{ status: 500 },
+			)
+		}
+
+		revalidatePath('/app/teacher/review-desk')
+
+		return NextResponse.json({
+			notice: 'Comment updated.',
+			feedback: toFeedbackResponse(
+				updateResult.data as {
+					id: string
+					comment: string
+					created_at: string
+					anchor: unknown
+				},
+			),
+		})
+	}
+
+	const note = String(payload.note ?? '').trim()
+	const snippetCategoryIdInput = String(payload.snippetCategoryId ?? '').trim()
+
+	const updateResult = await supabase
+		.from('snippets')
+		.update({
+			note: note || null,
+			snippet_category_id: snippetCategoryIdInput || null,
+		})
+		.eq('id', id)
+		.eq('source_submission_id', submissionId)
+		.select('id, note, created_at, anchor, snippet_category_id')
+		.single()
+
+	if (updateResult.error || !updateResult.data) {
+		return NextResponse.json(
+			{ error: 'Unable to update snippet.' },
+			{ status: 500 },
+		)
+	}
+
+	revalidatePath('/app/teacher-studio')
+
+	return NextResponse.json({
+		notice: 'Snippet updated.',
+		snippet: toSnippetResponse(
+			updateResult.data as {
+				id: string
+				note: string | null
+				created_at: string
+				anchor: unknown
+				snippet_category_id: string | null
+			},
+		),
+	})
+}
+
+export async function DELETE(
+	request: Request,
+	{ params }: { params: Promise<{ submissionId: string }> },
+) {
+	await requireTeacher()
+	const { submissionId } = await params
+	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
+	const payload = (await request.json()) as AnnotationPayload
+	const type = payload.type
+	const id = String(payload.id ?? '').trim()
+
+	if (submissionResult.error || !submissionResult.data) {
+		return NextResponse.json(
+			{ error: 'Inline deletion is only available in the modern submission workspace.' },
+			{ status: 400 },
+		)
+	}
+
+	if (!id || (type !== 'comment' && type !== 'snippet')) {
+		return NextResponse.json(
+			{ error: 'Choose a saved annotation before deleting.' },
+			{ status: 400 },
+		)
+	}
+
+	if (type === 'comment') {
+		if (submissionResult.data.status === 'feedback_published') {
+			return NextResponse.json(
+				{
+					error:
+						'Published feedback comments cannot be deleted from this draft pane.',
+				},
+				{ status: 400 },
+			)
+		}
+
+		const { error } = await supabase
+			.from('feedback_items')
+			.delete()
+			.eq('id', id)
+			.eq('submission_id', submissionId)
+
+		if (error) {
+			return NextResponse.json(
+				{ error: 'Unable to delete comment.' },
+				{ status: 500 },
+			)
+		}
+
+		revalidatePath('/app/teacher/review-desk')
+
+		return NextResponse.json({
+			notice: 'Comment deleted.',
+			deletedId: id,
+		})
+	}
+
+	const { error } = await supabase
+		.from('snippets')
+		.delete()
+		.eq('id', id)
+		.eq('source_submission_id', submissionId)
+
+	if (error) {
+		return NextResponse.json(
+			{ error: 'Unable to delete snippet.' },
+			{ status: 500 },
+		)
+	}
+
+	revalidatePath('/app/teacher-studio')
+
+	return NextResponse.json({
+		notice: 'Snippet deleted.',
+		deletedId: id,
 	})
 }

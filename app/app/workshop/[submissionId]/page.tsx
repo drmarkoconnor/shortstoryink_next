@@ -1,11 +1,8 @@
 import Link from 'next/link'
-import { revalidatePath } from 'next/cache'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { TeacherReviewWorkspace } from '@/components/teacher/review-workspace'
-import { sendFeedbackPublishedNotification } from '@/lib/notifications/email'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type SchemaMode = 'modern' | 'legacy'
@@ -20,6 +17,7 @@ type SelectionAnchor = {
 	kind?: 'typo' | 'craft' | 'pacing' | 'structure'
 	categoryLabel?: string
 	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 function isSelectionAnchor(value: unknown): value is SelectionAnchor {
@@ -141,6 +139,7 @@ export default async function WorkshopSubmissionPage({
 			prefix?: string
 			suffix?: string
 			kind?: 'typo' | 'craft' | 'pacing' | 'structure'
+			suggestedAction?: 'cut'
 		} | null
 	}> = []
 	let snippets: Array<{
@@ -243,6 +242,10 @@ export default async function WorkshopSubmissionPage({
 					categorySlug:
 						typeof item.anchor.categorySlug === 'string'
 							? item.anchor.categorySlug
+							: undefined,
+					suggestedAction:
+						item.anchor.suggestedAction === 'cut'
+							? 'cut'
 							: undefined,
 					kind:
 						item.anchor.kind === 'typo' ||
@@ -453,286 +456,10 @@ export default async function WorkshopSubmissionPage({
 	const latestVersionEntry =
 		versionHistory.length > 0 ? versionHistory[versionHistory.length - 1] : null
 
-	async function updateFeedbackItemAction(formData: FormData) {
-		'use server'
-
-		await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
-
-		if (schemaMode !== 'modern') {
-			redirect(
-				`/app/workshop/${submissionId}?error=Editing+feedback+is+only+supported+in+modern+schema+mode.`,
-			)
-		}
-
-		const feedbackItemId = String(formData.get('feedbackItemId') ?? '').trim()
-		const comment = String(formData.get('comment') ?? '').trim()
-		const feedbackCategoryIdInput = String(
-			formData.get('feedbackCategoryId') ?? '',
-		).trim()
-
-		if (!feedbackItemId || !comment) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Choose+a+comment+and+enter+text+before+saving.`,
-			)
-		}
-
-		const feedbackItemResult = await serverSupabase
-			.from('feedback_items')
-			.select('anchor')
-			.eq('id', feedbackItemId)
-			.eq('submission_id', submissionId)
-			.maybeSingle()
-
-		if (!feedbackItemResult.data || !isSelectionAnchor(feedbackItemResult.data.anchor)) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Unable+to+load+that+comment+for+editing.`,
-			)
-		}
-
-		let categoryLabel = 'Uncategorised'
-		let categorySlug = 'uncategorised'
-
-		if (feedbackCategoryIdInput) {
-			const categoryResult = await serverSupabase
-				.from('feedback_categories')
-				.select('name, slug')
-				.eq('id', feedbackCategoryIdInput)
-				.maybeSingle()
-
-			if (categoryResult.data) {
-				categoryLabel =
-					String(categoryResult.data.name ?? '').trim() || 'Uncategorised'
-				categorySlug =
-					String(categoryResult.data.slug ?? '').trim() || 'uncategorised'
-			}
-		}
-
-		const existingAnchor = feedbackItemResult.data.anchor
-		const updatedAnchor = {
-			...existingAnchor,
-			categoryLabel,
-			categorySlug,
-		}
-
-		const { error } = await serverSupabase
-			.from('feedback_items')
-			.update({
-				comment,
-				anchor: updatedAnchor,
-			})
-			.eq('id', feedbackItemId)
-			.eq('submission_id', submissionId)
-
-		if (error) {
-			redirect(`/app/workshop/${submissionId}?error=Unable+to+update+comment.`)
-		}
-
-		revalidatePath(`/app/workshop/${submissionId}`)
-		revalidatePath('/app/teacher/review-desk')
-		redirect(
-			`/app/workshop/${submissionId}?notice=Comment+updated.&focus=${encodeURIComponent(`feedback:${feedbackItemId}`)}`,
-		)
-	}
-
-	async function updateSnippetAction(formData: FormData) {
-		'use server'
-
-		await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
-
-		if (schemaMode !== 'modern') {
-			redirect(
-				`/app/workshop/${submissionId}?error=Editing+snippets+is+only+supported+in+modern+schema+mode.`,
-			)
-		}
-
-		const snippetId = String(formData.get('snippetId') ?? '').trim()
-		const note = String(formData.get('note') ?? '').trim()
-		const snippetCategoryIdInput = String(
-			formData.get('snippetCategoryId') ?? '',
-		).trim()
-
-		if (!snippetId) {
-			redirect(`/app/workshop/${submissionId}?error=Choose+a+snippet+to+edit.`)
-		}
-
-		const { error } = await serverSupabase
-			.from('snippets')
-			.update({
-				note: note || null,
-				snippet_category_id: snippetCategoryIdInput || null,
-			})
-			.eq('id', snippetId)
-			.eq('source_submission_id', submissionId)
-
-		if (error) {
-			redirect(`/app/workshop/${submissionId}?error=Unable+to+update+snippet.`)
-		}
-
-		revalidatePath(`/app/workshop/${submissionId}`)
-		revalidatePath('/app/teacher-studio')
-		redirect(
-			`/app/workshop/${submissionId}?notice=Snippet+updated.&focus=${encodeURIComponent(`snippet:${snippetId}`)}`,
-		)
-	}
-
-	async function deleteFeedbackItemAction(formData: FormData) {
-		'use server'
-
-		await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
-		const feedbackItemId = String(formData.get('feedbackItemId') ?? '').trim()
-
-		if (!feedbackItemId) {
-			redirect(`/app/workshop/${submissionId}?error=Choose+a+comment+to+delete.`)
-		}
-
-		const submissionResult = await serverSupabase
-			.from('submissions')
-			.select('id, status')
-			.eq('id', submissionId)
-			.maybeSingle()
-
-		const currentStatus = submissionResult.data?.status as string | undefined
-		if (currentStatus === 'feedback_published') {
-			redirect(
-				`/app/workshop/${submissionId}?error=Published+feedback+comments+cannot+be+deleted+from+this+draft+pane.`,
-			)
-		}
-
-		if (schemaMode === 'modern') {
-			const { error: deleteError } = await serverSupabase
-				.from('feedback_items')
-				.delete()
-				.eq('id', feedbackItemId)
-				.eq('submission_id', submissionId)
-
-			if (deleteError) {
-				redirect(`/app/workshop/${submissionId}?error=Unable+to+delete+comment.`)
-			}
-		} else {
-			const { error: deleteError } = await serverSupabase
-				.from('comments')
-				.delete()
-				.eq('id', feedbackItemId)
-				.eq('submission_id', submissionId)
-
-			if (deleteError) {
-				redirect(`/app/workshop/${submissionId}?error=Unable+to+delete+comment.`)
-			}
-		}
-
-		revalidatePath(`/app/workshop/${submissionId}`)
-		revalidatePath('/app/teacher/review-desk')
-		redirect(`/app/workshop/${submissionId}?notice=Comment+deleted.`)
-	}
-
-	async function publishFeedbackAction(formData: FormData) {
-		'use server'
-
-		const profile = await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
-		const adminSupabase = createAdminSupabaseClient()
-		const summary = String(formData.get('summary') ?? '').trim()
-
-		if (schemaMode !== 'modern') {
-			redirect(
-				`/app/workshop/${submissionId}?error=Publish+is+only+supported+in+modern+schema+mode.`,
-			)
-		}
-
-		const { count, error: countError } = await serverSupabase
-			.from('feedback_items')
-			.select('id', { count: 'exact', head: true })
-			.eq('submission_id', submissionId)
-
-		if (countError) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Unable+to+validate+feedback+items+before+publish.`,
-			)
-		}
-
-		if (!count || count < 1) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Add+at+least+one+feedback+comment+before+publish.`,
-			)
-		}
-
-		const { error: upsertError } = await serverSupabase
-			.from('feedback_summaries')
-			.upsert(
-				{
-					submission_id: submissionId,
-					author_id: profile.user.id,
-					summary:
-						summary || 'Feedback published. See inline comments for detail.',
-					published_at: new Date().toISOString(),
-				},
-				{ onConflict: 'submission_id' },
-			)
-
-		if (upsertError) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Unable+to+save+feedback+summary.`,
-			)
-		}
-
-		const { error: statusError } = await serverSupabase
-			.from('submissions')
-			.update({ status: 'feedback_published' })
-			.eq('id', submissionId)
-
-		if (statusError) {
-			redirect(
-				`/app/workshop/${submissionId}?error=Unable+to+update+submission+status+to+published.`,
-			)
-		}
-
-		let publishNotice = 'Feedback published to writer.'
-		const { data: submissionRow } = await serverSupabase
-			.from('submissions')
-			.select('author_id, title, source')
-			.eq('id', submissionId)
-			.maybeSingle()
-
-		const authorId = submissionRow?.author_id as string | undefined
-		const submissionTitleForEmail =
-			(submissionRow?.title as string | undefined) ?? submissionTitle
-
-		if (authorId) {
-			const { data: userData, error: userError } =
-				await adminSupabase.auth.admin.getUserById(authorId)
-
-			const email = userData?.user?.email?.trim().toLowerCase()
-
-			if (!userError && email) {
-				try {
-					await sendFeedbackPublishedNotification({
-						email,
-						title: submissionTitleForEmail,
-						submissionId,
-					})
-				} catch {
-					publishNotice =
-						'Feedback published. Email notification could not be sent.'
-				}
-			}
-		}
-
-		revalidatePath(`/app/workshop/${submissionId}`)
-		revalidatePath('/app/teacher/review-desk')
-		revalidatePath('/app/teacher/archive')
-		revalidatePath('/app/writer')
-		revalidatePath('/app/writer/feedback')
-		redirect(
-			`/app/workshop/${submissionId}?notice=${encodeURIComponent(publishNotice)}`,
-		)
-	}
-
 	return (
 		<section className="space-y-4">
 			<TeacherReviewWorkspace
+				key={submissionId}
 				submissionId={submissionId}
 				title={submissionTitle}
 				paragraphs={paragraphs}
@@ -804,7 +531,7 @@ export default async function WorkshopSubmissionPage({
 									Version history
 								</p>
 								<p className="mt-1 text-xs leading-relaxed text-silver-300">
-									Open earlier drafts without losing the current reading place.
+									Open earlier drafts in the same reading workspace.
 								</p>
 								<ul className="mt-3 flex flex-wrap gap-2">
 									{versionHistory.map((item) => (
@@ -826,71 +553,12 @@ export default async function WorkshopSubmissionPage({
 						) : null}
 					</div>
 				}
-				publishPanel={
-					<form action={publishFeedbackAction} className="surface p-4">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-									Overview
-								</p>
-								<h2 className="literary-title mt-2 text-xl text-parchment-100">
-									Short overall note
-								</h2>
-							</div>
-							<div className="text-right">
-								<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
-									Comment set
-								</p>
-								<p className="mt-1 text-lg text-parchment-100">{feedback.length}</p>
-							</div>
-						</div>
-						<p className="mt-2 text-sm leading-relaxed text-silver-200">
-							Write a brief overview, then publish it together with the anchored
-							comments.
-						</p>
-						{summaryPublishedAt ? (
-							<p className="mt-2 text-xs text-silver-300">
-								Last published {new Date(summaryPublishedAt).toLocaleString()}
-							</p>
-						) : null}
-						<label className="mt-4 block">
-							<span className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
-								Overview note
-							</span>
-							<textarea
-								name="summary"
-								rows={4}
-								defaultValue={existingSummary}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-								placeholder="A short overview to sit above the anchored feedback"
-							/>
-						</label>
-						<p
-							className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-relaxed ${
-								submissionStatus === 'feedback_published'
-									? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100'
-									: 'border-burgundy-300/20 bg-burgundy-500/10 text-burgundy-100'
-							}`}>
-							{submissionStatus === 'feedback_published'
-								? 'Publishing again updates the writer-facing feedback.'
-								: 'Nothing is visible to the writer until you publish.'}
-						</p>
-						<button
-							type="submit"
-							className="mt-4 rounded-full border border-emerald-300/60 bg-emerald-300/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/25">
-							{submissionStatus === 'feedback_published'
-								? 'Update published feedback'
-								: 'Publish feedback to writer'}
-						</button>
-					</form>
-				}
 				submissionStatus={submissionStatus}
 				canDeleteFeedback={submissionStatus !== 'feedback_published'}
 				snippetCategories={snippetCategories}
 				feedbackCategories={feedbackCategories}
-				updateFeedbackAction={updateFeedbackItemAction}
-				updateSnippetAction={updateSnippetAction}
-				deleteFeedbackAction={deleteFeedbackItemAction}
+				initialSummary={existingSummary}
+				initialSummaryPublishedAt={summaryPublishedAt}
 			/>
 		</section>
 	)

@@ -13,9 +13,14 @@ type ArchivedSubmission = {
 	version: number
 }
 
-export default async function TeacherArchivePage() {
+export default async function TeacherArchivePage({
+	searchParams,
+}: {
+	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
 	await requireTeacher()
 	const supabase = await createServerSupabaseClient()
+	const params = searchParams ? await searchParams : {}
 
 	let rows: ArchivedSubmission[] = []
 	let loadError: string | null = null
@@ -45,6 +50,11 @@ export default async function TeacherArchivePage() {
 			}
 		}
 	}
+
+	const selectedArchiveId =
+		typeof params.submission === 'string' ? params.submission : rows[0]?.id ?? ''
+	const selectedArchive =
+		rows.find((item) => item.id === selectedArchiveId) ?? rows[0] ?? null
 
 	return (
 		<section className="space-y-5">
@@ -82,33 +92,57 @@ export default async function TeacherArchivePage() {
 						No published pieces in the archive yet.
 					</p>
 				) : (
-					<ul className="mt-4 space-y-3">
-						{rows.map((item) => (
-							<li key={item.id}>
+					<div className="mt-4 space-y-4">
+						<form className="space-y-2">
+							<label className="block text-[11px] uppercase tracking-[0.12em] text-silver-300">
+								Choose a published piece
+							</label>
+							<div className="flex flex-wrap gap-2">
+								<select
+									name="submission"
+									defaultValue={selectedArchive?.id ?? ''}
+									className="min-w-[18rem] flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									{rows.map((item) => (
+										<option key={item.id} value={item.id}>
+											v{item.version} - {item.title} -{' '}
+											{writerById[item.author_id] || item.author_id}
+										</option>
+									))}
+								</select>
+								<button
+									type="submit"
+									className="rounded-full border border-white/18 bg-white/6 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-white/10 hover:text-parchment-100">
+									Load
+								</button>
+							</div>
+						</form>
+						{selectedArchive ? (
+							<div className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
+								<p className="text-sm font-medium text-parchment-100">
+									{selectedArchive.title}
+								</p>
+								<p className="mt-1 text-sm text-silver-200">
+									{writerById[selectedArchive.author_id] || selectedArchive.author_id}
+								</p>
+								<div className="mt-3 flex flex-wrap gap-2 text-[11px] text-silver-200">
+									<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+										Published
+									</p>
+									<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+										v{selectedArchive.version}
+									</p>
+								</div>
+								<p className="mt-3 text-xs text-silver-300">
+									Published {new Date(selectedArchive.created_at).toLocaleString()}
+								</p>
 								<Link
-									href={`/app/workshop/${item.id}`}
-									className="block rounded-2xl border border-white/10 bg-ink-900/35 p-4 transition hover:border-burgundy-300/45 hover:bg-ink-900/50">
-									<div className="flex flex-wrap items-start justify-between gap-3">
-										<div>
-											<p className="text-sm font-medium text-parchment-100">
-												{item.title}
-											</p>
-											<p className="mt-1 text-sm text-silver-200">
-												{writerById[item.author_id] || item.author_id}
-											</p>
-											<p className="mt-2 text-xs text-silver-300">
-												Published feedback {' · '} Version {item.version} {' · '}
-												{new Date(item.created_at).toLocaleString()}
-											</p>
-										</div>
-										<p className="text-xs uppercase tracking-[0.1em] text-accent-200">
-											Open manuscript
-										</p>
-									</div>
+									href={`/app/workshop/${selectedArchive.id}`}
+									className="mt-4 inline-flex rounded-full border border-accent-300/45 bg-accent-300/12 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+									Open manuscript
 								</Link>
-							</li>
-						))}
-					</ul>
+							</div>
+						) : null}
+					</div>
 				)}
 			</div>
 		</section>

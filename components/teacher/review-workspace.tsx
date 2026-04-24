@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
 	useCallback,
 	useEffect,
@@ -10,7 +11,6 @@ import {
 	type FormEvent,
 	type ReactNode,
 } from 'react'
-import { PendingSubmitButton } from '@/components/prototype/pending-submit-button'
 import { StoryFolio } from '@/components/prototype/story-folio'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
 import { ProtoCard } from '@/components/prototype/card'
@@ -28,6 +28,7 @@ type FeedbackAnchor = {
 	kind?: FeedbackKind
 	categoryLabel?: string
 	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 type FeedbackItem = {
@@ -66,6 +67,9 @@ type AnnotationItem = {
 	categoryId?: string | null
 }
 
+const CUT_SUGGESTION_COMMENT =
+	'Consider the effect of cutting here on pace, clarity, and emphasis.'
+
 function feedbackLabel(anchor: FeedbackAnchor | null | undefined) {
 	return anchor?.categoryLabel?.trim() || 'Uncategorised'
 }
@@ -76,8 +80,8 @@ function formatQuote(quote: string | undefined) {
 
 function annotationBorderClass(type: AnnotationItem['type']) {
 	return type === 'snippet'
-		? 'border-accent-300/25 bg-accent-300/10 text-accent-100'
-		: 'border-burgundy-300/25 bg-burgundy-500/10 text-burgundy-100'
+		? 'border-accent-300/35 bg-ink-950 text-accent-50'
+		: 'border-burgundy-300/35 bg-ink-950 text-parchment-100'
 }
 
 function annotationMarkerClass(type: AnnotationItem['type'], active: boolean) {
@@ -95,11 +99,18 @@ function getMarkClass(
 	type: AnnotationItem['type'],
 	kind: FeedbackKind | undefined,
 	active: boolean,
+	suggestedAction: FeedbackAnchor['suggestedAction'],
 ) {
 	if (type === 'snippet') {
 		return active
 			? 'bg-accent-200/55 ring-2 ring-accent-300/50'
 			: 'bg-accent-200/30'
+	}
+	// TODO: Keep cut-mark styling in parity with the writer folio and export output.
+	if (suggestedAction === 'cut') {
+		return active
+			? 'bg-transparent text-ink-900/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
+			: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
 	}
 	if (kind === 'typo') {
 		return active
@@ -137,14 +148,12 @@ export function TeacherReviewWorkspace({
 	errorNotice,
 	initialActiveAnnotationId,
 	sidebarHeader,
-	publishPanel,
 	submissionStatus,
 	canDeleteFeedback,
 	snippetCategories,
 	feedbackCategories,
-	updateFeedbackAction,
-	updateSnippetAction,
-	deleteFeedbackAction,
+	initialSummary,
+	initialSummaryPublishedAt,
 }: {
 	submissionId: string
 	title: string
@@ -155,14 +164,12 @@ export function TeacherReviewWorkspace({
 	errorNotice: string | null
 	initialActiveAnnotationId?: string | null
 	sidebarHeader?: ReactNode
-	publishPanel?: ReactNode
 	submissionStatus: string
 	canDeleteFeedback: boolean
 	snippetCategories: Array<{ id: string; name: string }>
 	feedbackCategories: Array<{ id: string; name: string }>
-	updateFeedbackAction: (formData: FormData) => void
-	updateSnippetAction: (formData: FormData) => void
-	deleteFeedbackAction: (formData: FormData) => void
+	initialSummary: string
+	initialSummaryPublishedAt: string | null
 }) {
 	const initialActiveId = useMemo(
 		() => parseInitialActiveId(initialActiveAnnotationId),
@@ -174,15 +181,36 @@ export function TeacherReviewWorkspace({
 	const [selectedAnchor, setSelectedAnchor] = useState<SelectedAnchor | null>(null)
 	const [composerText, setComposerText] = useState('')
 	const [flashNotice, setFlashNotice] = useState(notice)
-	const [panelError, setPanelError] = useState<string | null>(null)
+	const [composerError, setComposerError] = useState<string | null>(null)
+	const [sidePanelError, setSidePanelError] = useState<string | null>(null)
+	const [sidePanelNotice, setSidePanelNotice] = useState<string | null>(null)
 	const [isComposerSaving, setIsComposerSaving] = useState(false)
 	const [isPanelOpen, setIsPanelOpen] = useState(false)
-	const [isPublishStageOpen, setIsPublishStageOpen] = useState(false)
 	const [feedbackItems, setFeedbackItems] = useState(feedback)
 	const [snippetItems, setSnippetItems] = useState(snippets)
+	const [liveSubmissionStatus, setLiveSubmissionStatus] = useState(submissionStatus)
+	const [publishSummary, setPublishSummary] = useState(initialSummary)
+	const [summaryPublishedAt, setSummaryPublishedAt] = useState(
+		initialSummaryPublishedAt,
+	)
+	const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
+	const [publishError, setPublishError] = useState<string | null>(null)
+	const [isPublishing, setIsPublishing] = useState(false)
+	const [showQueueReturnCue, setShowQueueReturnCue] = useState(false)
+	const [commentDraft, setCommentDraft] = useState('')
+	const [commentCategoryId, setCommentCategoryId] = useState('')
+	const [commentSuggestedAction, setCommentSuggestedAction] = useState<
+		FeedbackAnchor['suggestedAction'] | null
+	>(null)
+	const [snippetNoteDraft, setSnippetNoteDraft] = useState('')
+	const [snippetCategoryIdDraft, setSnippetCategoryIdDraft] = useState('')
+	const [isPanelSaving, setIsPanelSaving] = useState(false)
+	const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
+	const [isInlineEditingComment, setIsInlineEditingComment] = useState(false)
 	const mainRef = useRef<HTMLDivElement | null>(null)
 	const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
+	const publishTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
 	useEffect(() => {
 		setFeedbackItems(feedback)
@@ -193,6 +221,18 @@ export function TeacherReviewWorkspace({
 	}, [snippets])
 
 	useEffect(() => {
+		setLiveSubmissionStatus(submissionStatus)
+	}, [submissionStatus])
+
+	useEffect(() => {
+		setPublishSummary(initialSummary)
+	}, [initialSummary])
+
+	useEffect(() => {
+		setSummaryPublishedAt(initialSummaryPublishedAt)
+	}, [initialSummaryPublishedAt])
+
+	useEffect(() => {
 		setFlashNotice(notice)
 		if (!notice) {
 			return
@@ -200,16 +240,34 @@ export function TeacherReviewWorkspace({
 
 		const timeout = window.setTimeout(() => {
 			setFlashNotice(null)
-		}, 1800)
+		}, 650)
 
 		return () => window.clearTimeout(timeout)
 	}, [notice])
 
 	useEffect(() => {
-		if (selectedAnchor) {
+		if (!sidePanelNotice) {
+			return
+		}
+
+		const timeout = window.setTimeout(() => {
+			setSidePanelNotice(null)
+		}, 1400)
+
+		return () => window.clearTimeout(timeout)
+	}, [sidePanelNotice])
+
+	useEffect(() => {
+		if (selectedAnchor && !isInlineEditingComment) {
 			composerTextareaRef.current?.focus()
 		}
-	}, [selectedAnchor])
+	}, [selectedAnchor, isInlineEditingComment])
+
+	useEffect(() => {
+		if (isPublishModalOpen) {
+			publishTextareaRef.current?.focus()
+		}
+	}, [isPublishModalOpen])
 
 	const pagedManuscript = useMemo(
 		() => paginateManuscript(paragraphs, readingPageOptions),
@@ -275,6 +333,19 @@ export function TeacherReviewWorkspace({
 		}
 		return annotations.find((item) => item.id === activeAnnotationId) ?? null
 	}, [activeAnnotationId, annotations])
+
+	const feedbackCategoryIdByName = useMemo(
+		() =>
+			Object.fromEntries(
+				feedbackCategories.map((category) => [category.name, category.id]),
+			),
+		[feedbackCategories],
+	)
+
+	const commentCount = feedbackItems.length
+	const snippetCount = snippetItems.length
+	const commentAnnotations = annotations.filter((item) => item.type === 'comment')
+	const snippetAnnotations = annotations.filter((item) => item.type === 'snippet')
 
 	const totalPages = pagedManuscript.pages.length
 	const currentPage =
@@ -389,6 +460,7 @@ export function TeacherReviewWorkspace({
 
 	const toggleAnnotation = (annotationId: string) => {
 		setSelectedAnchor(null)
+		setIsInlineEditingComment(false)
 		setActiveAnnotationId((current) =>
 			current === annotationId ? null : annotationId,
 		)
@@ -396,6 +468,7 @@ export function TeacherReviewWorkspace({
 
 	const focusAnnotation = (annotationId: string) => {
 		setSelectedAnchor(null)
+		setIsInlineEditingComment(false)
 		setActiveAnnotationId(annotationId)
 	}
 
@@ -406,36 +479,91 @@ export function TeacherReviewWorkspace({
 		}
 	}
 
+	const handleInlineCommentKeyDown = (
+		event: KeyboardEvent<HTMLTextAreaElement>,
+	) => {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault()
+			void saveActiveComment()
+		}
+	}
+
 	const activeFeedbackCategoryId =
 		activeAnnotation?.type === 'comment'
-			? feedbackCategories.find((category) => category.name === activeAnnotation.label)
-					?.id ?? ''
+			? feedbackCategoryIdByName[activeAnnotation.label] ?? ''
 			: ''
 
-	const submitInlineAnnotation = async (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
+	useEffect(() => {
+		setSidePanelError(null)
+		setSidePanelNotice(null)
 
+		if (!activeAnnotation) {
+			setCommentDraft('')
+			setCommentCategoryId('')
+			setCommentSuggestedAction(null)
+			setSnippetNoteDraft('')
+			setSnippetCategoryIdDraft('')
+			setIsInlineEditingComment(false)
+			return
+		}
+
+		if (activeAnnotation.type === 'comment') {
+			setCommentDraft(activeAnnotation.text)
+			setCommentCategoryId(activeFeedbackCategoryId)
+			setCommentSuggestedAction(activeAnnotation.anchor.suggestedAction ?? null)
+			setSnippetNoteDraft('')
+			setSnippetCategoryIdDraft('')
+			return
+		}
+
+		setSnippetNoteDraft(activeAnnotation.text)
+		setSnippetCategoryIdDraft(activeAnnotation.categoryId ?? '')
+		setCommentDraft('')
+		setCommentCategoryId('')
+		setCommentSuggestedAction(null)
+		setIsInlineEditingComment(false)
+	}, [activeAnnotation, activeFeedbackCategoryId])
+
+	const saveNewAnnotation = async (
+		annotationIntent: 'comment' | 'snippet' | 'cut',
+	) => {
 		if (!selectedAnchor || isComposerSaving) {
 			return
 		}
 
-		const trimmedText = composerText.trim()
-		const annotationType = trimmedText ? 'comment' : 'snippet'
+		const anchorSelection = selectedAnchor
+		const trimmedText =
+			annotationIntent === 'cut'
+				? CUT_SUGGESTION_COMMENT
+				: composerText.trim()
+		const annotationType =
+			annotationIntent === 'snippet'
+				? 'snippet'
+				: trimmedText
+					? 'comment'
+					: 'snippet'
+		const suggestedAction = annotationIntent === 'cut' ? 'cut' : undefined
 		const tempId = `temp-${annotationType}-${Date.now()}`
 		const optimisticCreatedAt = new Date().toISOString()
 		const optimisticAnchor: FeedbackAnchor = {
-			blockId: selectedAnchor.blockId,
-			startOffset: selectedAnchor.startOffset,
-			endOffset: selectedAnchor.endOffset,
-			quote: selectedAnchor.quote,
-			prefix: selectedAnchor.prefix,
-			suffix: selectedAnchor.suffix,
+			blockId: anchorSelection.blockId,
+			startOffset: anchorSelection.startOffset,
+			endOffset: anchorSelection.endOffset,
+			quote: anchorSelection.quote,
+			prefix: anchorSelection.prefix,
+			suffix: anchorSelection.suffix,
 			...(annotationType === 'comment'
-				? { categoryLabel: 'Uncategorised', categorySlug: 'uncategorised' }
+				? suggestedAction === 'cut'
+					? {
+							categoryLabel: 'Cut',
+							categorySlug: 'cut',
+							suggestedAction: 'cut' as const,
+						}
+					: { categoryLabel: 'Uncategorised', categorySlug: 'uncategorised' }
 				: {}),
 		}
 
-		setPanelError(null)
+		setComposerError(null)
 		setIsComposerSaving(true)
 
 		if (annotationType === 'comment') {
@@ -461,6 +589,9 @@ export function TeacherReviewWorkspace({
 			])
 		}
 
+		setComposerText('')
+		setSelectedAnchor(null)
+
 		try {
 			const response = await fetch(
 				`/api/workshop/${submissionId}/annotations`,
@@ -471,13 +602,14 @@ export function TeacherReviewWorkspace({
 					},
 					body: JSON.stringify({
 						type: annotationType,
-						blockId: selectedAnchor.blockId,
-						startOffset: selectedAnchor.startOffset,
-						endOffset: selectedAnchor.endOffset,
-						quote: selectedAnchor.quote,
-						prefix: selectedAnchor.prefix,
-						suffix: selectedAnchor.suffix,
+						blockId: anchorSelection.blockId,
+						startOffset: anchorSelection.startOffset,
+						endOffset: anchorSelection.endOffset,
+						quote: anchorSelection.quote,
+						prefix: anchorSelection.prefix,
+						suffix: anchorSelection.suffix,
 						comment: trimmedText,
+						suggestedAction,
 					}),
 				},
 			)
@@ -515,9 +647,6 @@ export function TeacherReviewWorkspace({
 				setActiveAnnotationId(null)
 			}
 
-			setFlashNotice(payload?.notice ?? 'Saved.')
-			setComposerText('')
-			setSelectedAnchor(null)
 		} catch (error) {
 			if (annotationType === 'comment') {
 				setFeedbackItems((current) =>
@@ -529,11 +658,265 @@ export function TeacherReviewWorkspace({
 				)
 			}
 
-			setPanelError(
+			setComposerError(
 				error instanceof Error ? error.message : 'Unable to save annotation.',
 			)
 		} finally {
 			setIsComposerSaving(false)
+		}
+	}
+
+	const submitInlineAnnotation = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		await saveNewAnnotation(
+			composerText.trim() ? 'comment' : 'snippet',
+		)
+	}
+
+	const saveActiveComment = async (event?: FormEvent<HTMLFormElement>) => {
+		event?.preventDefault()
+
+		if (
+			!activeAnnotation ||
+			activeAnnotation.type !== 'comment' ||
+			isPanelSaving
+		) {
+			return
+		}
+
+		const nextComment = commentDraft.trim()
+		if (!nextComment) {
+			setSidePanelError('Enter a comment before saving.')
+			return
+		}
+
+		const feedbackItemId = activeAnnotation.id.replace('feedback:', '')
+		const previousItems = feedbackItems
+		const categoryLabel =
+			commentSuggestedAction === 'cut'
+				? 'Cut'
+				: feedbackCategories.find((category) => category.id === commentCategoryId)
+						?.name ?? 'Uncategorised'
+
+		setSidePanelError(null)
+		setSidePanelNotice(null)
+		setIsPanelSaving(true)
+		setFeedbackItems((current) =>
+			current.map((item) =>
+				item.id === feedbackItemId
+					? {
+							...item,
+							comment: nextComment,
+							anchor: item.anchor
+								? {
+										...item.anchor,
+										categoryLabel,
+										categorySlug: categoryLabel.toLowerCase().replace(/\s+/g, '-'),
+										suggestedAction:
+											commentSuggestedAction === 'cut' ? 'cut' : undefined,
+									}
+								: item.anchor,
+						}
+					: item,
+			),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'comment',
+					id: feedbackItemId,
+					comment: nextComment,
+					feedbackCategoryId: commentCategoryId,
+					suggestedAction: commentSuggestedAction,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; feedback?: FeedbackItem }
+				| undefined
+
+			const savedFeedback = payload?.feedback
+			if (!response.ok || payload?.error || !savedFeedback) {
+				throw new Error(payload?.error ?? 'Unable to update comment.')
+			}
+
+			setFeedbackItems((current) =>
+				current.map((item) =>
+					item.id === feedbackItemId ? savedFeedback : item,
+				),
+			)
+			setIsInlineEditingComment(false)
+		} catch (error) {
+			setFeedbackItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to update comment.',
+			)
+		} finally {
+			setIsPanelSaving(false)
+		}
+	}
+
+	const saveActiveSnippet = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
+		if (
+			!activeAnnotation ||
+			activeAnnotation.type !== 'snippet' ||
+			isPanelSaving
+		) {
+			return
+		}
+
+		const snippetId = activeAnnotation.id.replace('snippet:', '')
+		const previousItems = snippetItems
+
+		setSidePanelError(null)
+		setSidePanelNotice(null)
+		setIsPanelSaving(true)
+		setSnippetItems((current) =>
+			current.map((item) =>
+				item.id === snippetId
+					? {
+							...item,
+							note: snippetNoteDraft.trim(),
+							snippetCategoryId: snippetCategoryIdDraft || null,
+						}
+					: item,
+			),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'snippet',
+					id: snippetId,
+					note: snippetNoteDraft,
+					snippetCategoryId: snippetCategoryIdDraft,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; snippet?: SnippetItem }
+				| undefined
+
+			const savedSnippet = payload?.snippet
+			if (!response.ok || payload?.error || !savedSnippet) {
+				throw new Error(payload?.error ?? 'Unable to update snippet.')
+			}
+
+			setSnippetItems((current) =>
+				current.map((item) =>
+					item.id === snippetId ? savedSnippet : item,
+				),
+			)
+			setSidePanelNotice(payload.notice ?? 'Saved.')
+		} catch (error) {
+			setSnippetItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to update snippet.',
+			)
+		} finally {
+			setIsPanelSaving(false)
+		}
+	}
+
+	const deleteActiveComment = async () => {
+		if (
+			!activeAnnotation ||
+			activeAnnotation.type !== 'comment' ||
+			!canDeleteFeedback ||
+			isDeletingAnnotation
+		) {
+			return
+		}
+
+		const feedbackItemId = activeAnnotation.id.replace('feedback:', '')
+		const previousItems = feedbackItems
+
+		setSidePanelError(null)
+		setSidePanelNotice(null)
+		setIsDeletingAnnotation(true)
+		setActiveAnnotationId(null)
+		setFeedbackItems((current) =>
+			current.filter((item) => item.id !== feedbackItemId),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'comment',
+					id: feedbackItemId,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string }
+				| undefined
+
+			if (!response.ok || payload?.error) {
+				throw new Error(payload?.error ?? 'Unable to delete comment.')
+			}
+
+			setSidePanelNotice(payload?.notice ?? 'Comment deleted.')
+		} catch (error) {
+			setFeedbackItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to delete comment.',
+			)
+		} finally {
+			setIsDeletingAnnotation(false)
+		}
+	}
+
+	const publishToWriter = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
+		if (isPublishing) {
+			return
+		}
+
+		setPublishError(null)
+		setIsPublishing(true)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/publish`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					summary: publishSummary,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; status?: string; publishedAt?: string }
+				| undefined
+
+			if (!response.ok || payload?.error) {
+				throw new Error(payload?.error ?? 'Unable to publish feedback.')
+			}
+
+			setLiveSubmissionStatus(payload?.status ?? 'feedback_published')
+			setSummaryPublishedAt(payload?.publishedAt ?? new Date().toISOString())
+			setShowQueueReturnCue(true)
+			setIsPublishModalOpen(false)
+			setFlashNotice(payload?.notice ?? 'Feedback published to writer.')
+		} catch (error) {
+			setPublishError(
+				error instanceof Error ? error.message : 'Unable to publish feedback.',
+			)
+		} finally {
+			setIsPublishing(false)
 		}
 	}
 
@@ -561,7 +944,7 @@ export function TeacherReviewWorkspace({
 				const isActive = activeAnnotationId === item.id
 				nodes.push(
 					<span key={item.id} className="inline">
-						<mark className={`${getMarkClass(item.type, item.anchor.kind, isActive)} rounded px-1 transition`}>
+						<mark className={`${getMarkClass(item.type, item.anchor.kind, isActive, item.anchor.suggestedAction)} rounded px-1 transition`}>
 							{markedText}
 						</mark>
 						<button
@@ -589,7 +972,7 @@ export function TeacherReviewWorkspace({
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_300px] 2xl:grid-cols-[minmax(0,1.7fr)_320px]">
 			<main ref={mainRef} onMouseUp={captureSelection} onKeyUp={captureSelection} className="relative min-w-0">
 				{flashNotice ? (
-					<div className="pointer-events-none absolute right-4 top-3 z-20 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1.5 text-xs text-emerald-100 shadow-lg">
+					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded-full border border-emerald-300/40 bg-ink-950/95 px-3 py-1.5 text-xs text-emerald-100 shadow-lg">
 						{flashNotice}
 					</div>
 				) : null}
@@ -601,7 +984,7 @@ export function TeacherReviewWorkspace({
 							top: `${selectedAnchor.composerTop}px`,
 							left: `${selectedAnchor.composerLeft}px`,
 						}}
-						className="absolute z-20 w-[min(300px,calc(100%-2rem))] rounded-2xl border border-white/12 bg-ink-950/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur">
+						className="absolute z-40 w-[min(300px,calc(100%-2rem))] rounded-2xl border border-white/12 bg-ink-950/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur">
 						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
 							Marginal note
 						</p>
@@ -618,16 +1001,31 @@ export function TeacherReviewWorkspace({
 							className="mt-3 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring"
 							placeholder="Type a note. Enter saves. Empty Enter saves as snippet."
 						/>
-						{panelError ? (
-							<p className="mt-2 text-xs text-amber-100">{panelError}</p>
+						{composerError ? (
+							<p className="mt-2 text-xs text-amber-100">{composerError}</p>
 						) : null}
-						<div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-silver-300">
-							<p>{isComposerSaving ? 'Saving...' : 'Enter saves. Shift+Enter adds a new line.'}</p>
+						<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+							<div className="flex flex-wrap items-center gap-2">
+								<button
+									type="button"
+									disabled={isComposerSaving}
+									onClick={() => {
+										void saveNewAnnotation('cut')
+									}}
+									className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15 disabled:cursor-not-allowed disabled:opacity-60">
+									Cut
+								</button>
+								<p className="text-[11px] text-silver-300">
+									{isComposerSaving
+										? 'Saving...'
+										: 'Enter saves. Shift+Enter adds a new line.'}
+								</p>
+							</div>
 							<button
 								type="button"
 								disabled={isComposerSaving}
 								onClick={() => setSelectedAnchor(null)}
-								className="text-silver-200 transition hover:text-parchment-100">
+								className="text-[11px] text-silver-200 transition hover:text-parchment-100">
 								Close
 							</button>
 						</div>
@@ -686,7 +1084,7 @@ export function TeacherReviewWorkspace({
 												<p className="text-[11px] uppercase tracking-[0.12em]">
 													{activeBlockItem.type === 'snippet'
 														? 'Saved snippet'
-														: submissionStatus === 'feedback_published'
+														: liveSubmissionStatus === 'feedback_published'
 															? 'Published comment'
 															: 'Draft comment'}
 												</p>
@@ -704,13 +1102,98 @@ export function TeacherReviewWorkspace({
 										<p className="mt-2 font-serif italic text-parchment-100/90">
 											{formatQuote(activeBlockItem.anchor.quote)}
 										</p>
-										<p className="mt-3 leading-relaxed text-parchment-100">
-											{activeBlockItem.text.trim()
-												? activeBlockItem.text
-												: activeBlockItem.type === 'snippet'
-													? 'Snippet saved without a note.'
-													: 'Draft comment'}
-										</p>
+										{activeBlockItem.type === 'comment' ? (
+											isInlineEditingComment &&
+											activeAnnotationId === activeBlockItem.id ? (
+												<form
+													onSubmit={saveActiveComment}
+													className="mt-3 space-y-3">
+													<textarea
+														name="comment"
+														rows={commentDraft.includes('\n') ? 5 : 4}
+														value={commentDraft}
+														onChange={(event) => setCommentDraft(event.target.value)}
+														onKeyDown={handleInlineCommentKeyDown}
+														className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+													/>
+													<div className="flex flex-wrap items-center gap-2">
+														<button
+															type="button"
+															onClick={() => {
+																setCommentDraft(CUT_SUGGESTION_COMMENT)
+																setCommentSuggestedAction('cut')
+																setCommentCategoryId('')
+															}}
+															className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
+															Cut note
+														</button>
+														<button
+															type="submit"
+															disabled={isPanelSaving}
+															className="rounded-full border border-accent-400/70 bg-accent-400/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+															{isPanelSaving ? 'Saving...' : 'Save'}
+														</button>
+														<button
+															type="button"
+															onClick={() => {
+																setIsInlineEditingComment(false)
+																setCommentDraft(activeBlockItem.text)
+																setCommentSuggestedAction(
+																	activeBlockItem.anchor.suggestedAction ?? null,
+																)
+															}}
+															className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															Cancel
+														</button>
+													</div>
+													<p className="text-[11px] text-current/80">
+														Enter saves. Shift+Enter adds a new line.
+													</p>
+												</form>
+											) : (
+												<div className="mt-3">
+													<p className="leading-relaxed text-parchment-100">
+														{activeBlockItem.text.trim()
+															? activeBlockItem.text
+															: 'Draft comment'}
+													</p>
+													<div className="mt-3 flex flex-wrap items-center gap-2">
+														<button
+															type="button"
+															onClick={() => setIsInlineEditingComment(true)}
+															className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															Edit
+														</button>
+														<button
+															type="button"
+															onClick={() => {
+																setIsInlineEditingComment(true)
+																setCommentDraft(CUT_SUGGESTION_COMMENT)
+																setCommentSuggestedAction('cut')
+																setCommentCategoryId('')
+															}}
+															className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
+															Cut
+														</button>
+														{canDeleteFeedback ? (
+															<button
+																type="button"
+																onClick={deleteActiveComment}
+																disabled={isDeletingAnnotation}
+																className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-amber-200/40 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-60">
+																{isDeletingAnnotation ? 'Deleting...' : 'Delete'}
+															</button>
+														) : null}
+													</div>
+												</div>
+											)
+										) : (
+											<p className="mt-3 leading-relaxed text-parchment-100">
+												{activeBlockItem.text.trim()
+													? activeBlockItem.text
+													: 'Snippet saved without a note.'}
+											</p>
+										)}
 									</div>
 								) : null}
 							</div>
@@ -720,31 +1203,57 @@ export function TeacherReviewWorkspace({
 			</main>
 
 			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
-				<div className="rounded-2xl border border-white/10 bg-ink-900/30 px-3 py-2.5">
-					<div className="flex items-center justify-between gap-2">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
-							Reading pages
-						</p>
-						<p className="text-xs text-silver-200">
-							Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
-						</p>
+				<div className="surface p-4">
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								Publish
+							</p>
+							<p className="mt-1 text-sm text-silver-200">
+								Keep reading private until you are ready to return the piece.
+							</p>
+						</div>
+						<div className="flex flex-wrap items-center justify-end gap-2">
+							<Link
+								href={`/app/workshop/${submissionId}/export`}
+								className="inline-flex rounded-full border border-white/18 bg-white/6 px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 shadow-[0_6px_16px_rgba(0,0,0,0.14)] transition hover:border-white/28 hover:bg-white/10 hover:text-parchment-100">
+								Export
+							</Link>
+							<button
+								type="button"
+								onClick={() => {
+									setPublishError(null)
+									setIsPublishModalOpen(true)
+								}}
+								className="inline-flex rounded-full border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-emerald-100 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:-translate-y-[1px] hover:bg-emerald-300/20 active:translate-y-0">
+								{liveSubmissionStatus === 'feedback_published'
+									? 'Update published feedback'
+									: 'Publish to writer'}
+							</button>
+						</div>
 					</div>
-					<div className="mt-2 flex gap-2">
-						<button
-							type="button"
-							onClick={() => goToPage(pageIndex - 1)}
-							disabled={pageIndex === 0}
-							className="flex-1 rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-45">
-							Previous
-						</button>
-						<button
-							type="button"
-							onClick={() => goToPage(pageIndex + 1)}
-							disabled={pageIndex >= totalPages - 1}
-							className="flex-1 rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-45">
-							Next
-						</button>
-					</div>
+					<p
+						className={`mt-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
+							liveSubmissionStatus === 'feedback_published'
+								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
+								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
+						}`}>
+						{liveSubmissionStatus === 'feedback_published'
+							? 'Published feedback is already visible to the writer. New edits stay private until you publish again.'
+							: 'Draft comments and snippets stay private while you read.'}
+					</p>
+					{summaryPublishedAt ? (
+						<p className="mt-2 text-xs text-silver-300">
+							Last published {new Date(summaryPublishedAt).toLocaleString()}
+						</p>
+					) : null}
+					{showQueueReturnCue ? (
+						<Link
+							href="/app/teacher/review-desk"
+							className="mt-3 inline-flex rounded-full border border-accent-300/50 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 shadow-[0_0_18px_rgba(207,184,124,0.16)] animate-pulse">
+							Back to queue
+						</Link>
+					) : null}
 				</div>
 				{sidebarHeader}
 				{errorNotice ? (
@@ -756,17 +1265,17 @@ export function TeacherReviewWorkspace({
 				<ProtoCard title="Marginalia" meta="Comments and snippets">
 					<p
 						className={`mb-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
-							submissionStatus === 'feedback_published'
-								? 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100'
-								: 'border-burgundy-300/25 bg-burgundy-500/10 text-burgundy-100'
+							liveSubmissionStatus === 'feedback_published'
+								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
+								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
 						}`}>
-						{submissionStatus === 'feedback_published'
+						{liveSubmissionStatus === 'feedback_published'
 							? 'The writer can see the published comments. New edits stay private until you publish again.'
 							: 'Draft comments and snippets stay private while you read.'}
 					</p>
 					<div className="mb-3 flex items-center justify-between gap-3">
 						<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-							{feedback.length} comments {' · '} {snippets.length} snippets
+							{commentCount} comments {' · '} {snippetCount} snippets
 						</p>
 						<button
 							type="button"
@@ -782,188 +1291,223 @@ export function TeacherReviewWorkspace({
 					) : annotations.length === 0 ? (
 						<p className="text-sm text-silver-200">No annotations yet.</p>
 					) : (
-						<div className="max-h-[38vh] overflow-y-auto pr-1">
-							<ul className="space-y-2">
-							{annotations.map((item) => (
-								<li key={item.id}>
-									<button
-										type="button"
-										onClick={() => focusAnnotation(item.id)}
-										className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-											activeAnnotationId === item.id
-												? annotationBorderClass(item.type)
-												: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
-										}`}>
-										<div className="flex flex-wrap items-center gap-2">
-											<p className="text-[11px] uppercase tracking-[0.1em]">
-												{item.type === 'snippet' ? 'Snippet' : 'Comment'}
-											</p>
-											<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
-												{item.label}
-											</p>
-										</div>
-										<p className="mt-2 text-sm italic text-parchment-100/90">
-											{formatQuote(item.anchor.quote)}
+						<div className="max-h-[36vh] overflow-y-auto pr-1">
+							<div className="space-y-4">
+								<section>
+									<div className="mb-2 flex items-center justify-between gap-2">
+										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+											Comments
 										</p>
-										<p className="mt-2 text-sm leading-relaxed">
-											{item.text.trim()
-												? item.text
-												: item.type === 'snippet'
-													? 'Snippet saved without a note.'
-													: 'Draft comment'}
+										<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+											{commentCount}
 										</p>
-									</button>
-								</li>
-							))}
-							</ul>
+									</div>
+									{commentAnnotations.length === 0 ? (
+										<p className="text-sm text-silver-300">No comments yet.</p>
+									) : (
+										<ul className="space-y-2">
+											{commentAnnotations.map((item) => (
+												<li key={item.id}>
+													<button
+														type="button"
+														onClick={() => focusAnnotation(item.id)}
+														className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+															activeAnnotationId === item.id
+																? annotationBorderClass(item.type)
+																: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+														}`}>
+														<div className="flex flex-wrap items-center gap-2">
+															<p className="text-[11px] uppercase tracking-[0.1em]">
+																Comment
+															</p>
+															<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																{item.label}
+															</p>
+														</div>
+														<p className="mt-2 text-sm italic text-parchment-100/90">
+															{formatQuote(item.anchor.quote)}
+														</p>
+														<p className="mt-2 text-sm leading-relaxed text-current">
+															{item.text.trim() ? item.text : 'Draft comment'}
+														</p>
+													</button>
+												</li>
+											))}
+										</ul>
+									)}
+								</section>
+								<section>
+									<div className="mb-2 flex items-center justify-between gap-2">
+										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+											Snippets
+										</p>
+										<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+											{snippetCount}
+										</p>
+									</div>
+									{snippetAnnotations.length === 0 ? (
+										<p className="text-sm text-silver-300">No snippets yet.</p>
+									) : (
+										<ul className="space-y-2">
+											{snippetAnnotations.map((item) => (
+												<li key={item.id}>
+													<button
+														type="button"
+														onClick={() => focusAnnotation(item.id)}
+														className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+															activeAnnotationId === item.id
+																? annotationBorderClass(item.type)
+																: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+														}`}>
+														<div className="flex flex-wrap items-center gap-2">
+															<p className="text-[11px] uppercase tracking-[0.1em]">
+																Snippet
+															</p>
+															<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																{item.label}
+															</p>
+														</div>
+														<p className="mt-2 text-sm italic text-parchment-100/90">
+															{formatQuote(item.anchor.quote)}
+														</p>
+														<p className="mt-2 text-sm leading-relaxed text-current">
+															{item.text.trim()
+																? item.text
+																: 'Snippet saved without a note.'}
+														</p>
+													</button>
+												</li>
+											))}
+										</ul>
+									)}
+								</section>
+							</div>
 						</div>
 					)}
 				</ProtoCard>
 
-				{activeAnnotation ? (
+				{activeAnnotation?.type === 'snippet' ? (
 					<ProtoCard
-						title={
-							activeAnnotation.type === 'snippet'
-								? 'Edit snippet'
-								: 'Refine comment'
-						}
+						title="Edit snippet"
 						meta="Secondary editing surface">
-						{activeAnnotation.type === 'comment' ? (
-							<>
-								<form action={updateFeedbackAction} className="space-y-3">
-									<input
-										type="hidden"
-										name="feedbackItemId"
-										value={activeAnnotation.id.replace('feedback:', '')}
-									/>
-									<p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
-										{formatQuote(activeAnnotation.anchor.quote)}
-									</p>
-									<textarea
-										name="comment"
-										required
-										rows={5}
-										defaultValue={activeAnnotation.text}
-										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-									/>
-									<div>
-										<label className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
-											Category
-										</label>
-										<select
-											name="feedbackCategoryId"
-											defaultValue={activeFeedbackCategoryId}
-											className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-											<option value="">Uncategorised</option>
-											{feedbackCategories.map((category) => (
-												<option key={category.id} value={category.id}>
-													{category.name}
-												</option>
-											))}
-										</select>
-									</div>
-									<div className="flex items-center justify-between gap-3">
-										<PendingSubmitButton
-											className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30"
-											pendingChildren="Saving...">
-											Save changes
-										</PendingSubmitButton>
-									</div>
-								</form>
-								{canDeleteFeedback ? (
-									<form action={deleteFeedbackAction} className="mt-3">
-										<input
-											type="hidden"
-											name="feedbackItemId"
-											value={activeAnnotation.id.replace('feedback:', '')}
-										/>
-										<PendingSubmitButton
-											className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-300 transition hover:border-amber-200/40 hover:text-amber-100"
-											pendingChildren="Deleting...">
-											Delete
-										</PendingSubmitButton>
-									</form>
-								) : null}
-							</>
-						) : (
-							<form action={updateSnippetAction} className="space-y-3">
-								<input
-									type="hidden"
-									name="snippetId"
-									value={activeAnnotation.id.replace('snippet:', '')}
-								/>
-								<p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
-									{formatQuote(activeAnnotation.anchor.quote)}
-								</p>
-								<textarea
-									name="note"
-									rows={4}
-									defaultValue={activeAnnotation.text}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-									placeholder="Optional private note for this snippet"
-								/>
-								<div>
-									<label className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
-										Category
-									</label>
-									<select
-										name="snippetCategoryId"
-										defaultValue={activeAnnotation.categoryId ?? ''}
-										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-										<option value="">Uncategorised</option>
-										{snippetCategories.map((category) => (
-											<option key={category.id} value={category.id}>
-												{category.name}
-											</option>
-										))}
-									</select>
-								</div>
-								<PendingSubmitButton
-									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30"
-									pendingChildren="Saving...">
-									Save changes
-								</PendingSubmitButton>
-							</form>
-						)}
+						{sidePanelError ? (
+							<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+								{sidePanelError}
+							</p>
+						) : null}
+						<form onSubmit={saveActiveSnippet} className="space-y-3">
+							<p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+								{formatQuote(activeAnnotation.anchor.quote)}
+							</p>
+							<textarea
+								name="note"
+								rows={4}
+								value={snippetNoteDraft}
+								onChange={(event) => setSnippetNoteDraft(event.target.value)}
+								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+								placeholder="Optional private note for this snippet"
+							/>
+							<div>
+								<label className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
+									Category
+								</label>
+								<select
+									name="snippetCategoryId"
+									value={snippetCategoryIdDraft}
+									onChange={(event) =>
+										setSnippetCategoryIdDraft(event.target.value)
+									}
+									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									<option value="">Uncategorised</option>
+									{snippetCategories.map((category) => (
+										<option key={category.id} value={category.id}>
+											{category.name}
+										</option>
+									))}
+								</select>
+							</div>
+							<button
+								type="submit"
+								disabled={isPanelSaving}
+								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+								{isPanelSaving ? 'Saving...' : 'Save changes'}
+							</button>
+						</form>
 					</ProtoCard>
 				) : (
-					<ProtoCard title="Selected annotation" meta="Secondary editing surface">
+					<ProtoCard title="Selected annotation" meta="Reading-first workflow">
 						<p className="text-sm leading-relaxed text-silver-200">
-							Select a marker in the manuscript to refine the note, adjust a
-							category, or review the saved wording.
+							Comments are edited directly in the manuscript popup. Use this rail
+							to review the full list and refine snippets when needed.
 						</p>
 					</ProtoCard>
 				)}
-
-				<div className="surface p-4">
-					<div className="flex items-center justify-between gap-3">
-						<div>
-							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-								Publish
-							</p>
-							<p className="mt-1 text-sm text-silver-200">
-								Move from close reading into writer-facing feedback when ready.
-							</p>
-						</div>
-						<button
-							type="button"
-							onClick={() => setIsPublishStageOpen((value) => !value)}
-							className="rounded-full border border-emerald-300/40 bg-emerald-300/10 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/15">
-							{isPublishStageOpen
-								? 'Hide publish'
-								: submissionStatus === 'feedback_published'
-									? 'Update published feedback'
-									: 'Publish to writer'}
-						</button>
-					</div>
-					{isPublishStageOpen ? (
-						<div className="mt-4">
-							{/* TODO: allow importing an earlier version summary into a later publish draft. */}
-							{publishPanel}
-						</div>
-					) : null}
-				</div>
 			</aside>
+			{isPublishModalOpen ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/65 px-4 backdrop-blur-sm">
+					<div className="w-full max-w-lg rounded-3xl border border-white/12 bg-ink-950 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+									Final step
+								</p>
+								<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+									Publish to writer
+								</h2>
+							</div>
+							<button
+								type="button"
+								onClick={() => setIsPublishModalOpen(false)}
+								className="rounded-full border border-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								Close
+							</button>
+						</div>
+						<p className="mt-3 text-sm leading-relaxed text-silver-200">
+							Add an optional overview note, then publish the anchored comments.
+						</p>
+						<p className="mt-2 rounded-xl border border-burgundy-300/25 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							Nothing new becomes visible to the writer until you confirm publish.
+						</p>
+						<form onSubmit={publishToWriter} className="mt-4 space-y-4">
+							<label className="block">
+								<span className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
+									Overview note
+								</span>
+								<textarea
+									ref={publishTextareaRef}
+									name="summary"
+									rows={5}
+									value={publishSummary}
+									onChange={(event) => setPublishSummary(event.target.value)}
+									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									placeholder="Optional short overview for the writer"
+								/>
+							</label>
+							{publishError ? (
+								<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+									{publishError}
+								</p>
+							) : null}
+							{/* TODO: later allow importing an earlier version summary into a new publish draft. */}
+							<div className="flex items-center justify-between gap-3">
+								<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+									{commentCount} anchored comments
+								</p>
+								<button
+									type="submit"
+									disabled={isPublishing}
+									className="rounded-full border border-emerald-300/60 bg-emerald-300/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/25 disabled:cursor-not-allowed disabled:opacity-60">
+									{isPublishing
+										? 'Publishing...'
+										: liveSubmissionStatus === 'feedback_published'
+											? 'Update published feedback'
+											: 'Confirm publish'}
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			) : null}
 		</div>
 	)
 }

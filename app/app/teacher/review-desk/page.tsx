@@ -289,7 +289,7 @@ export default async function TeacherReviewDeskPage() {
 						</p>
 						{options?.oldest ? (
 							<p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-accent-200">
-								Oldest waiting
+								Waiting the longest
 							</p>
 						) : null}
 					</div>
@@ -375,7 +375,7 @@ export default async function TeacherReviewDeskPage() {
 												Waiting
 											</p>
 											<p className="text-[10px] uppercase tracking-[0.1em] text-accent-100">
-												Oldest first
+												Waiting the longest first
 											</p>
 										</div>
 										<form
@@ -387,7 +387,7 @@ export default async function TeacherReviewDeskPage() {
 												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring">
 												{waitingQueue.map((item, index) => (
 													<option key={item.id} value={item.id}>
-														{index === 0 ? 'Oldest - ' : ''}
+														{index === 0 ? 'Waiting the longest - ' : ''}
 														v{item.version ?? 1} - {item.title} -{' '}
 														{item.writerLabel}
 														{item.newerRevisionVersion
@@ -428,8 +428,8 @@ export default async function TeacherReviewDeskPage() {
 						{oldestWaitingSubmission ? (
 							<Link
 								href={`/app/workshop/${oldestWaitingSubmission.id}`}
-								className="mt-3 inline-block text-xs text-accent-200 hover:text-accent-100">
-								Open oldest waiting piece
+							className="mt-3 inline-block text-xs text-accent-200 hover:text-accent-100">
+								Open the piece waiting the longest
 							</Link>
 						) : null}
 					</ProtoCard>
@@ -464,7 +464,7 @@ export default async function TeacherReviewDeskPage() {
 							href={`/app/workshop/${oldestWaitingSubmission.id}`}
 							className="mt-5 block rounded-2xl border border-accent-300/30 bg-accent-300/10 p-5 transition hover:border-accent-300/50 hover:bg-accent-300/15">
 							<p className="text-[11px] uppercase tracking-[0.12em] text-accent-200">
-								Oldest waiting
+								Waiting the longest
 							</p>
 							<h3 className="literary-title mt-2 text-2xl text-parchment-100">
 								{oldestWaitingSubmission.title}
