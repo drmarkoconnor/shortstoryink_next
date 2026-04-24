@@ -1,6 +1,14 @@
 'use client'
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import {
+	useCallback,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	type RefObject,
+	type ReactNode,
+} from 'react'
 import Link from 'next/link'
 import { StoryFolio } from '@/components/prototype/story-folio'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
@@ -33,11 +41,12 @@ type ActiveInlineComment = {
 	id: string
 	quote: string
 	comment: string
-	createdAt: string
 	label: string
 	kind: FeedbackKind
 	suggestedAction?: 'cut'
 }
+
+type PopupPlacement = 'above' | 'below'
 
 function getMarkClass(kind: FeedbackKind) {
 	if (kind === 'typo') {
@@ -97,6 +106,90 @@ function cutMarkClass(active: boolean) {
 		: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
 }
 
+function InlineCommentPopup({
+	comment,
+	containerRef,
+}: {
+	comment: ActiveInlineComment
+	containerRef: RefObject<HTMLElement | null>
+}) {
+	const anchorRef = useRef<HTMLSpanElement | null>(null)
+	const popupRef = useRef<HTMLSpanElement | null>(null)
+	const [placement, setPlacement] = useState<PopupPlacement>('above')
+	const [leftOffset, setLeftOffset] = useState(0)
+
+	useLayoutEffect(() => {
+		function updatePopupPosition() {
+			const anchor = anchorRef.current
+			const popup = popupRef.current
+			const container = containerRef.current
+			if (!anchor || !popup || !container) {
+				return
+			}
+
+			const anchorRect = anchor.getBoundingClientRect()
+			const popupRect = popup.getBoundingClientRect()
+			const containerRect = container.getBoundingClientRect()
+			const verticalMargin = 20
+			const horizontalMargin = 18
+			const hasRoomAbove = anchorRect.top >= popupRect.height + verticalMargin
+			const anchorCenter = anchorRect.left + anchorRect.width / 2
+			const minCenter =
+				containerRect.left + popupRect.width / 2 + horizontalMargin
+			const maxCenter =
+				containerRect.right - popupRect.width / 2 - horizontalMargin
+			const clampedCenter = Math.max(
+				minCenter,
+				Math.min(anchorCenter, Math.max(minCenter, maxCenter)),
+			)
+
+			setPlacement(hasRoomAbove ? 'above' : 'below')
+			setLeftOffset(clampedCenter - anchorCenter)
+		}
+
+		updatePopupPosition()
+		window.addEventListener('resize', updatePopupPosition)
+
+		return () => {
+			window.removeEventListener('resize', updatePopupPosition)
+		}
+	}, [comment.id, containerRef])
+
+	const placementClass =
+		placement === 'above'
+			? 'bottom-full mb-3 origin-bottom'
+			: 'top-full mt-3 origin-top'
+
+	return (
+		<span ref={anchorRef} className="relative inline">
+			<span
+				ref={popupRef}
+				style={{
+					left: `calc(50% + ${leftOffset}px)`,
+					transform: 'translateX(-50%)',
+				}}
+				className={`pointer-events-none absolute z-20 inline-block w-[min(24rem,calc(100vw-3rem))] rounded-2xl border px-4 py-3 shadow-[0_16px_36px_rgba(0,0,0,0.18)] ${placementClass} ${inlineCardClass(
+					comment.kind,
+				)}`}>
+				<span className="flex flex-wrap items-center gap-2">
+					<span className="text-[10px] uppercase tracking-[0.12em] text-current/75">
+						Published comment
+					</span>
+					<span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-current/80">
+						{comment.label}
+					</span>
+				</span>
+				<span className="mt-2 block text-sm italic leading-relaxed text-current/90">
+					{formatQuote(comment.quote)}
+				</span>
+				<span className="mt-3 block font-serif text-[17px] leading-[1.45] text-current">
+					{comment.comment}
+				</span>
+			</span>
+		</span>
+	)
+}
+
 export function WriterFeedbackReadingWorkspace({
 	submissionId,
 	title,
@@ -122,7 +215,6 @@ export function WriterFeedbackReadingWorkspace({
 		() => paginateManuscript(paragraphs, readingPageOptions),
 		[paragraphs],
 	)
-	const initialCommentId = feedback[0]?.id ?? null
 	const initialPageIndex = (() => {
 		const firstAnchorBlockId = feedback[0]?.anchor?.blockId
 		if (!firstAnchorBlockId) {
@@ -131,13 +223,11 @@ export function WriterFeedbackReadingWorkspace({
 		return pagedManuscript.paragraphIdToPageIndex[firstAnchorBlockId] ?? 0
 	})()
 
-	const [activeCommentId, setActiveCommentId] = useState<string | null>(
-		initialCommentId,
-	)
+	const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
 	const [hoveredCommentId, setHoveredCommentId] = useState<string | null>(null)
 	const [pageIndex, setPageIndex] = useState(initialPageIndex)
-	const [isCommentsOpen, setIsCommentsOpen] = useState(true)
-	const [showInstruction, setShowInstruction] = useState(true)
+	const [isCommentsOpen, setIsCommentsOpen] = useState(false)
+	const folioContainerRef = useRef<HTMLElement | null>(null)
 
 	const feedbackByBlock = useMemo(() => {
 		const map: Record<string, FeedbackItem[]> = {}
@@ -174,7 +264,6 @@ export function WriterFeedbackReadingWorkspace({
 			id: found.id,
 			quote: found.anchor?.quote || 'General note',
 			comment: found.comment,
-			createdAt: found.createdAt,
 			label: feedbackLabel(found.anchor),
 			kind: found.anchor?.kind ?? 'craft',
 			suggestedAction: found.anchor?.suggestedAction,
@@ -192,6 +281,7 @@ export function WriterFeedbackReadingWorkspace({
 		}
 		const clamped = Math.max(0, Math.min(nextPage, totalPages - 1))
 		setPageIndex(clamped)
+		setIsCommentsOpen(false)
 	}, [totalPages])
 
 	usePagedArrowNavigation({
@@ -201,7 +291,6 @@ export function WriterFeedbackReadingWorkspace({
 	})
 
 	const focusComment = (commentId: string) => {
-		setShowInstruction(false)
 		setActiveCommentId((current) => (current === commentId ? null : commentId))
 		const item = feedback.find((entry) => entry.id === commentId)
 		const blockId = item?.anchor?.blockId
@@ -215,13 +304,16 @@ export function WriterFeedbackReadingWorkspace({
 	}
 
 	const previewComment = (commentId: string) => {
-		setShowInstruction(false)
 		setHoveredCommentId(commentId)
 	}
 
 	const clearPreviewComment = () => {
 		setHoveredCommentId(null)
 	}
+
+	const returnFocusToManuscript = useCallback(() => {
+		setIsCommentsOpen(false)
+	}, [])
 
 	const renderParagraph = (paragraphId: string, text: string) => {
 		const items = feedbackByBlock[paragraphId] ?? []
@@ -255,7 +347,10 @@ export function WriterFeedbackReadingWorkspace({
 						? cutMarkClass(isActive)
 						: getMarkClass(kind)
 				nodes.push(
-					<span key={item.id} className="inline">
+					<span
+						key={item.id}
+						className="relative inline"
+						onMouseEnter={returnFocusToManuscript}>
 						<button
 							type="button"
 							onClick={() => focusComment(item.id)}
@@ -281,6 +376,12 @@ export function WriterFeedbackReadingWorkspace({
 							aria-label={`${kindLabel(kind)} marker`}>
 							•
 						</button>
+						{isActive && effectiveComment ? (
+							<InlineCommentPopup
+								comment={effectiveComment}
+								containerRef={folioContainerRef}
+							/>
+						) : null}
 					</span>,
 				)
 			}
@@ -297,7 +398,10 @@ export function WriterFeedbackReadingWorkspace({
 
 	return (
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_300px] 2xl:grid-cols-[minmax(0,1.7fr)_320px]">
-			<main className="min-w-0">
+			<main
+				ref={folioContainerRef}
+				className="min-w-0"
+				onMouseEnter={returnFocusToManuscript}>
 				<StoryFolio
 					title={title}
 					eyebrow="Published feedback"
@@ -325,9 +429,6 @@ export function WriterFeedbackReadingWorkspace({
 					}>
 					{(currentPage?.paragraphs ?? []).map((paragraph) => {
 						const isSceneBreak = paragraph.text.trim() === '**'
-						const blockItems = feedbackByBlock[paragraph.id] ?? []
-						const activeBlockItem =
-							blockItems.find((item) => item.id === effectiveCommentId) ?? null
 
 						return (
 							<div key={paragraph.id} className="space-y-3">
@@ -342,35 +443,6 @@ export function WriterFeedbackReadingWorkspace({
 										? '***'
 										: renderParagraph(paragraph.id, paragraph.text)}
 								</p>
-								{activeBlockItem?.anchor ? (
-									<div
-										className={`max-w-[44rem] rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.08)] ${inlineCardClass(
-											activeBlockItem.anchor.kind ?? 'craft',
-										)}`}>
-										<div className="flex flex-wrap items-center justify-between gap-2">
-											<div className="flex flex-wrap items-center gap-2">
-												<p className="text-[11px] uppercase tracking-[0.12em]">
-													Published comment
-												</p>
-												<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
-													{feedbackLabel(activeBlockItem.anchor)}
-												</p>
-											</div>
-											<button
-												type="button"
-												onClick={() => setActiveCommentId(null)}
-												className="text-xs text-current/85 transition hover:text-current">
-												Close
-											</button>
-										</div>
-										<p className="mt-2 font-serif italic text-current/90">
-											{formatQuote(activeBlockItem.anchor.quote)}
-										</p>
-										<p className="mt-3 leading-relaxed text-current">
-											{activeBlockItem.comment}
-										</p>
-									</div>
-								) : null}
 							</div>
 						)
 					})}
@@ -413,59 +485,11 @@ export function WriterFeedbackReadingWorkspace({
 							Published {new Date(publishedAt).toLocaleString()}
 						</p>
 					) : null}
+					<p className="mt-4 text-sm leading-relaxed text-silver-200">
+						Hover or click a highlight to read the note in the manuscript, then
+						continue through the folio.
+					</p>
 				</div>
-
-				{effectiveComment ? (
-					<div
-						key={effectiveComment.id}
-						className="feedback-panel-pulse rounded-2xl border-2 border-burgundy-200/80 bg-ink-700/95 px-4 py-4 shadow-[0_0_0_1px_rgba(252,251,248,0.06),0_16px_36px_rgba(0,0,0,0.32)] transition">
-						<div className="mb-3 flex items-start justify-between gap-3">
-							<div className="space-y-2">
-								<p className="text-[11px] uppercase tracking-[0.12em] text-accent-300">
-									Selected feedback
-								</p>
-								<p className="inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200">
-									{effectiveComment.label}
-								</p>
-							</div>
-							<button
-								type="button"
-								onClick={() => setActiveCommentId(null)}
-								className="text-xs text-accent-200 hover:text-accent-100">
-								Clear selection
-							</button>
-						</div>
-						<div className="border-l border-white/25 pl-3">
-							<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
-								Quoted passage
-							</p>
-							<p className="mt-1 text-[15px] leading-relaxed text-silver-100">
-								{formatQuote(effectiveComment.quote)}
-							</p>
-						</div>
-						<p className="mt-4 border-l border-burgundy-200 pl-3 font-serif text-[16px] italic leading-relaxed text-parchment-100">
-							{effectiveComment.comment}
-						</p>
-						<p className="mt-2 text-xs text-silver-300">
-							{new Date(effectiveComment.createdAt).toLocaleString()}
-						</p>
-					</div>
-				) : (
-					<div className="rounded-2xl border border-burgundy-300/40 bg-ink-800/85 p-4">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-accent-300">
-							Selected feedback
-						</p>
-						{showInstruction ? (
-							<div className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
-								Hover over highlighted passages to read your teacher&apos;s comments.
-							</div>
-						) : null}
-						<p className="mt-2 text-sm leading-relaxed text-silver-100">
-							Hover previews a comment. Click a marker to keep it open while you
-							read.
-						</p>
-					</div>
-				)}
 
 				<div className="rounded-2xl border border-white/15 bg-ink-800/90 p-5 shadow-glow">
 					<div className="flex items-center justify-between gap-3">
@@ -487,8 +511,8 @@ export function WriterFeedbackReadingWorkspace({
 					</div>
 					{!isCommentsOpen ? (
 						<p className="mt-3 text-sm leading-relaxed text-silver-200">
-							Comment list hidden. Inline highlights and selected feedback stay
-							available.
+							Comment list hidden. Open it if you want the full set of notes in
+							one place.
 						</p>
 					) : feedback.length === 0 ? (
 						<p className="mt-3 text-sm text-silver-200">No comments found.</p>
