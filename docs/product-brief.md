@@ -626,6 +626,9 @@ This can be lightweight in v1.
 
 The admin side should reduce friction for Mark and support editorial judgment.
 
+For teacher-side product direction, use `docs/teacher-area-roadmap.md` as the
+controlling roadmap for the Desk, Reading Workspace, and Studio/Library layers.
+
 ## Useful admin areas
 - submissions awaiting review
 - recent student activity

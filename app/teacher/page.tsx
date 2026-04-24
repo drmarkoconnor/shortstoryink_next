@@ -61,6 +61,7 @@ export default async function TeacherPage({
 	const params = searchParams ? await searchParams : {}
 	const notice = toMessage(params.notice)
 	const errorNotice = toMessage(params.error)
+	const selectedWriterIdParam = toMessage(params.writer)
 
 	try {
 		await ensureAbuMembershipForAllProfiles()
@@ -281,6 +282,11 @@ export default async function TeacherPage({
 			a.title.localeCompare(b.title),
 		),
 	}))
+	// TODO: Future: support assigned teacher per writer/student.
+	const selectedWriter =
+		writersWithMemberships.find((writer) => writer.id === selectedWriterIdParam) ??
+		writersWithMemberships[0] ??
+		null
 
 	const { count: awaitingCount } = await supabase
 		.from('submissions')
@@ -412,27 +418,57 @@ export default async function TeacherPage({
 							</p>
 						) : null}
 					</div>
+					<form method="get" className="w-full max-w-sm space-y-2">
+						<label className="block text-xs uppercase tracking-[0.1em] text-silver-300">
+							Writer
+						</label>
+						<div className="flex gap-2">
+							<select
+								name="writer"
+								defaultValue={selectedWriter?.id ?? ''}
+								className="min-w-0 flex-1 rounded-xl border border-white/15 bg-ink-900/50 px-3 py-2 text-sm text-parchment-100">
+								{writersWithMemberships.length === 0 ? (
+									<option value="">No writers available</option>
+								) : (
+									writersWithMemberships.map((writer) => (
+										<option key={writer.id} value={writer.id}>
+											{displayUserLabel(writer)}
+										</option>
+									))
+								)}
+							</select>
+							<button
+								type="submit"
+								className="rounded-full border border-white/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								Open
+							</button>
+						</div>
+					</form>
 				</div>
 
 				<div className="mt-6 space-y-3">
 					{writersWithMemberships.length === 0 ? (
 						<p className="text-sm text-silver-300">No writer accounts found.</p>
 					) : (
-						writersWithMemberships.map((writer) => (
+						selectedWriter ? (
 							<div
-								key={writer.id}
+								key={selectedWriter.id}
 								className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
 								<div className="flex flex-wrap items-start justify-between gap-4">
 									<div>
 										<p className="text-sm font-medium text-parchment-100">
-											{displayUserLabel(writer)}
+											{displayUserLabel(selectedWriter)}
 										</p>
 										<p className="mt-1 text-xs uppercase tracking-[0.1em] text-silver-300">
-											{writer.role}
+											{selectedWriter.role}
 										</p>
 									</div>
 									<form action={deleteUserAction}>
-										<input type="hidden" name="userId" value={writer.id} />
+										<input
+											type="hidden"
+											name="userId"
+											value={selectedWriter.id}
+										/>
 										<button
 											type="submit"
 											className="rounded-full border border-rose-300/50 bg-rose-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.09em] text-rose-100 transition hover:bg-rose-300/20">
@@ -442,16 +478,16 @@ export default async function TeacherPage({
 								</div>
 
 								<div className="mt-4 flex flex-wrap gap-2">
-									{writer.memberships.length === 0 ? (
+									{selectedWriter.memberships.length === 0 ? (
 										<p className="text-xs text-silver-300">
 											No group memberships found.
 										</p>
 									) : (
-										writer.memberships.map((workshop) => {
+										selectedWriter.memberships.map((workshop) => {
 											const isBaseline = isAbuWorkshopSlug(workshop.slug)
 											return (
 												<div
-													key={`${writer.id}-${workshop.id}`}
+													key={`${selectedWriter.id}-${workshop.id}`}
 													className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
 														isBaseline
 															? 'border-emerald-300/35 bg-emerald-300/10 text-emerald-100'
@@ -467,7 +503,7 @@ export default async function TeacherPage({
 															<input
 																type="hidden"
 																name="writerId"
-																value={writer.id}
+																value={selectedWriter.id}
 															/>
 															<input
 																type="hidden"
@@ -492,7 +528,7 @@ export default async function TeacherPage({
 									)}
 								</div>
 							</div>
-						))
+						) : null
 					)}
 				</div>
 			</div>

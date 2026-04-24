@@ -13,6 +13,19 @@ function isActivePath(pathname: string, href: string) {
 	if (href === '/app/writer') {
 		return pathname === href
 	}
+	if (href === '/app/teacher') {
+		return pathname === href
+	}
+	if (href === '/app/teacher/review-desk') {
+		return (
+			pathname === href ||
+			pathname.startsWith('/app/teacher/review-desk/') ||
+			pathname.startsWith('/app/workshop/')
+		)
+	}
+	if (href === '/app/teacher/archive') {
+		return pathname === href || pathname.startsWith('/app/teacher/archive/')
+	}
 	return pathname === href || pathname.startsWith(`${href}/`)
 }
 

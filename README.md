@@ -21,6 +21,11 @@ This phase intentionally ships only the application shell and route scaffolding.
   - `/app/teacher`
   - `/app/teacher-studio`
 
+## Product documentation
+
+- Teacher-side product and workflow decisions should follow
+  `docs/teacher-area-roadmap.md`.
+
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and fill values from your existing Supabase
@@ -30,12 +35,14 @@ Required now:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_AUTH_REDIRECT_BASE_URL`
 
 Expected soon (server-side workflows):
 
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_PROJECT_ID`
+- `APP_URL`
 - `AUTH_REDIRECT_BASE_URL`
 
 ## Local development

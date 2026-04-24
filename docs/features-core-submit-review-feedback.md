@@ -11,6 +11,8 @@ Source inputs:
 
 - `docs/product-brief.md` (governing product vision and priorities)
 - `docs/migration-note.md` (Next.js + Supabase direction)
+- `docs/teacher-area-roadmap.md` (teacher desk, reading workspace, and studio
+  direction)
 - Current Phase 1 app shell in `app/`
 
 This list intentionally excludes Eleventy-era implementation assumptions.
@@ -223,4 +225,3 @@ and shippable.
 - A teacher can open the submission, add inline + summary feedback, and publish.
 - The writer can see published feedback in context.
 - A revised version can be resubmitted while preserving prior version history.
-
