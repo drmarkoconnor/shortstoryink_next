@@ -107,6 +107,20 @@ async function loadModernSubmission(submissionId: string) {
 	}
 }
 
+function publishedFeedbackMutationBlocked(status: string | null | undefined) {
+	return status === 'feedback_published'
+}
+
+function publishedFeedbackMutationResponse() {
+	return NextResponse.json(
+		{
+			error:
+				'Published feedback is locked. Comments and snippets cannot be created or edited after publish.',
+		},
+		{ status: 409 },
+	)
+}
+
 export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ submissionId: string }> },
@@ -146,6 +160,10 @@ export async function POST(
 			{ error: 'Inline save is only available in the modern submission workspace.' },
 			{ status: 400 },
 		)
+	}
+
+	if (publishedFeedbackMutationBlocked(submissionResult.data.status)) {
+		return publishedFeedbackMutationResponse()
 	}
 
 	const anchor = {
@@ -269,6 +287,10 @@ export async function PATCH(
 			{ error: 'Inline editing is only available in the modern submission workspace.' },
 			{ status: 400 },
 		)
+	}
+
+	if (publishedFeedbackMutationBlocked(submissionResult.data.status)) {
+		return publishedFeedbackMutationResponse()
 	}
 
 	if (!id || (type !== 'comment' && type !== 'snippet')) {

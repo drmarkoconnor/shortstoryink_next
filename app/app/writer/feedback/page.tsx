@@ -72,6 +72,7 @@ export default async function WriterFeedbackPage() {
 			.from('feedback_items')
 			.select('id, submission_id, comment, anchor')
 			.in('submission_id', submissionIds)
+			.order('created_at', { ascending: false })
 
 		feedbackCountBySubmission = (feedbackItemsResult.data ?? []).reduce(
 			(acc, row) => {

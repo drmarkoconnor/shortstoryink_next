@@ -72,7 +72,7 @@ export default async function WriterFeedbackDetailPage({
 		.from('feedback_items')
 		.select('id, comment, anchor, created_at')
 		.eq('submission_id', submission.id)
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
 
 	const feedbackRows = (feedbackRowsResult.data ?? []) as Array<{
 		id: string

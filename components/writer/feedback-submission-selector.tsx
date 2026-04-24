@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type FeedbackCommentPreview = {
 	id: string
@@ -41,6 +41,23 @@ export function FeedbackSubmissionSelector({
 		submissions[0]?.id ?? '',
 	)
 	const selectedSubmissionRef = useRef<HTMLElement>(null)
+
+	useEffect(() => {
+		if (submissions.length === 0) {
+			if (selectedSubmissionId) {
+				setSelectedSubmissionId('')
+			}
+			return
+		}
+
+		const hasSelectedSubmission = submissions.some(
+			(submission) => submission.id === selectedSubmissionId,
+		)
+
+		if (!selectedSubmissionId || !hasSelectedSubmission) {
+			setSelectedSubmissionId(submissions[0].id)
+		}
+	}, [selectedSubmissionId, submissions])
 
 	const selectedSubmission = useMemo(
 		() =>
