@@ -13,6 +13,8 @@ Source inputs:
 - `docs/migration-note.md` (Next.js + Supabase direction)
 - `docs/teacher-area-roadmap.md` (teacher desk, reading workspace, and studio
   direction)
+- `docs/export-feedback-packet-roadmap.md` (writer-facing export packet
+  direction)
 - Current Phase 1 app shell in `app/`
 
 This list intentionally excludes Eleventy-era implementation assumptions.

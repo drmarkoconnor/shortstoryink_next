@@ -25,6 +25,7 @@ function countWords(value: string) {
 }
 
 export function WriterSubmissionComposer({
+	writerName,
 	createSubmissionAction,
 	deleteSubmissionAction,
 	workshops,
@@ -40,6 +41,7 @@ export function WriterSubmissionComposer({
 	publishedCount,
 	abuSubmissionWordLimit,
 }: {
+	writerName: string
 	createSubmissionAction: (formData: FormData) => void
 	deleteSubmissionAction: (formData: FormData) => void
 	workshops: WriterWorkshop[]
@@ -142,8 +144,11 @@ export function WriterSubmissionComposer({
 					<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
 						Writer home
 					</p>
+					<p className="mt-2 font-serif text-lg text-parchment-100">
+						Welcome, {writerName}
+					</p>
 					<h1 className="literary-title mt-2 text-2xl text-parchment-100">
-						Submit a draft
+						Submit a piece for feedback
 					</h1>
 				</div>
 

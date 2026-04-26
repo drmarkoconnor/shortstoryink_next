@@ -500,7 +500,7 @@ export default async function WorkshopSubmissionPage({
 									: 'border-burgundy-300/20 bg-burgundy-500/10 text-burgundy-100'
 							}`}>
 							{submissionStatus === 'feedback_published'
-								? 'Published feedback is live to the writer.'
+								? 'Feedback has been published for this version. It is now read-only. Use this view for reference; further feedback should happen on a new submission or revised version.'
 								: 'All comments remain private until you publish them.'}
 						</p>
 						<div className="mt-4 flex flex-wrap gap-2">
@@ -509,11 +509,17 @@ export default async function WorkshopSubmissionPage({
 								className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
 								Back to queue
 							</Link>
-							<Link
-								href={`/app/workshop/${submissionId}/export`}
-								className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-								Export view
-							</Link>
+							{submissionStatus === 'feedback_published' ? (
+								<Link
+									href={`/app/workshop/${submissionId}/export`}
+									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									Feedback document
+								</Link>
+							) : (
+								<p className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-silver-300">
+									Feedback must be published before export is available.
+								</p>
+							)}
 						</div>
 						{latestVersionEntry && latestVersionEntry.id !== submissionId ? (
 							<div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
@@ -555,6 +561,10 @@ export default async function WorkshopSubmissionPage({
 				}
 				submissionStatus={submissionStatus}
 				canDeleteFeedback={submissionStatus !== 'feedback_published'}
+				canPublishFeedback={
+					!latestVersionEntry || latestVersionEntry.id === submissionId
+				}
+				canExportFeedback={submissionStatus === 'feedback_published'}
 				snippetCategories={snippetCategories}
 				feedbackCategories={feedbackCategories}
 				initialSummary={existingSummary}

@@ -128,6 +128,9 @@ The product should be built around a clear pedagogic loop:
 
 This loop is more important than broad feature coverage.
 
+Writer-facing feedback export planning should follow
+`docs/export-feedback-packet-roadmap.md`.
+
 The site should not be built as a collection of disconnected features. It should be built as a **coherent writer development environment**.
 
 ---

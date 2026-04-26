@@ -25,6 +25,8 @@ This phase intentionally ships only the application shell and route scaffolding.
 
 - Teacher-side product and workflow decisions should follow
   `docs/teacher-area-roadmap.md`.
+- Writer-facing feedback export planning should follow
+  `docs/export-feedback-packet-roadmap.md`.
 
 ## Environment variables
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Children } from 'react'
 import Link from 'next/link'
 import {
 	useCallback,
@@ -150,6 +151,8 @@ export function TeacherReviewWorkspace({
 	sidebarHeader,
 	submissionStatus,
 	canDeleteFeedback,
+	canPublishFeedback,
+	canExportFeedback,
 	snippetCategories,
 	feedbackCategories,
 	initialSummary,
@@ -166,6 +169,8 @@ export function TeacherReviewWorkspace({
 	sidebarHeader?: ReactNode
 	submissionStatus: string
 	canDeleteFeedback: boolean
+	canPublishFeedback: boolean
+	canExportFeedback: boolean
 	snippetCategories: Array<{ id: string; name: string }>
 	feedbackCategories: Array<{ id: string; name: string }>
 	initialSummary: string
@@ -207,6 +212,7 @@ export function TeacherReviewWorkspace({
 	const [isPanelSaving, setIsPanelSaving] = useState(false)
 	const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
 	const [isInlineEditingComment, setIsInlineEditingComment] = useState(false)
+	const isPublishedReadOnly = liveSubmissionStatus === 'feedback_published'
 	const mainRef = useRef<HTMLDivElement | null>(null)
 	const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
@@ -380,6 +386,11 @@ export function TeacherReviewWorkspace({
 	}, [activeAnnotation, pagedManuscript.paragraphIdToPageIndex])
 
 	const captureSelection = () => {
+		if (isPublishedReadOnly) {
+			setSelectedAnchor(null)
+			return
+		}
+
 		const selection = window.getSelection()
 		if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
 			return
@@ -527,7 +538,10 @@ export function TeacherReviewWorkspace({
 	const saveNewAnnotation = async (
 		annotationIntent: 'comment' | 'snippet' | 'cut',
 	) => {
-		if (!selectedAnchor || isComposerSaving) {
+		if (!selectedAnchor || isComposerSaving || isPublishedReadOnly) {
+			if (isPublishedReadOnly) {
+				setComposerError('Published feedback is read-only for this version.')
+			}
 			return
 		}
 
@@ -679,8 +693,12 @@ export function TeacherReviewWorkspace({
 		if (
 			!activeAnnotation ||
 			activeAnnotation.type !== 'comment' ||
-			isPanelSaving
+			isPanelSaving ||
+			isPublishedReadOnly
 		) {
+			if (isPublishedReadOnly) {
+				setSidePanelError('Published feedback is read-only for this version.')
+			}
 			return
 		}
 
@@ -976,7 +994,7 @@ export function TeacherReviewWorkspace({
 						{flashNotice}
 					</div>
 				) : null}
-				{selectedAnchor ? (
+				{selectedAnchor && !isPublishedReadOnly ? (
 					<form
 						ref={composerFormRef}
 						onSubmit={submitInlineAnnotation}
@@ -1116,6 +1134,24 @@ export function TeacherReviewWorkspace({
 														onKeyDown={handleInlineCommentKeyDown}
 														className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
 													/>
+													<label className="block">
+														<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+															Category
+														</span>
+														<select
+															value={commentCategoryId}
+															onChange={(event) =>
+																setCommentCategoryId(event.target.value)
+															}
+															className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+															<option value="">Uncategorised</option>
+															{feedbackCategories.map((category) => (
+																<option key={category.id} value={category.id}>
+																	{category.name}
+																</option>
+															))}
+														</select>
+													</label>
 													<div className="flex flex-wrap items-center gap-2">
 														<button
 															type="button"
@@ -1158,25 +1194,29 @@ export function TeacherReviewWorkspace({
 															: 'Draft comment'}
 													</p>
 													<div className="mt-3 flex flex-wrap items-center gap-2">
-														<button
-															type="button"
-															onClick={() => setIsInlineEditingComment(true)}
-															className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-															Edit
-														</button>
-														<button
-															type="button"
-															onClick={() => {
-																setIsInlineEditingComment(true)
-																setCommentDraft(CUT_SUGGESTION_COMMENT)
-																setCommentSuggestedAction('cut')
-																setCommentCategoryId('')
-															}}
-															className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
-															Cut
-														</button>
-														{canDeleteFeedback ? (
+														{!isPublishedReadOnly ? (
 															<button
+																type="button"
+																onClick={() => setIsInlineEditingComment(true)}
+																className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+																Edit
+															</button>
+														) : null}
+														{!isPublishedReadOnly ? (
+								<button
+									type="button"
+									onClick={() => {
+										setIsInlineEditingComment(true)
+										setCommentDraft(CUT_SUGGESTION_COMMENT)
+										setCommentSuggestedAction('cut')
+										setCommentCategoryId('')
+									}}
+									className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
+									Cut
+								</button>
+							) : null}
+							{canDeleteFeedback && !isPublishedReadOnly ? (
+								<button
 																type="button"
 																onClick={deleteActiveComment}
 																disabled={isDeletingAnnotation}
@@ -1207,29 +1247,35 @@ export function TeacherReviewWorkspace({
 					<div className="flex items-start justify-between gap-3">
 						<div>
 							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-								Publish
+								Feedback status
 							</p>
 							<p className="mt-1 text-sm text-silver-200">
-								Keep reading private until you are ready to return the piece.
+								{isPublishedReadOnly
+									? 'Use this view for reference after publication.'
+									: canPublishFeedback
+										? 'Keep reading private until you are ready to return the piece.'
+										: 'Publish from the latest reviewable version in the chain.'}
 							</p>
 						</div>
 						<div className="flex flex-wrap items-center justify-end gap-2">
-							<Link
-								href={`/app/workshop/${submissionId}/export`}
-								className="inline-flex rounded-full border border-white/18 bg-white/6 px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 shadow-[0_6px_16px_rgba(0,0,0,0.14)] transition hover:border-white/28 hover:bg-white/10 hover:text-parchment-100">
-								Export
-							</Link>
-							<button
-								type="button"
-								onClick={() => {
-									setPublishError(null)
-									setIsPublishModalOpen(true)
-								}}
-								className="inline-flex rounded-full border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-emerald-100 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:-translate-y-[1px] hover:bg-emerald-300/20 active:translate-y-0">
-								{liveSubmissionStatus === 'feedback_published'
-									? 'Update published feedback'
-									: 'Publish to writer'}
-							</button>
+							{canExportFeedback ? (
+								<Link
+									href={`/app/workshop/${submissionId}/export`}
+									className="inline-flex rounded-full border border-white/18 bg-white/6 px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 shadow-[0_6px_16px_rgba(0,0,0,0.14)] transition hover:border-white/28 hover:bg-white/10 hover:text-parchment-100">
+									Feedback document
+								</Link>
+							) : null}
+							{!isPublishedReadOnly && canPublishFeedback ? (
+								<button
+									type="button"
+									onClick={() => {
+										setPublishError(null)
+										setIsPublishModalOpen(true)
+									}}
+									className="inline-flex rounded-full border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-emerald-100 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:-translate-y-[1px] hover:bg-emerald-300/20 active:translate-y-0">
+									Publish to writer
+								</button>
+							) : null}
 						</div>
 					</div>
 					<p
@@ -1238,13 +1284,20 @@ export function TeacherReviewWorkspace({
 								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
 								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
 						}`}>
-						{liveSubmissionStatus === 'feedback_published'
-							? 'Published feedback is already visible to the writer. New edits stay private until you publish again.'
-							: 'Draft comments and snippets stay private while you read.'}
+						{isPublishedReadOnly
+							? 'Feedback has been published for this version. It is now read-only. Use this view for reference; further feedback should happen on a new submission or revised version.'
+							: canPublishFeedback
+								? 'Draft comments and snippets stay private while you read.'
+								: 'A newer version exists. Open that draft to continue active review or publish new feedback.'}
 					</p>
 					{summaryPublishedAt ? (
 						<p className="mt-2 text-xs text-silver-300">
 							Last published {new Date(summaryPublishedAt).toLocaleString()}
+						</p>
+					) : null}
+					{!canExportFeedback ? (
+						<p className="mt-2 text-xs text-silver-300">
+							Feedback must be published before export is available.
 						</p>
 					) : null}
 					{showQueueReturnCue ? (
@@ -1255,7 +1308,7 @@ export function TeacherReviewWorkspace({
 						</Link>
 					) : null}
 				</div>
-				{sidebarHeader}
+				{Children.toArray(sidebarHeader)}
 				{errorNotice ? (
 					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
 						{errorNotice}
@@ -1269,8 +1322,8 @@ export function TeacherReviewWorkspace({
 								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
 								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
 						}`}>
-						{liveSubmissionStatus === 'feedback_published'
-							? 'The writer can see the published comments. New edits stay private until you publish again.'
+						{isPublishedReadOnly
+							? 'Published comments are shown here for reference only.'
 							: 'Draft comments and snippets stay private while you read.'}
 					</p>
 					<div className="mb-3 flex items-center justify-between gap-3">
@@ -1497,11 +1550,7 @@ export function TeacherReviewWorkspace({
 									type="submit"
 									disabled={isPublishing}
 									className="rounded-full border border-emerald-300/60 bg-emerald-300/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/25 disabled:cursor-not-allowed disabled:opacity-60">
-									{isPublishing
-										? 'Publishing...'
-										: liveSubmissionStatus === 'feedback_published'
-											? 'Update published feedback'
-											: 'Confirm publish'}
+									{isPublishing ? 'Publishing...' : 'Confirm publish'}
 								</button>
 							</div>
 						</form>

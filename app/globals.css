@@ -75,6 +75,10 @@ body {
 }
 
 @media print {
+	@page {
+		margin: 0.55in 0.48in 0.8in;
+	}
+
 	body {
 		background: #fff !important;
 		color: #111827 !important;
@@ -107,8 +111,28 @@ body {
 		page-break-inside: avoid;
 	}
 
-	.print-manuscript-section {
-		break-before: page;
-		page-break-before: always;
+	.print-comment-card {
+		break-inside: auto;
+		page-break-inside: auto;
+	}
+
+	.print-page-footer {
+		position: fixed;
+		left: 0;
+		right: 0;
+		display: flex !important;
+		align-items: center;
+		justify-content: space-between;
+		pointer-events: none;
+	}
+
+	.print-page-footer {
+		bottom: 0.16in;
+		padding: 0.14in 0.02in 0;
+		border-top: 1px solid rgba(17, 24, 39, 0.12);
+	}
+
+	.print-page-number::before {
+		content: 'Page ' counter(page);
 	}
 }

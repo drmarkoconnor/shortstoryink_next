@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
-type ExportAnchor = {
+export type ExportAnchor = {
 	blockId: string
 	startOffset: number
 	endOffset: number
@@ -13,44 +13,92 @@ type ExportAnchor = {
 	kind?: FeedbackKind
 	categoryLabel?: string
 	categorySlug?: string
+	suggestedAction?: 'cut'
 }
 
 export type ExportFeedbackItem = {
 	id: string
+	number: number
 	comment: string
 	createdAt: string
 	authorId: string
 	authorName: string
+	label: string
+	slug: string
 	anchor: ExportAnchor | null
 }
 
-export type ExportSnippetItem = {
-	id: string
-	text: string
-	note: string | null
-	createdAt: string
-	anchor: ExportAnchor
-	categoryName: string | null
+export type FeedbackExportTheme = {
+	label: string
+	slug: string
+	commentCount: number
+}
+
+export type FeedbackExportCommentGroup = {
+	label: string
+	slug: string
+	comments: ExportFeedbackItem[]
 }
 
 export type FeedbackExportPacket = {
+	template: 'feedback_packet_v1'
 	submissionId: string
-	title: string
-	writerId: string
-	writerName: string
-	status: string
-	version: number
-	source: 'workshop'
-	createdAt: string
-	paragraphs: Array<{ id: string; text: string }>
-	summary: {
-		text: string
+	reviewUrl: string
+	cover: {
+		title: string
+		writerName: string
+		teacherName: string
+		date: string
+		versionLabel: string
+		wordCount: number
+		workshopTitle: string
+		status: string
+	}
+	editorialLetter: {
+		summary: string
 		publishedAt: string | null
-		authorId: string | null
-		authorName: string
-	} | null
-	feedback: ExportFeedbackItem[]
-	snippets: ExportSnippetItem[]
+		teacherName: string
+	}
+	exportState: {
+		copyVersion: number
+		copyUpdatedAt: string | null
+		lastExportedAt: string | null
+		lastExportedCopyVersion: number | null
+		hasUnexportedChanges: boolean
+	}
+	exportHistory: Array<{
+		id: string
+		createdAt: string
+		exportedBy: string
+		exportCopyVersion: number
+		note: string | null
+		packetTemplate: string
+	}>
+	teacherAdditions: {
+		personalNote: string | null
+	}
+	keyRevisionThemes: FeedbackExportTheme[]
+	annotatedManuscript: {
+		paragraphs: Array<{
+			id: string
+			text: string
+			comments: ExportFeedbackItem[]
+		}>
+		commentCount: number
+	}
+	groupedComments: FeedbackExportCommentGroup[]
+	nextSteps: {
+		title: string
+		items: string[]
+		readingSuggestions: string[]
+		isPlaceholder: boolean
+	}
+}
+
+type FeedbackExportOverrides = {
+	personalNote?: string | null
+	nextSteps?: string[]
+	readingSuggestions?: string[]
 }
 
 function isAnchor(value: unknown): value is ExportAnchor {
@@ -82,6 +130,8 @@ function normalizeAnchor(value: unknown): ExportAnchor | null {
 			typeof value.categoryLabel === 'string' ? value.categoryLabel : undefined,
 		categorySlug:
 			typeof value.categorySlug === 'string' ? value.categorySlug : undefined,
+		suggestedAction:
+			value.suggestedAction === 'cut' ? value.suggestedAction : undefined,
 		kind:
 			value.kind === 'typo' ||
 			value.kind === 'craft' ||
@@ -92,18 +142,71 @@ function normalizeAnchor(value: unknown): ExportAnchor | null {
 	}
 }
 
+function kindLabel(kind: FeedbackKind | undefined) {
+	if (kind === 'typo') {
+		return 'Typo / Grammar'
+	}
+	if (kind === 'pacing') {
+		return 'Pacing'
+	}
+	if (kind === 'structure') {
+		return 'Structure'
+	}
+	return 'Craft'
+}
+
+function fallbackCategory(anchor: ExportAnchor | null) {
+	const label = anchor?.categoryLabel?.trim() || kindLabel(anchor?.kind)
+	const slug =
+		anchor?.categorySlug?.trim() ||
+		anchor?.suggestedAction ||
+		anchor?.kind ||
+		'uncategorised'
+
+	return {
+		label,
+		slug,
+	}
+}
+
+function countWords(value: string) {
+	return value.trim() ? value.trim().split(/\s+/).length : 0
+}
+
+function formatDateOnly(value: string | null | undefined) {
+	if (!value) {
+		return 'Date pending'
+	}
+
+	return new Date(value).toLocaleDateString(undefined, {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+	})
+}
+
+function buildNextStepsPlaceholder(title: string) {
+	return [
+		`Re-read "${title}" with the revision themes in mind before making line edits.`,
+		'Choose one structural or craft change to carry through the whole piece first.',
+		'Return to the annotated manuscript after revising to check which comments have now been answered on the page.',
+	]
+}
+
 export async function getFeedbackExportPacket(
 	submissionId: string,
-	savedByTeacherId: string,
+	currentTeacherId: string,
+	overrides: FeedbackExportOverrides = {},
 ) {
 	const supabase = await createServerSupabaseClient()
 
 	const submissionResult = await supabase
 		.from('submissions')
 		.select(
-			'id, title, body, status, created_at, author_id, version, source',
+			'id, title, body, status, created_at, author_id, version, workshop_id',
 		)
 		.eq('id', submissionId)
+		.eq('status', 'feedback_published')
 		.maybeSingle()
 
 	if (submissionResult.error || !submissionResult.data) {
@@ -118,33 +221,39 @@ export async function getFeedbackExportPacket(
 		created_at: string
 		author_id: string
 		version: number
-		source?: string
+		workshop_id: string
 	}
 
-	const writerResult = await supabase
-		.from('profiles')
-		.select('display_name')
-		.eq('id', submission.author_id)
-		.maybeSingle()
-
-	const feedbackResult = await supabase
-		.from('feedback_items')
-		.select('id, comment, anchor, created_at, author_id')
-		.eq('submission_id', submission.id)
-		.order('created_at', { ascending: true })
-
-	const summaryResult = await supabase
-		.from('feedback_summaries')
-		.select('summary, published_at, author_id')
-		.eq('submission_id', submission.id)
-		.maybeSingle()
-
-	const snippetsResult = await supabase
-		.from('snippets')
-		.select('id, snippet_text, note, created_at, anchor, snippet_category_id')
-		.eq('source_submission_id', submission.id)
-		.eq('saved_by', savedByTeacherId)
-		.order('created_at', { ascending: true })
+	const [writerResult, workshopResult, feedbackResult, summaryResult, teacherResult] =
+		await Promise.all([
+			supabase
+				.from('profiles')
+				.select('display_name')
+				.eq('id', submission.author_id)
+				.maybeSingle(),
+			supabase
+				.from('workshops')
+				.select('title')
+				.eq('id', submission.workshop_id)
+				.maybeSingle(),
+			supabase
+				.from('feedback_items')
+				.select('id, comment, anchor, created_at, author_id')
+				.eq('submission_id', submission.id)
+				.order('created_at', { ascending: true }),
+			supabase
+				.from('feedback_summaries')
+				.select(
+					'id, summary, published_at, author_id, personal_note, next_steps, reading_suggestions, export_copy_version, export_copy_updated_at, last_exported_at, last_exported_copy_version',
+				)
+				.eq('submission_id', submission.id)
+				.maybeSingle(),
+			supabase
+				.from('profiles')
+				.select('display_name')
+				.eq('id', currentTeacherId)
+				.maybeSingle(),
+		])
 
 	const feedbackRows = (feedbackResult.data ?? []) as Array<{
 		id: string
@@ -159,9 +268,11 @@ export async function getFeedbackExportPacket(
 	]
 	const summaryAuthorId =
 		(summaryResult.data?.author_id as string | undefined) ?? null
+	const summaryId =
+		(summaryResult.data?.id as string | undefined) ?? null
 	const authorIds = [
 		...new Set(
-			[...feedbackAuthorIds, summaryAuthorId].filter(
+			[...feedbackAuthorIds, summaryAuthorId, currentTeacherId].filter(
 				(value): value is string => Boolean(value),
 			),
 		),
@@ -182,85 +293,183 @@ export async function getFeedbackExportPacket(
 		)
 	}
 
-	const snippetRows = (snippetsResult.data ?? []) as Array<{
+	const exportEventsResult = summaryId
+		? await supabase
+				.from('feedback_export_events')
+				.select(
+					'id, created_at, exported_by, export_copy_version, note, packet_template',
+				)
+				.eq('summary_id', summaryId)
+				.order('created_at', { ascending: false })
+		: { data: [], error: null }
+
+	const exportHistory = ((exportEventsResult.data ?? []) as Array<{
 		id: string
-		snippet_text: string
-		note: string | null
 		created_at: string
-		anchor: unknown
-		snippet_category_id: string | null
-	}>
-
-	const snippetCategoryIds = [
-		...new Set(
-			snippetRows
-				.map((item) => item.snippet_category_id)
-				.filter((value): value is string => Boolean(value)),
-		),
-	]
-
-	let snippetCategoryNameById: Record<string, string> = {}
-	if (snippetCategoryIds.length > 0) {
-		const categoryLookup = await supabase
-			.from('snippet_categories')
-			.select('id, name')
-			.in('id', snippetCategoryIds)
-
-		snippetCategoryNameById = Object.fromEntries(
-			(categoryLookup.data ?? []).map((item) => [
-				item.id as string,
-				(item.name as string | null) ?? 'Category',
-			]),
-		)
-	}
-
-	const feedback: ExportFeedbackItem[] = feedbackRows.map((item) => ({
+		exported_by: string
+		export_copy_version: number
+		note: string | null
+		packet_template: string
+	}>).map((item) => ({
 		id: item.id,
-		comment: item.comment,
 		createdAt: item.created_at,
-		authorId: item.author_id,
-		authorName: authorNameById[item.author_id] ?? 'Teacher',
-		anchor: normalizeAnchor(item.anchor),
+		exportedBy: authorNameById[item.exported_by] ?? 'Teacher',
+		exportCopyVersion: Number(item.export_copy_version) || 1,
+		note: item.note,
+		packetTemplate: item.packet_template,
 	}))
 
-	const snippets: ExportSnippetItem[] = snippetRows
-		.map((item) => ({
+	const feedback: ExportFeedbackItem[] = feedbackRows.map((item, index) => {
+		const anchor = normalizeAnchor(item.anchor)
+		const category = fallbackCategory(anchor)
+
+		return {
 			id: item.id,
-			text: item.snippet_text,
-			note: item.note,
+			number: index + 1,
+			comment: item.comment,
 			createdAt: item.created_at,
-			anchor: normalizeAnchor(item.anchor),
-			categoryName: item.snippet_category_id
-				? snippetCategoryNameById[item.snippet_category_id] ?? null
-				: null,
-		}))
-		.filter((item): item is ExportSnippetItem => Boolean(item.anchor))
+			authorId: item.author_id,
+			authorName: authorNameById[item.author_id] ?? 'Teacher',
+			label: category.label,
+			slug: category.slug,
+			anchor,
+		}
+	})
+
+	const groupedCommentsMap = feedback.reduce(
+		(acc, item) => {
+			const key = item.slug || 'uncategorised'
+			if (!acc[key]) {
+				acc[key] = {
+					label: item.label || 'Uncategorised',
+					slug: key,
+					comments: [],
+				}
+			}
+			acc[key].comments.push(item)
+			return acc
+		},
+		{} as Record<string, FeedbackExportCommentGroup>,
+	)
+
+	const groupedComments = Object.values(groupedCommentsMap).sort(
+		(a, b) => b.comments.length - a.comments.length || a.label.localeCompare(b.label),
+	)
+
+	const keyRevisionThemes = groupedComments.slice(0, 5).map((group) => ({
+		label: group.label,
+		slug: group.slug,
+		commentCount: group.comments.length,
+	}))
+
+	const paragraphs = toManuscriptParagraphs(submission.body).map((paragraph) => ({
+		id: paragraph.id,
+		text: paragraph.text,
+		comments: feedback.filter((item) => item.anchor?.blockId === paragraph.id),
+	}))
+
+	const summaryText = (summaryResult.data?.summary as string | null | undefined) ?? ''
+	const storedPersonalNote =
+		(summaryResult.data?.personal_note as string | null | undefined) ?? null
+	const exportCopyVersion = Math.max(
+		1,
+		Number(summaryResult.data?.export_copy_version ?? 1) || 1,
+	)
+	const exportCopyUpdatedAt =
+		(summaryResult.data?.export_copy_updated_at as string | null | undefined) ??
+		null
+	const lastExportedAt =
+		(summaryResult.data?.last_exported_at as string | null | undefined) ?? null
+	const lastExportedCopyVersionRaw = Number(
+		summaryResult.data?.last_exported_copy_version ?? 0,
+	)
+	const lastExportedCopyVersion =
+		Number.isFinite(lastExportedCopyVersionRaw) &&
+		lastExportedCopyVersionRaw >= 1
+			? lastExportedCopyVersionRaw
+			: null
+	const storedNextSteps = Array.isArray(summaryResult.data?.next_steps)
+		? (summaryResult.data?.next_steps as unknown[]).filter(
+				(item): item is string => typeof item === 'string' && item.trim().length > 0,
+			)
+		: []
+	const storedReadingSuggestions = Array.isArray(
+		summaryResult.data?.reading_suggestions,
+	)
+		? (summaryResult.data?.reading_suggestions as unknown[]).filter(
+				(item): item is string => typeof item === 'string' && item.trim().length > 0,
+			)
+		: []
+	const summaryAuthorName =
+		authorNameById[summaryAuthorId ?? ''] ||
+		(authorNameById[currentTeacherId] ??
+			(teacherResult.data?.display_name as string | null | undefined) ??
+			'Teacher')
 
 	return {
+		template: 'feedback_packet_v1',
 		submissionId: submission.id,
-		title: submission.title,
-		writerId: submission.author_id,
-		writerName:
-			(writerResult.data?.display_name as string | null | undefined) ?? 'Writer',
-		status: submission.status,
-		version: submission.version,
-		source: 'workshop',
-		createdAt: submission.created_at,
-		paragraphs: toManuscriptParagraphs(submission.body),
-		summary: summaryResult.data
-			? {
-					text: (summaryResult.data.summary as string | null) ?? '',
-					publishedAt:
-						(summaryResult.data.published_at as string | null) ?? null,
-					authorId:
-						(summaryResult.data.author_id as string | null | undefined) ?? null,
-					authorName:
-						authorNameById[
-							(summaryResult.data.author_id as string | undefined) ?? ''
-						] ?? 'Teacher',
-				}
-			: null,
-		feedback,
-		snippets,
+		reviewUrl: `/app/workshop/${submission.id}`,
+		cover: {
+			title: submission.title,
+			writerName:
+				(writerResult.data?.display_name as string | null | undefined) ??
+				'Writer',
+			teacherName: summaryAuthorName,
+			date: formatDateOnly(
+				(summaryResult.data?.published_at as string | null | undefined) ??
+					submission.created_at,
+			),
+			versionLabel: `Version ${submission.version}`,
+			wordCount: countWords(submission.body),
+			workshopTitle:
+				(workshopResult.data?.title as string | null | undefined) ??
+				'Workshop group',
+			status: submission.status,
+		},
+		editorialLetter: {
+			summary: summaryText || 'No overall note was published for this draft.',
+			publishedAt:
+				(summaryResult.data?.published_at as string | null | undefined) ?? null,
+			teacherName: summaryAuthorName,
+		},
+		exportState: {
+			copyVersion: exportCopyVersion,
+			copyUpdatedAt: exportCopyUpdatedAt,
+			lastExportedAt,
+			lastExportedCopyVersion,
+			hasUnexportedChanges:
+				lastExportedCopyVersion === null ||
+				exportCopyVersion > lastExportedCopyVersion,
+		},
+		exportHistory,
+		teacherAdditions: {
+			personalNote: overrides.personalNote?.trim() || storedPersonalNote,
+		},
+		keyRevisionThemes,
+		annotatedManuscript: {
+			paragraphs,
+			commentCount: feedback.length,
+		},
+		groupedComments,
+		nextSteps: {
+			title: 'Suggested reading / next steps',
+			items:
+				overrides.nextSteps && overrides.nextSteps.length > 0
+					? overrides.nextSteps
+					: storedNextSteps.length > 0
+						? storedNextSteps
+						: buildNextStepsPlaceholder(submission.title),
+			readingSuggestions:
+				overrides.readingSuggestions && overrides.readingSuggestions.length > 0
+					? overrides.readingSuggestions
+					: storedReadingSuggestions,
+			isPlaceholder: !(
+				(overrides.nextSteps && overrides.nextSteps.length > 0) ||
+				(overrides.readingSuggestions && overrides.readingSuggestions.length > 0) ||
+				storedNextSteps.length > 0 ||
+				storedReadingSuggestions.length > 0
+			),
+		},
 	} satisfies FeedbackExportPacket
 }
