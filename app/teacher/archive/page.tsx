@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
+import { ArchivePieceSelect } from '@/components/teacher/archive-piece-select'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
@@ -93,29 +94,15 @@ export default async function TeacherArchivePage({
 					</p>
 				) : (
 					<div className="mt-4 space-y-4">
-						<form className="space-y-2">
-							<label className="block text-[11px] uppercase tracking-[0.12em] text-silver-300">
-								Choose a published piece
-							</label>
-							<div className="flex flex-wrap gap-2">
-								<select
-									name="submission"
-									defaultValue={selectedArchive?.id ?? ''}
-									className="min-w-[18rem] flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-									{rows.map((item) => (
-										<option key={item.id} value={item.id}>
-											v{item.version} - {item.title} -{' '}
-											{writerById[item.author_id] || item.author_id}
-										</option>
-									))}
-								</select>
-								<button
-									type="submit"
-									className="rounded-full border border-white/18 bg-white/6 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-white/10 hover:text-parchment-100">
-									Load
-								</button>
-							</div>
-						</form>
+						<ArchivePieceSelect
+							selectedId={selectedArchive?.id ?? ''}
+							options={rows.map((item) => ({
+								id: item.id,
+								label: `v${item.version} - ${item.title} - ${
+									writerById[item.author_id] || item.author_id
+								}`,
+							}))}
+						/>
 						{selectedArchive ? (
 							<div className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
 								<p className="text-sm font-medium text-parchment-100">

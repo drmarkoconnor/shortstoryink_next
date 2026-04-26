@@ -452,6 +452,11 @@ export default async function WriterPage({
 	return (
 		<section className="space-y-5">
 			<WriterSubmissionComposer
+				writerName={
+					(user.user_metadata?.first_name as string | undefined) ||
+					(user.user_metadata?.name as string | undefined) ||
+					String(user.email ?? 'Writer').split('@')[0]
+				}
 				createSubmissionAction={createSubmissionAction}
 				deleteSubmissionAction={deleteSubmissionAction}
 				workshops={composerWorkshops}
