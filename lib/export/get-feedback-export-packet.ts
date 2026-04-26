@@ -101,6 +101,25 @@ type FeedbackExportOverrides = {
 	readingSuggestions?: string[]
 }
 
+function normalizeDisplayName(
+	value: string | null | undefined,
+	fallback: string,
+) {
+	const trimmed = value?.trim()
+
+	if (!trimmed) {
+		return fallback
+	}
+
+	return trimmed
+}
+
+function normalizeTeacherDisplayName(value: string | null | undefined) {
+	const trimmed = normalizeDisplayName(value, 'Teacher')
+
+	return trimmed.replace(/^dr\.?\s+/i, '').trim() || 'Teacher'
+}
+
 function isAnchor(value: unknown): value is ExportAnchor {
 	if (!value || typeof value !== 'object') {
 		return false
@@ -288,7 +307,9 @@ export async function getFeedbackExportPacket(
 		authorNameById = Object.fromEntries(
 			(authorLookup.data ?? []).map((item) => [
 				item.id as string,
-				(item.display_name as string | null) ?? 'Teacher',
+				normalizeTeacherDisplayName(
+					item.display_name as string | null | undefined,
+				),
 			]),
 		)
 	}
@@ -402,9 +423,10 @@ export async function getFeedbackExportPacket(
 		: []
 	const summaryAuthorName =
 		authorNameById[summaryAuthorId ?? ''] ||
-		(authorNameById[currentTeacherId] ??
-			(teacherResult.data?.display_name as string | null | undefined) ??
-			'Teacher')
+		authorNameById[currentTeacherId] ||
+		normalizeTeacherDisplayName(
+			teacherResult.data?.display_name as string | null | undefined,
+		)
 
 	return {
 		template: 'feedback_packet_v1',
@@ -412,9 +434,10 @@ export async function getFeedbackExportPacket(
 		reviewUrl: `/app/workshop/${submission.id}`,
 		cover: {
 			title: submission.title,
-			writerName:
-				(writerResult.data?.display_name as string | null | undefined) ??
+			writerName: normalizeDisplayName(
+				writerResult.data?.display_name as string | null | undefined,
 				'Writer',
+			),
 			teacherName: summaryAuthorName,
 			date: formatDateOnly(
 				(summaryResult.data?.published_at as string | null | undefined) ??

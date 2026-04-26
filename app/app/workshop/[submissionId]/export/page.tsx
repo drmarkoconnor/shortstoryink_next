@@ -164,7 +164,7 @@ function renderParagraphWithHighlights(
 }
 
 const packetSectionClass =
-	'print-break-avoid border-t border-ink-900/10 bg-transparent px-0 py-8'
+	'print-break-avoid border-t border-ink-900/10 bg-transparent px-0 py-7'
 
 export default async function WorkshopSubmissionExportPage({
 	params,
@@ -335,7 +335,10 @@ export default async function WorkshopSubmissionExportPage({
 	const hasNextSteps =
 		!packet.nextSteps.isPlaceholder && packet.nextSteps.items.length > 0
 	const hasReadingSuggestions = packet.nextSteps.readingSuggestions.length > 0
-	const hasAppendixExtras = hasNextSteps || hasReadingSuggestions
+	const hasAppendixExtras =
+		Boolean(packet.teacherAdditions.personalNote) ||
+		hasNextSteps ||
+		hasReadingSuggestions
 
 	const exportedAt = new Date()
 	const exportFilename = buildExportFilename({
@@ -346,7 +349,7 @@ export default async function WorkshopSubmissionExportPage({
 	})
 
 	return (
-		<section className="print-shell mx-auto max-w-5xl space-y-6 rounded-[32px] bg-parchment-50 px-6 py-10 text-ink-900 shadow-[0_24px_80px_rgba(0,0,0,0.18)] lg:px-12">
+		<section className="print-shell mx-auto max-w-5xl space-y-5 rounded-[32px] bg-parchment-50 px-6 py-8 text-ink-900 shadow-[0_24px_80px_rgba(0,0,0,0.18)] lg:px-12">
 			<div className="print-page-footer hidden text-[11px] uppercase tracking-[0.16em] text-ink-900/42 print:flex">
 				<span>shortstory.ink</span>
 				<span className="print-page-number" />
@@ -403,90 +406,90 @@ export default async function WorkshopSubmissionExportPage({
 			</form>
 
 			{savedNotice === '1' ? (
-				<p className="print-controls rounded-2xl border border-emerald-300/25 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
-						Feedback document notes saved for this published submission.
-					</p>
-				) : savedNotice === 'cleared' ? (
-					<p className="print-controls rounded-2xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-						Saved feedback document notes cleared.
-					</p>
-				) : savedNotice === 'error' ? (
-					<p className="print-controls rounded-2xl border border-rose-300/25 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
-						Unable to save feedback document notes right now.
-					</p>
-				) : null}
+				<p className="print-controls rounded-2xl border border-emerald-700/20 bg-emerald-100/70 px-4 py-3 text-sm text-emerald-950">
+					Feedback document notes saved for this published submission.
+				</p>
+			) : savedNotice === 'cleared' ? (
+				<p className="print-controls rounded-2xl border border-amber-700/20 bg-amber-100/70 px-4 py-3 text-sm text-amber-950">
+					Saved feedback document notes cleared.
+				</p>
+			) : savedNotice === 'error' ? (
+				<p className="print-controls rounded-2xl border border-rose-700/20 bg-rose-100/70 px-4 py-3 text-sm text-rose-950">
+					Unable to save feedback document notes right now.
+				</p>
+			) : null}
 
 			<form
-				className="print-controls rounded-[28px] border border-white/15 bg-ink-800/92 px-5 py-5 text-parchment-100 shadow-glow"
+				className="print-controls rounded-[28px] border border-ink-900/12 bg-white px-5 py-4 text-ink-900 shadow-[0_18px_44px_rgba(11,14,23,0.16)]"
 				action={saveExportCopyAction}>
 				<div className="flex flex-wrap items-start justify-between gap-4">
 					<div>
-						<p className="text-xs uppercase tracking-[0.14em] text-silver-300">
+						<p className="text-xs uppercase tracking-[0.14em] text-ink-900/45">
 							Feedback document notes
 						</p>
-						<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+						<h2 className="literary-title mt-2 text-2xl text-ink-900">
 							Writer-facing additions
 						</h2>
-						<p className="mt-2 max-w-2xl text-sm leading-7 text-silver-200">
+						<p className="mt-2 max-w-2xl text-sm leading-6 text-ink-900/64">
 							Use these fields only for material you want the writer to receive
 							in the feedback document.
 						</p>
 					</div>
-					<div className="flex gap-2">
+					<div className="flex flex-wrap gap-2">
 						<button
 							formAction={clearExportCopyAction}
 							type="submit"
-							className="rounded-full border border-white/20 bg-white/8 px-4 py-2 text-xs font-medium uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-white/14">
+							className="inline-flex select-none appearance-none items-center justify-center rounded-full border border-ink-900/18 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-900/70 shadow-sm transition hover:border-ink-900/28 hover:bg-parchment-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:bg-parchment-200">
 							Clear notes
 						</button>
 						<button
 							type="submit"
-							className="rounded-full border border-accent-300/55 bg-accent-300/20 px-4 py-2 text-xs font-medium uppercase tracking-[0.1em] text-ink-950 transition hover:bg-accent-300/28">
+							className="inline-flex select-none appearance-none items-center justify-center rounded-full border border-accent-400 bg-accent-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-ink-950 shadow-[0_8px_18px_rgba(11,14,23,0.18)] transition hover:border-accent-300 hover:bg-accent-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/75 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:translate-y-px">
 							Save feedback notes
 						</button>
 					</div>
 				</div>
-				<div className="mt-5 grid gap-4 lg:grid-cols-3">
+				<div className="mt-4 grid gap-3 lg:grid-cols-3">
 					<label className="block">
-						<span className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.12em] text-ink-900/48">
 							Personal note
 						</span>
 						<textarea
 							name="personalNote"
 							defaultValue={packet.teacherAdditions.personalNote ?? ''}
-							rows={7}
-							className="mt-2 w-full rounded-2xl border border-white/15 bg-ink-900/80 px-4 py-3 text-sm leading-7 text-parchment-100 outline-none ring-accent-300/50 transition focus:ring"
+							rows={6}
+							className="mt-2 w-full rounded-2xl border border-ink-900/12 bg-ink-800 px-4 py-2.5 text-sm leading-6 text-parchment-100 outline-none ring-accent-400/50 transition placeholder:text-parchment-100/48 focus:border-accent-400/60 focus:ring"
 							placeholder="Add a brief personal note to sit beside the editorial letter."
 						/>
 					</label>
 					<label className="block">
-						<span className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.12em] text-ink-900/48">
 							Next steps
 						</span>
 						<textarea
 							name="nextSteps"
 							defaultValue={packet.nextSteps.isPlaceholder ? '' : packet.nextSteps.items.join('\n')}
-							rows={7}
-							className="mt-2 w-full rounded-2xl border border-white/15 bg-ink-900/80 px-4 py-3 text-sm leading-7 text-parchment-100 outline-none ring-accent-300/50 transition focus:ring"
+							rows={6}
+							className="mt-2 w-full rounded-2xl border border-ink-900/12 bg-ink-800 px-4 py-2.5 text-sm leading-6 text-parchment-100 outline-none ring-accent-400/50 transition placeholder:text-parchment-100/48 focus:border-accent-400/60 focus:ring"
 							placeholder="One item per line"
 						/>
 					</label>
 					<label className="block">
-						<span className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.12em] text-ink-900/48">
 							Reading suggestions
 						</span>
 						<textarea
 							name="readingSuggestions"
 							defaultValue={packet.nextSteps.readingSuggestions.join('\n')}
-							rows={7}
-							className="mt-2 w-full rounded-2xl border border-white/15 bg-ink-900/80 px-4 py-3 text-sm leading-7 text-parchment-100 outline-none ring-accent-300/50 transition focus:ring"
+							rows={6}
+							className="mt-2 w-full rounded-2xl border border-ink-900/12 bg-ink-800 px-4 py-2.5 text-sm leading-6 text-parchment-100 outline-none ring-accent-400/50 transition placeholder:text-parchment-100/48 focus:border-accent-400/60 focus:ring"
 							placeholder="Suggested authors, stories, or exercises, one per line"
 						/>
 					</label>
 				</div>
 			</form>
 
-			<section className="print-break-avoid px-1 pb-6 pt-6">
+			<section className="print-break-avoid px-1 pb-5 pt-5">
 				<p className="text-[11px] uppercase tracking-[0.18em] text-ink-900/42">
 					shortstory.ink
 				</p>
@@ -501,7 +504,7 @@ export default async function WorkshopSubmissionExportPage({
 					<span className="mx-2 text-ink-900/28">/</span>
 					<span>{packet.cover.wordCount} words</span>
 				</div>
-				<h2 className="literary-title mt-6 max-w-4xl text-[42px] leading-[1.08] text-ink-900 lg:text-[52px]">
+				<h2 className="literary-title mt-5 max-w-4xl text-[42px] leading-[1.08] text-ink-900 lg:text-[52px]">
 					{packet.cover.title}
 				</h2>
 				<p className="mt-4 max-w-2xl font-serif text-[18px] leading-8 text-ink-900/72">
@@ -518,19 +521,14 @@ export default async function WorkshopSubmissionExportPage({
 				<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
 					A note on this draft
 				</p>
-				<div className="mt-6 max-w-[42rem] border-l border-ink-900/10 pl-6">
-					<p className="font-serif text-[19px] italic leading-[1.95] text-ink-900/84">
+				<div className="mt-5 max-w-[42rem] border-l border-ink-900/10 pl-6">
+					<p className="font-serif text-[19px] italic leading-[1.8] text-ink-900/84">
 						{packet.editorialLetter.summary}
 					</p>
-					{packet.teacherAdditions.personalNote ? (
-						<p className="mt-6 whitespace-pre-wrap font-serif text-[18px] leading-[1.9] text-ink-900/76">
-							{packet.teacherAdditions.personalNote}
-						</p>
-					) : null}
 				</div>
 			</section>
 
-			<section className="border-t border-ink-900/10 px-0 py-8">
+			<section className="border-t border-ink-900/10 px-0 py-7">
 				<div className="flex items-center justify-between gap-3">
 					<h3 className="literary-title text-3xl text-ink-900">
 						Annotated manuscript
@@ -540,11 +538,11 @@ export default async function WorkshopSubmissionExportPage({
 					</p>
 				</div>
 				{packet.annotatedManuscript.commentCount === 0 ? (
-					<p className="mt-6 px-1 text-sm text-ink-900/70">
+					<p className="mt-5 px-1 text-sm text-ink-900/70">
 						No feedback comments were found for this submission.
 					</p>
 				) : null}
-				<div className="mt-6 space-y-6 font-serif text-[18px] leading-8 text-ink-900/92">
+				<div className="mt-5 space-y-5 font-serif text-[18px] leading-8 text-ink-900/92">
 					{packet.annotatedManuscript.paragraphs.map((paragraph) => {
 						const isSceneBreak = paragraph.text.trim() === '**'
 						return (
@@ -563,11 +561,11 @@ export default async function WorkshopSubmissionExportPage({
 											)}
 								</p>
 								{paragraph.comments.length > 0 ? (
-									<div className="mt-3 space-y-3 border-l-2 border-ink-900/12 pl-4">
+									<div className="mt-2.5 space-y-2.5 border-l-2 border-ink-900/12 pl-4">
 										{paragraph.comments.map((item) => (
 											<div
 												key={item.id}
-												className="print-comment-card px-3 py-2">
+												className="print-comment-card px-3 py-1.5">
 												<div className="flex flex-wrap items-center gap-2">
 													<p className="text-[11px] uppercase tracking-[0.14em] text-ink-900/50">
 														Note {item.number} · {item.label}
@@ -579,7 +577,7 @@ export default async function WorkshopSubmissionExportPage({
 												<p className="mt-1.5 text-[16px] leading-[1.65] text-ink-900/88">
 													{item.comment}
 												</p>
-												<p className="mt-3 text-xs text-ink-900/55">
+												<p className="mt-2 text-xs text-ink-900/55">
 													{item.authorName}
 												</p>
 											</div>
@@ -594,34 +592,39 @@ export default async function WorkshopSubmissionExportPage({
 
 			{appendixEnabled ? (
 				<section className={packetSectionClass}>
-				<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
-					Revision notes
-				</p>
-				{packet.keyRevisionThemes.length > 0 ? (
-					<p className="mt-3 max-w-3xl text-sm leading-7 text-ink-900/70">
-						The main themes in this feedback:{" "}
-						<span className="font-medium text-ink-900/82">
-							{packet.keyRevisionThemes.map((theme) => theme.label).join(', ')}
-						</span>
+					<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
+						Revision notes
 					</p>
-				) : null}
-				<ul className="mt-5 space-y-3">
-					{revisionNotes.map((item) => (
-						<li key={item.id} className="max-w-4xl font-serif text-[18px] leading-[1.75] text-ink-900/90">
-							<span className="font-medium text-ink-900">
-								Comment {item.number} [{item.label}]:
-							</span>{' '}
-							{item.comment}
-							{item.quote !== 'General note' ? (
-								<span className="text-ink-900/62"> {' '}(“{item.quote}”)</span>
-							) : null}
-						</li>
-					))}
-				</ul>
+					{packet.keyRevisionThemes.length > 0 ? (
+						<p className="mt-3 max-w-3xl text-sm leading-6 text-ink-900/70">
+							The main themes in this feedback:{' '}
+							<span className="font-medium text-ink-900/82">
+								{packet.keyRevisionThemes.map((theme) => theme.label).join(', ')}
+							</span>
+						</p>
+					) : null}
+					<ul className="mt-4 space-y-2.5">
+						{revisionNotes.map((item) => (
+							<li
+								key={item.id}
+								className="max-w-4xl font-serif text-[18px] leading-[1.65] text-ink-900/90">
+								<span className="font-medium text-ink-900">
+									Comment {item.number} [{item.label}]:
+								</span>{' '}
+								{item.comment}
+								{item.quote !== 'General note' ? (
+									<span className="text-ink-900/62">
+										{' '}
+										(&ldquo;{item.quote}&rdquo;)
+									</span>
+								) : null}
+							</li>
+						))}
+					</ul>
 				</section>
 			) : null}
 
-			{hasAppendixExtras ? (
+			{appendixEnabled && hasAppendixExtras ? (
 				<section className={packetSectionClass}>
 					<div className="max-w-3xl">
 						<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
@@ -634,37 +637,42 @@ export default async function WorkshopSubmissionExportPage({
 							Use these practical prompts only if they help shape the next pass.
 						</p>
 					</div>
+					{packet.teacherAdditions.personalNote ? (
+						<section className="mt-8 border-t border-ink-900/10 pt-5">
+							<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
+								Personal note
+							</p>
+							<p className="mt-3 max-w-[42rem] whitespace-pre-wrap border-l border-ink-900/10 pl-6 font-serif text-[18px] italic leading-[1.75] text-ink-900/78">
+								{packet.teacherAdditions.personalNote}
+							</p>
+						</section>
+					) : null}
 					{hasNextSteps ? (
-						<section className="mt-10 border-t border-ink-900/10 pt-6">
+						<section className="mt-6 border-t border-ink-900/10 pt-4">
 							<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
 								Next steps
 							</p>
-							<ol className="mt-8 space-y-5">
-								{packet.nextSteps.items.map((item, index) => (
+							<ul className="mt-3 list-disc space-y-1 pl-5">
+								{packet.nextSteps.items.map((item) => (
 									<li
-										key={`${index}-${item}`}
-										className="border-t border-ink-900/10 pt-4">
-										<p className="text-[11px] uppercase tracking-[0.16em] text-ink-900/45">
-											Step {String(index + 1).padStart(2, '0')}
-										</p>
-										<p className="mt-2 max-w-3xl font-serif text-[18px] leading-[1.75] text-ink-900/90">
-											{item}
-										</p>
+										key={item}
+										className="max-w-3xl font-serif text-[18px] leading-6 text-ink-900/90">
+										{item}
 									</li>
 								))}
-							</ol>
+							</ul>
 						</section>
 					) : null}
 					{packet.nextSteps.readingSuggestions.length > 0 ? (
-						<div className="mt-10 border-t border-ink-900/10 pt-6">
+						<div className="mt-6 border-t border-ink-900/10 pt-4">
 							<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
 								Suggested reading
 							</p>
-							<ul className="mt-5 space-y-4">
+							<ul className="mt-3 list-disc space-y-1 pl-5">
 								{packet.nextSteps.readingSuggestions.map((item) => (
 									<li
 										key={item}
-										className="border-l border-ink-900/14 pl-5 font-serif text-[18px] leading-[1.7] text-ink-900/88">
+										className="max-w-3xl font-serif text-[18px] leading-6 text-ink-900/88">
 										{item}
 									</li>
 								))}
