@@ -42,9 +42,20 @@ type FeedbackItem = {
 
 type SnippetItem = {
 	id: string
+	text?: string
 	note: string
 	createdAt: string
 	snippetCategoryId: string | null
+	anchor: FeedbackAnchor | null
+}
+
+type SnippetLibraryItem = {
+	id: string
+	text: string
+	createdAt: string
+	categoryLabel: string
+	categorySlug: string
+	tags: string[]
 	anchor: FeedbackAnchor | null
 }
 
@@ -122,8 +133,56 @@ function parseTagsInput(value: string) {
 	].slice(0, 12)
 }
 
+function compactPreview(value: string, limit = 120) {
+	const normalized = value.replace(/\s+/g, ' ').trim()
+	if (normalized.length <= limit) {
+		return normalized
+	}
+	return `${normalized.slice(0, limit - 1).trimEnd()}...`
+}
+
 function formatQuote(quote: string | undefined) {
 	return quote && quote.trim() ? `"${quote}"` : 'General note'
+}
+
+function snippetText(snippet: SnippetLibraryItem) {
+	return snippet.text.trim() || snippet.anchor?.quote.trim() || ''
+}
+
+function snippetItemToLibraryItem(snippet: SnippetItem): SnippetLibraryItem | null {
+	if (!snippet.anchor) {
+		return null
+	}
+
+	const categoryLabel = normalizeFeedbackLabel(feedbackLabel(snippet.anchor))
+
+	return {
+		id: snippet.id,
+		text: snippet.note.trim() || snippet.text?.trim() || snippet.anchor.quote,
+		createdAt: snippet.createdAt,
+		categoryLabel,
+		categorySlug:
+			categoryLabel === 'Uncategorised'
+				? 'uncategorised'
+				: feedbackSlug(categoryLabel),
+		tags: snippet.anchor.tags ?? [],
+		anchor: snippet.anchor,
+	}
+}
+
+function joinCommentText(existing: string, insertion: string) {
+	const current = existing.trim()
+	const next = insertion.trim()
+
+	if (!current) {
+		return next
+	}
+
+	if (!next) {
+		return current
+	}
+
+	return `${current}\n\n${next}`
 }
 
 function annotationBorderClass(type: AnnotationItem['type']) {
@@ -192,6 +251,7 @@ export function TeacherReviewWorkspace({
 	paragraphs,
 	feedback,
 	snippets,
+	snippetLibrary,
 	notice,
 	errorNotice,
 	initialActiveAnnotationId,
@@ -208,6 +268,7 @@ export function TeacherReviewWorkspace({
 	paragraphs: Array<{ id: string; text: string }>
 	feedback: FeedbackItem[]
 	snippets: SnippetItem[]
+	snippetLibrary: SnippetLibraryItem[]
 	notice: string | null
 	errorNotice: string | null
 	initialActiveAnnotationId?: string | null
@@ -236,6 +297,7 @@ export function TeacherReviewWorkspace({
 	const [isPanelOpen, setIsPanelOpen] = useState(false)
 	const [feedbackItems, setFeedbackItems] = useState(feedback)
 	const [snippetItems, setSnippetItems] = useState(snippets)
+	const [snippetLibraryItems, setSnippetLibraryItems] = useState(snippetLibrary)
 	const [liveSubmissionStatus, setLiveSubmissionStatus] = useState(submissionStatus)
 	const [publishSummary, setPublishSummary] = useState(initialSummary)
 	const [summaryPublishedAt, setSummaryPublishedAt] = useState(
@@ -254,6 +316,8 @@ export function TeacherReviewWorkspace({
 	>(null)
 	const [snippetNoteDraft, setSnippetNoteDraft] = useState('')
 	const [snippetCategoryIdDraft, setSnippetCategoryIdDraft] = useState('')
+	const [snippetSearchQuery, setSnippetSearchQuery] = useState('')
+	const [snippetSearchCategory, setSnippetSearchCategory] = useState('')
 	const [isPanelSaving, setIsPanelSaving] = useState(false)
 	const [savingCommentId, setSavingCommentId] = useState<string | null>(null)
 	const [promotingCommentId, setPromotingCommentId] = useState<string | null>(null)
@@ -274,6 +338,10 @@ export function TeacherReviewWorkspace({
 	useEffect(() => {
 		setSnippetItems(snippets)
 	}, [snippets])
+
+	useEffect(() => {
+		setSnippetLibraryItems(snippetLibrary)
+	}, [snippetLibrary])
 
 	useEffect(() => {
 		setLiveSubmissionStatus(submissionStatus)
@@ -392,6 +460,34 @@ export function TeacherReviewWorkspace({
 	const visibleCommentAnnotations = reviewUncategorisedOnly
 		? commentAnnotations.filter((item) => item.label === 'Uncategorised')
 		: commentAnnotations
+	const filteredSnippetLibrary = useMemo(() => {
+		const query = snippetSearchQuery.trim().toLowerCase()
+		return snippetLibraryItems
+			.filter((item) => {
+				if (
+					snippetSearchCategory &&
+					item.categoryLabel !== snippetSearchCategory
+				) {
+					return false
+				}
+
+				if (!query) {
+					return true
+				}
+
+				const haystack = [
+					item.text,
+					item.anchor?.quote ?? '',
+					item.categoryLabel,
+					...item.tags,
+				]
+					.join(' ')
+					.toLowerCase()
+
+				return haystack.includes(query)
+			})
+			.slice(0, 8)
+	}, [snippetLibraryItems, snippetSearchCategory, snippetSearchQuery])
 
 	const totalPages = pagedManuscript.pages.length
 	const currentPage =
@@ -725,6 +821,13 @@ export function TeacherReviewWorkspace({
 						item.id === tempId ? payload.snippet! : item,
 					),
 				)
+				const librarySnippet = snippetItemToLibraryItem(payload.snippet)
+				if (librarySnippet) {
+					setSnippetLibraryItems((current) => [
+						librarySnippet,
+						...current.filter((item) => item.id !== librarySnippet.id),
+					])
+				}
 				setActiveAnnotationId(null)
 			}
 			setComposerCategoryLabel('')
@@ -918,6 +1021,14 @@ export function TeacherReviewWorkspace({
 					item.id === snippetId ? savedSnippet : item,
 				),
 			)
+			const librarySnippet = snippetItemToLibraryItem(savedSnippet)
+			if (librarySnippet) {
+				setSnippetLibraryItems((current) =>
+					current.map((item) =>
+						item.id === librarySnippet.id ? librarySnippet : item,
+					),
+				)
+			}
 			setSidePanelNotice(payload.notice ?? 'Saved.')
 		} catch (error) {
 			setSnippetItems(previousItems)
@@ -995,6 +1106,14 @@ export function TeacherReviewWorkspace({
 					item.id === snippetId ? savedSnippet : item,
 				),
 			)
+			const librarySnippet = snippetItemToLibraryItem(savedSnippet)
+			if (librarySnippet) {
+				setSnippetLibraryItems((current) =>
+					current.map((item) =>
+						item.id === librarySnippet.id ? librarySnippet : item,
+					),
+				)
+			}
 			setSidePanelNotice(payload.notice ?? 'Snippet updated.')
 		} catch (error) {
 			setSnippetItems(previousItems)
@@ -1140,6 +1259,7 @@ export function TeacherReviewWorkspace({
 					suffix: annotation.anchor.suffix,
 					note: annotation.text,
 					snippetCategoryLabel: annotation.label,
+					tags: annotation.tags ?? [],
 				}),
 			})
 			const payload = (await response.json()) as
@@ -1156,6 +1276,13 @@ export function TeacherReviewWorkspace({
 					item.id === tempId ? savedSnippet : item,
 				),
 			)
+			const librarySnippet = snippetItemToLibraryItem(savedSnippet)
+			if (librarySnippet) {
+				setSnippetLibraryItems((current) => [
+					librarySnippet,
+					...current.filter((item) => item.id !== librarySnippet.id),
+				])
+			}
 			setSidePanelNotice('Comment saved as snippet.')
 		} catch (error) {
 			setSnippetItems(previousSnippets)
@@ -1165,6 +1292,206 @@ export function TeacherReviewWorkspace({
 		} finally {
 			setPromotingCommentId(null)
 		}
+	}
+
+	const createCommentFromSnippet = async (
+		snippet: SnippetLibraryItem,
+		anchorSelection: SelectedAnchor,
+		text: string,
+	) => {
+		if (isPanelSaving || isPublishedReadOnly) {
+			return
+		}
+
+		const categoryLabel = normalizeFeedbackLabel(snippet.categoryLabel)
+		const tempId = `temp-feedback-${Date.now()}`
+		const optimisticCreatedAt = new Date().toISOString()
+		const optimisticAnchor: FeedbackAnchor = {
+			blockId: anchorSelection.blockId,
+			startOffset: anchorSelection.startOffset,
+			endOffset: anchorSelection.endOffset,
+			quote: anchorSelection.quote,
+			prefix: anchorSelection.prefix,
+			suffix: anchorSelection.suffix,
+			kind: 'craft',
+			categoryLabel,
+			categorySlug:
+				categoryLabel === 'Uncategorised'
+					? 'uncategorised'
+					: feedbackSlug(categoryLabel),
+		}
+
+		setSidePanelError(null)
+		setSidePanelNotice(null)
+		setIsPanelSaving(true)
+		setSelectedAnchor(null)
+		setFeedbackItems((current) => [
+			...current,
+			{
+				id: tempId,
+				comment: text,
+				createdAt: optimisticCreatedAt,
+				anchor: optimisticAnchor,
+			},
+		])
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'comment',
+					blockId: anchorSelection.blockId,
+					startOffset: anchorSelection.startOffset,
+					endOffset: anchorSelection.endOffset,
+					quote: anchorSelection.quote,
+					prefix: anchorSelection.prefix,
+					suffix: anchorSelection.suffix,
+					comment: text,
+					feedbackCategoryLabel: categoryLabel,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; feedback?: FeedbackItem }
+				| undefined
+
+			const savedFeedback = payload?.feedback
+			if (!response.ok || payload?.error || !savedFeedback) {
+				throw new Error(payload?.error ?? 'Unable to insert snippet.')
+			}
+
+			setFeedbackItems((current) =>
+				current.map((item) =>
+					item.id === tempId ? savedFeedback : item,
+				),
+			)
+			setActiveAnnotationId(`feedback:${savedFeedback.id}`)
+			setSidePanelNotice(payload.notice ?? 'Snippet inserted as comment.')
+		} catch (error) {
+			setFeedbackItems((current) => current.filter((item) => item.id !== tempId))
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to insert snippet.',
+			)
+		} finally {
+			setIsPanelSaving(false)
+		}
+	}
+
+	const saveSnippetIntoExistingComment = async (
+		annotation: AnnotationItem,
+		nextText: string,
+	) => {
+		const feedbackItemId = annotation.id.replace('feedback:', '')
+		const feedbackItem = feedbackItems.find((item) => item.id === feedbackItemId)
+
+		if (!feedbackItem?.anchor) {
+			setSidePanelError('Unable to find the active comment.')
+			return
+		}
+
+		const categoryLabel = normalizeFeedbackLabel(
+			annotation.label,
+			feedbackItem.anchor.suggestedAction,
+		)
+		const tags = feedbackItem.anchor.tags ?? []
+		const previousItems = feedbackItems
+
+		setSavingCommentId(feedbackItemId)
+		setSidePanelError(null)
+		setSidePanelNotice(null)
+		setFeedbackItems((current) =>
+			current.map((item) =>
+				item.id === feedbackItemId && item.anchor
+					? {
+							...item,
+							comment: nextText,
+							anchor: {
+								...item.anchor,
+								categoryLabel,
+								categorySlug:
+									categoryLabel === 'Uncategorised'
+										? 'uncategorised'
+										: feedbackSlug(categoryLabel),
+								tags,
+							},
+						}
+					: item,
+			),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'comment',
+					id: feedbackItemId,
+					comment: nextText,
+					feedbackCategoryLabel: categoryLabel,
+					tags,
+					suggestedAction: feedbackItem.anchor.suggestedAction,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; feedback?: FeedbackItem }
+				| undefined
+
+			const savedFeedback = payload?.feedback
+			if (!response.ok || payload?.error || !savedFeedback) {
+				throw new Error(payload?.error ?? 'Unable to insert snippet.')
+			}
+
+			setFeedbackItems((current) =>
+				current.map((item) =>
+					item.id === feedbackItemId ? savedFeedback : item,
+				),
+			)
+			setCommentDraft(savedFeedback.comment)
+			setIsInlineEditingComment(false)
+			setSidePanelNotice('Snippet inserted into active comment.')
+		} catch (error) {
+			setFeedbackItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to insert snippet.',
+			)
+		} finally {
+			setSavingCommentId(null)
+		}
+	}
+
+	const insertSnippetIntoComment = async (snippet: SnippetLibraryItem) => {
+		if (isPublishedReadOnly) {
+			setSidePanelError('Published feedback is read-only for this version.')
+			return
+		}
+
+		const text = snippetText(snippet)
+		if (!text) {
+			setSidePanelError('That snippet has no reusable text yet.')
+			return
+		}
+
+		if (activeAnnotation?.type === 'comment') {
+			const nextText = joinCommentText(
+				isInlineEditingComment ? commentDraft : activeAnnotation.text,
+				text,
+			)
+
+			setCommentDraft(nextText)
+			await saveSnippetIntoExistingComment(activeAnnotation, nextText)
+			return
+		}
+
+		if (selectedAnchor) {
+			await createCommentFromSnippet(snippet, selectedAnchor, text)
+			return
+		}
+
+		setSidePanelError('Select a passage or open a comment before inserting a snippet.')
 	}
 
 	const deleteActiveComment = async () => {
@@ -1687,6 +2014,73 @@ export function TeacherReviewWorkspace({
 						{errorNotice}
 					</p>
 				) : null}
+
+				<ProtoCard title="Snippets" meta="Search and reuse">
+					<div className="space-y-3">
+						<div className="grid gap-2">
+							<input
+								type="search"
+								value={snippetSearchQuery}
+								onChange={(event) => setSnippetSearchQuery(event.target.value)}
+								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+								placeholder="Search snippets"
+							/>
+							<select
+								value={snippetSearchCategory}
+								onChange={(event) => setSnippetSearchCategory(event.target.value)}
+								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								<option value="">All categories</option>
+								{fixedFeedbackCategories.map((category) => (
+									<option key={category} value={category}>
+										{category}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="max-h-[28vh] overflow-y-auto pr-1">
+							{filteredSnippetLibrary.length === 0 ? (
+								<p className="text-sm text-silver-300">
+									No snippets found.
+								</p>
+							) : (
+								<ul className="space-y-2">
+									{filteredSnippetLibrary.map((snippet) => {
+										const text = snippetText(snippet)
+
+										return (
+											<li key={snippet.id}>
+												<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-3 text-silver-100">
+													<div className="flex flex-wrap items-center gap-2">
+														<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+															{snippet.categoryLabel}
+														</p>
+														<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+															{new Date(snippet.createdAt).toLocaleDateString()}
+														</p>
+													</div>
+													<p className="mt-2 text-sm leading-relaxed text-parchment-100">
+														{text
+															? compactPreview(text)
+															: compactPreview(snippet.anchor?.quote ?? '')}
+													</p>
+													<button
+														type="button"
+														disabled={isPanelSaving || isPublishedReadOnly}
+														onClick={() => {
+															void insertSnippetIntoComment(snippet)
+														}}
+														className="mt-3 rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+														Insert into comment
+													</button>
+												</div>
+											</li>
+										)
+									})}
+								</ul>
+							)}
+						</div>
+					</div>
+				</ProtoCard>
 
 				<ProtoCard title="Marginalia" meta="Comments and snippets">
 					<p

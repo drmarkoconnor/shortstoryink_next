@@ -199,6 +199,7 @@ export async function POST(
 	const snippetCategoryLabel = normalizeFeedbackCategoryLabel(
 		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
 	)
+	const snippetTags = normalizeTags(payload.tags)
 	const startOffset = Number(payload.startOffset ?? -1)
 	const endOffset = Number(payload.endOffset ?? -1)
 
@@ -311,6 +312,7 @@ export async function POST(
 				snippetCategoryLabel === 'Uncategorised'
 					? 'uncategorised'
 					: toCategorySlug(snippetCategoryLabel),
+			tags: snippetTags,
 		},
 		note: payload.note ?? null,
 		visibility: 'private',

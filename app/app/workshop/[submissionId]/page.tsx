@@ -91,7 +91,7 @@ export default async function WorkshopSubmissionPage({
 	params: Promise<{ submissionId: string }>
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-	await requireTeacher()
+	const profile = await requireTeacher()
 	const { submissionId } = await params
 	const query = searchParams ? await searchParams : {}
 	const notice = toMessage(query.notice)
@@ -137,9 +137,29 @@ export default async function WorkshopSubmissionPage({
 	}> = []
 	let snippets: Array<{
 		id: string
+		text?: string
 		note: string
 		createdAt: string
 		snippetCategoryId: string | null
+		anchor: {
+			blockId: string
+			startOffset: number
+			endOffset: number
+			quote: string
+			prefix?: string
+			suffix?: string
+			categoryLabel?: string
+			categorySlug?: string
+			tags?: string[]
+		} | null
+	}> = []
+	let snippetLibrary: Array<{
+		id: string
+		text: string
+		createdAt: string
+		categoryLabel: string
+		categorySlug: string
+		tags: string[]
 		anchor: {
 			blockId: string
 			startOffset: number
@@ -271,13 +291,14 @@ export default async function WorkshopSubmissionPage({
 
 		const { data: snippetRows } = await supabase
 			.from('snippets')
-			.select('id, note, created_at, anchor, snippet_category_id')
+			.select('id, snippet_text, note, created_at, anchor, snippet_category_id')
 			.eq('source_submission_id', submission.id)
 			.order('created_at', { ascending: true })
 
 		snippets = (
 			(snippetRows ?? []) as Array<{
 				id: string
+				snippet_text: string
 				note: string | null
 				created_at: string
 				anchor: unknown
@@ -286,6 +307,7 @@ export default async function WorkshopSubmissionPage({
 		)
 			.map((item) => ({
 				id: item.id,
+				text: item.snippet_text,
 				note: item.note ?? '',
 				createdAt: item.created_at,
 				snippetCategoryId: item.snippet_category_id ?? null,
@@ -314,6 +336,67 @@ export default async function WorkshopSubmissionPage({
 					: null,
 			}))
 			.filter((item) => item.anchor !== null)
+
+		const { data: snippetLibraryRows } = await supabase
+			.from('snippets')
+			.select('id, snippet_text, note, created_at, anchor')
+			.eq('saved_by', profile.user.id)
+			.order('created_at', { ascending: false })
+			.limit(80)
+
+		snippetLibrary = (
+			(snippetLibraryRows ?? []) as Array<{
+				id: string
+				snippet_text: string
+				note: string | null
+				created_at: string
+				anchor: unknown
+			}>
+		)
+			.map((item) => {
+				const anchor = isSelectionAnchor(item.anchor)
+					? {
+							blockId: item.anchor.blockId ?? '',
+							startOffset: Number(item.anchor.startOffset ?? -1),
+							endOffset: Number(item.anchor.endOffset ?? -1),
+							quote: item.anchor.quote ?? '',
+							prefix: item.anchor.prefix,
+							suffix: item.anchor.suffix,
+							categoryLabel:
+								typeof item.anchor.categoryLabel === 'string'
+									? item.anchor.categoryLabel
+									: undefined,
+							categorySlug:
+								typeof item.anchor.categorySlug === 'string'
+									? item.anchor.categorySlug
+									: undefined,
+							tags: Array.isArray(item.anchor.tags)
+								? item.anchor.tags
+										.map((tag: unknown) => String(tag).trim())
+										.filter(Boolean)
+								: [],
+						}
+					: null
+				const categoryLabel =
+					anchor?.categoryLabel && anchor.categoryLabel.trim()
+						? anchor.categoryLabel
+						: 'Uncategorised'
+
+				return {
+					id: item.id,
+					text: String(item.note ?? '').trim() || item.snippet_text,
+					createdAt: item.created_at,
+					categoryLabel,
+					categorySlug:
+						anchor?.categorySlug && anchor.categorySlug.trim()
+							? anchor.categorySlug
+							: categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') ||
+								'uncategorised',
+					tags: anchor?.tags ?? [],
+					anchor,
+				}
+			})
+			.filter((item) => item.text.trim() || item.anchor?.quote.trim())
 	} else {
 		schemaMode = 'legacy'
 
@@ -438,6 +521,7 @@ export default async function WorkshopSubmissionPage({
 				paragraphs={paragraphs}
 				feedback={feedback}
 				snippets={snippets}
+				snippetLibrary={snippetLibrary}
 				notice={notice}
 				errorNotice={errorNotice}
 				initialActiveAnnotationId={toMessage(query.focus)}
