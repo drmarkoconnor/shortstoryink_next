@@ -17,6 +17,7 @@ type SelectionAnchor = {
 	kind?: 'typo' | 'craft' | 'pacing' | 'structure'
 	categoryLabel?: string
 	categorySlug?: string
+	tags?: unknown[]
 	suggestedAction?: 'cut'
 }
 
@@ -39,15 +40,6 @@ function isMissingSubmissionSource(message: string | null | undefined) {
 
 	const normalized = message.toLowerCase()
 	return normalized.includes('source') && normalized.includes('does not exist')
-}
-
-function isMissingRelation(message: string | null | undefined, relation: string) {
-	if (!message) {
-		return false
-	}
-
-	const normalized = message.toLowerCase()
-	return normalized.includes('relation') && normalized.includes(relation)
 }
 
 function reviewStatusLabel(status: string) {
@@ -118,8 +110,6 @@ export default async function WorkshopSubmissionPage({
 	let currentAuthorId: string | null = null
 	let existingSummary = ''
 	let summaryPublishedAt: string | null = null
-	let snippetCategories: Array<{ id: string; name: string }> = []
-	let feedbackCategories: Array<{ id: string; name: string }> = []
 	let paragraphs: Array<{ id: string; text: string }> = []
 	let versionHistory: Array<{
 		id: string
@@ -139,6 +129,9 @@ export default async function WorkshopSubmissionPage({
 			prefix?: string
 			suffix?: string
 			kind?: 'typo' | 'craft' | 'pacing' | 'structure'
+			categoryLabel?: string
+			categorySlug?: string
+			tags?: string[]
 			suggestedAction?: 'cut'
 		} | null
 	}> = []
@@ -154,6 +147,9 @@ export default async function WorkshopSubmissionPage({
 			quote: string
 			prefix?: string
 			suffix?: string
+			categoryLabel?: string
+			categorySlug?: string
+			tags?: string[]
 		} | null
 	}> = []
 
@@ -231,24 +227,29 @@ export default async function WorkshopSubmissionPage({
 				? {
 						blockId: item.anchor.blockId ?? '',
 						startOffset: Number(item.anchor.startOffset ?? -1),
-					endOffset: Number(item.anchor.endOffset ?? -1),
-					quote: item.anchor.quote ?? '',
-					prefix: item.anchor.prefix,
-					suffix: item.anchor.suffix,
-					categoryLabel:
-						typeof item.anchor.categoryLabel === 'string'
-							? item.anchor.categoryLabel
-							: undefined,
-					categorySlug:
-						typeof item.anchor.categorySlug === 'string'
-							? item.anchor.categorySlug
-							: undefined,
-					suggestedAction:
-						item.anchor.suggestedAction === 'cut'
-							? 'cut'
-							: undefined,
-					kind:
-						item.anchor.kind === 'typo' ||
+						endOffset: Number(item.anchor.endOffset ?? -1),
+						quote: item.anchor.quote ?? '',
+						prefix: item.anchor.prefix,
+						suffix: item.anchor.suffix,
+						categoryLabel:
+							typeof item.anchor.categoryLabel === 'string'
+								? item.anchor.categoryLabel
+								: undefined,
+						categorySlug:
+							typeof item.anchor.categorySlug === 'string'
+								? item.anchor.categorySlug
+								: undefined,
+						tags: Array.isArray(item.anchor.tags)
+							? item.anchor.tags
+									.map((tag: unknown) => String(tag).trim())
+									.filter(Boolean)
+							: [],
+						suggestedAction:
+							item.anchor.suggestedAction === 'cut'
+								? 'cut'
+								: undefined,
+						kind:
+							item.anchor.kind === 'typo' ||
 							item.anchor.kind === 'craft' ||
 							item.anchor.kind === 'pacing' ||
 							item.anchor.kind === 'structure'
@@ -296,6 +297,19 @@ export default async function WorkshopSubmissionPage({
 							quote: item.anchor.quote ?? '',
 							prefix: item.anchor.prefix,
 							suffix: item.anchor.suffix,
+							categoryLabel:
+								typeof item.anchor.categoryLabel === 'string'
+									? item.anchor.categoryLabel
+									: undefined,
+							categorySlug:
+								typeof item.anchor.categorySlug === 'string'
+									? item.anchor.categorySlug
+									: undefined,
+							tags: Array.isArray(item.anchor.tags)
+								? item.anchor.tags
+										.map((tag: unknown) => String(tag).trim())
+										.filter(Boolean)
+								: [],
 						}
 					: null,
 			}))
@@ -412,47 +426,6 @@ export default async function WorkshopSubmissionPage({
 		}))
 	}
 
-	if (schemaMode === 'modern') {
-		const categoriesResult = await supabase
-			.from('snippet_categories')
-			.select('id, name')
-			.order('name', { ascending: true })
-
-		if (
-			!categoriesResult.error ||
-			!isMissingRelation(categoriesResult.error.message, 'snippet_categories')
-		) {
-			snippetCategories = (
-				(categoriesResult.data ?? []) as Array<{ id: string; name: string }>
-			).map((item) => ({
-				id: item.id,
-				name: item.name,
-			}))
-		}
-	}
-
-	if (schemaMode === 'modern') {
-		const feedbackCategoriesResult = await supabase
-			.from('feedback_categories')
-			.select('id, name')
-			.order('name', { ascending: true })
-
-		if (
-			!feedbackCategoriesResult.error ||
-			!isMissingRelation(
-				feedbackCategoriesResult.error.message,
-				'feedback_categories',
-			)
-		) {
-			feedbackCategories = (
-				(feedbackCategoriesResult.data ?? []) as Array<{ id: string; name: string }>
-			).map((item) => ({
-				id: item.id,
-				name: item.name,
-			}))
-		}
-	}
-
 	const latestVersionEntry =
 		versionHistory.length > 0 ? versionHistory[versionHistory.length - 1] : null
 
@@ -565,8 +538,6 @@ export default async function WorkshopSubmissionPage({
 					!latestVersionEntry || latestVersionEntry.id === submissionId
 				}
 				canExportFeedback={submissionStatus === 'feedback_published'}
-				snippetCategories={snippetCategories}
-				feedbackCategories={feedbackCategories}
 				initialSummary={existingSummary}
 				initialSummaryPublishedAt={summaryPublishedAt}
 			/>

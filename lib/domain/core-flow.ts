@@ -13,5 +13,7 @@ export type SelectionRangeAnchor = {
 	quote: string
 	prefix: string
 	suffix: string
+	categoryLabel?: string
+	categorySlug?: string
+	tags?: string[]
 }
-
