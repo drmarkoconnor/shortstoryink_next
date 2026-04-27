@@ -29,6 +29,7 @@ type FeedbackAnchor = {
 	kind?: FeedbackKind
 	categoryLabel?: string
 	categorySlug?: string
+	tags?: string[]
 	suggestedAction?: 'cut'
 }
 
@@ -65,14 +66,60 @@ type AnnotationItem = {
 	createdAt: string
 	anchor: FeedbackAnchor
 	label: string
-	categoryId?: string | null
+	tags?: string[]
 }
 
 const CUT_SUGGESTION_COMMENT =
 	'Consider the effect of cutting here on pace, clarity, and emphasis.'
 
+const fixedFeedbackCategories = [
+	'Character',
+	'Setting',
+	'Plot',
+	'Structure',
+	'Pace',
+	'Point of View',
+	'Voice',
+	'Dialogue',
+	'Image/detail',
+	'Opening',
+	'Ending',
+	'Sentence style',
+	'Theme',
+	'Clarity',
+	'Cut/tighten',
+	'Praise/strength',
+]
+
 function feedbackLabel(anchor: FeedbackAnchor | null | undefined) {
+	if (anchor?.suggestedAction === 'cut' || anchor?.categoryLabel === 'Cut') {
+		return 'Cut/tighten'
+	}
+
 	return anchor?.categoryLabel?.trim() || 'Uncategorised'
+}
+
+function feedbackSlug(label: string) {
+	return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function normalizeFeedbackLabel(value: string, suggestedAction?: 'cut' | null) {
+	if (suggestedAction === 'cut') {
+		return 'Cut/tighten'
+	}
+
+	return fixedFeedbackCategories.includes(value) ? value : 'Uncategorised'
+}
+
+function parseTagsInput(value: string) {
+	return [
+		...new Set(
+			value
+				.split(',')
+				.map((tag) => tag.trim())
+				.filter(Boolean),
+		),
+	].slice(0, 12)
 }
 
 function formatQuote(quote: string | undefined) {
@@ -81,7 +128,7 @@ function formatQuote(quote: string | undefined) {
 
 function annotationBorderClass(type: AnnotationItem['type']) {
 	return type === 'snippet'
-		? 'border-accent-300/35 bg-ink-950 text-accent-50'
+		? 'border-accent-300/35 bg-ink-950 text-parchment-100'
 		: 'border-burgundy-300/35 bg-ink-950 text-parchment-100'
 }
 
@@ -153,8 +200,6 @@ export function TeacherReviewWorkspace({
 	canDeleteFeedback,
 	canPublishFeedback,
 	canExportFeedback,
-	snippetCategories,
-	feedbackCategories,
 	initialSummary,
 	initialSummaryPublishedAt,
 }: {
@@ -171,8 +216,6 @@ export function TeacherReviewWorkspace({
 	canDeleteFeedback: boolean
 	canPublishFeedback: boolean
 	canExportFeedback: boolean
-	snippetCategories: Array<{ id: string; name: string }>
-	feedbackCategories: Array<{ id: string; name: string }>
 	initialSummary: string
 	initialSummaryPublishedAt: string | null
 }) {
@@ -204,15 +247,21 @@ export function TeacherReviewWorkspace({
 	const [showQueueReturnCue, setShowQueueReturnCue] = useState(false)
 	const [commentDraft, setCommentDraft] = useState('')
 	const [commentCategoryId, setCommentCategoryId] = useState('')
+	const [commentTagsDraft, setCommentTagsDraft] = useState('')
+	const [composerCategoryLabel, setComposerCategoryLabel] = useState('')
 	const [commentSuggestedAction, setCommentSuggestedAction] = useState<
 		FeedbackAnchor['suggestedAction'] | null
 	>(null)
 	const [snippetNoteDraft, setSnippetNoteDraft] = useState('')
 	const [snippetCategoryIdDraft, setSnippetCategoryIdDraft] = useState('')
 	const [isPanelSaving, setIsPanelSaving] = useState(false)
+	const [savingCommentId, setSavingCommentId] = useState<string | null>(null)
+	const [promotingCommentId, setPromotingCommentId] = useState<string | null>(null)
+	const [reviewUncategorisedOnly, setReviewUncategorisedOnly] = useState(false)
 	const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
 	const [isInlineEditingComment, setIsInlineEditingComment] = useState(false)
 	const isPublishedReadOnly = liveSubmissionStatus === 'feedback_published'
+	const canLiveExportFeedback = canExportFeedback || isPublishedReadOnly
 	const mainRef = useRef<HTMLDivElement | null>(null)
 	const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
@@ -291,11 +340,8 @@ export function TeacherReviewWorkspace({
 				createdAt: item.createdAt,
 				anchor: item.anchor,
 				label: feedbackLabel(item.anchor),
-				categoryId: null,
+				tags: item.anchor.tags ?? [],
 			}))
-		const snippetCategoryNameById = Object.fromEntries(
-			snippetCategories.map((category) => [category.id, category.name]),
-		)
 		const localSnippetItems = snippetItems
 			.filter((item): item is SnippetItem & { anchor: FeedbackAnchor } => Boolean(item.anchor))
 			.map((item) => ({
@@ -304,11 +350,7 @@ export function TeacherReviewWorkspace({
 				text: item.note,
 				createdAt: item.createdAt,
 				anchor: item.anchor,
-				label:
-					item.snippetCategoryId
-						? snippetCategoryNameById[item.snippetCategoryId] ?? 'Uncategorised'
-						: 'Uncategorised',
-				categoryId: item.snippetCategoryId,
+				label: feedbackLabel(item.anchor),
 			}))
 
 		return [...commentItems, ...localSnippetItems].sort((a, b) => {
@@ -320,7 +362,7 @@ export function TeacherReviewWorkspace({
 			}
 			return a.createdAt.localeCompare(b.createdAt)
 		})
-	}, [feedbackItems, snippetItems, snippetCategories])
+	}, [feedbackItems, snippetItems])
 
 	const annotationsByBlock = useMemo(() => {
 		const map: Record<string, AnnotationItem[]> = {}
@@ -340,18 +382,16 @@ export function TeacherReviewWorkspace({
 		return annotations.find((item) => item.id === activeAnnotationId) ?? null
 	}, [activeAnnotationId, annotations])
 
-	const feedbackCategoryIdByName = useMemo(
-		() =>
-			Object.fromEntries(
-				feedbackCategories.map((category) => [category.name, category.id]),
-			),
-		[feedbackCategories],
-	)
-
 	const commentCount = feedbackItems.length
 	const snippetCount = snippetItems.length
 	const commentAnnotations = annotations.filter((item) => item.type === 'comment')
 	const snippetAnnotations = annotations.filter((item) => item.type === 'snippet')
+	const uncategorisedCommentCount = commentAnnotations.filter(
+		(item) => item.label === 'Uncategorised',
+	).length
+	const visibleCommentAnnotations = reviewUncategorisedOnly
+		? commentAnnotations.filter((item) => item.label === 'Uncategorised')
+		: commentAnnotations
 
 	const totalPages = pagedManuscript.pages.length
 	const currentPage =
@@ -499,9 +539,10 @@ export function TeacherReviewWorkspace({
 		}
 	}
 
-	const activeFeedbackCategoryId =
-		activeAnnotation?.type === 'comment'
-			? feedbackCategoryIdByName[activeAnnotation.label] ?? ''
+	const activeFeedbackCategoryLabel =
+		activeAnnotation?.type === 'comment' &&
+		fixedFeedbackCategories.includes(activeAnnotation.label)
+			? activeAnnotation.label
 			: ''
 
 	useEffect(() => {
@@ -511,6 +552,7 @@ export function TeacherReviewWorkspace({
 		if (!activeAnnotation) {
 			setCommentDraft('')
 			setCommentCategoryId('')
+			setCommentTagsDraft('')
 			setCommentSuggestedAction(null)
 			setSnippetNoteDraft('')
 			setSnippetCategoryIdDraft('')
@@ -520,7 +562,8 @@ export function TeacherReviewWorkspace({
 
 		if (activeAnnotation.type === 'comment') {
 			setCommentDraft(activeAnnotation.text)
-			setCommentCategoryId(activeFeedbackCategoryId)
+			setCommentCategoryId(activeFeedbackCategoryLabel)
+			setCommentTagsDraft((activeAnnotation.tags ?? []).join(', '))
 			setCommentSuggestedAction(activeAnnotation.anchor.suggestedAction ?? null)
 			setSnippetNoteDraft('')
 			setSnippetCategoryIdDraft('')
@@ -528,12 +571,17 @@ export function TeacherReviewWorkspace({
 		}
 
 		setSnippetNoteDraft(activeAnnotation.text)
-		setSnippetCategoryIdDraft(activeAnnotation.categoryId ?? '')
+		setSnippetCategoryIdDraft(
+			fixedFeedbackCategories.includes(activeAnnotation.label)
+				? activeAnnotation.label
+				: '',
+		)
 		setCommentDraft('')
 		setCommentCategoryId('')
+		setCommentTagsDraft('')
 		setCommentSuggestedAction(null)
 		setIsInlineEditingComment(false)
-	}, [activeAnnotation, activeFeedbackCategoryId])
+	}, [activeAnnotation, activeFeedbackCategoryLabel])
 
 	const saveNewAnnotation = async (
 		annotationIntent: 'comment' | 'snippet' | 'cut',
@@ -557,6 +605,10 @@ export function TeacherReviewWorkspace({
 					? 'comment'
 					: 'snippet'
 		const suggestedAction = annotationIntent === 'cut' ? 'cut' : undefined
+		const categoryLabel = normalizeFeedbackLabel(
+			composerCategoryLabel,
+			suggestedAction,
+		)
 		const tempId = `temp-${annotationType}-${Date.now()}`
 		const optimisticCreatedAt = new Date().toISOString()
 		const optimisticAnchor: FeedbackAnchor = {
@@ -569,12 +621,25 @@ export function TeacherReviewWorkspace({
 			...(annotationType === 'comment'
 				? suggestedAction === 'cut'
 					? {
-							categoryLabel: 'Cut',
-							categorySlug: 'cut',
+							categoryLabel: 'Cut/tighten',
+							categorySlug: 'cut-tighten',
 							suggestedAction: 'cut' as const,
 						}
-					: { categoryLabel: 'Uncategorised', categorySlug: 'uncategorised' }
-				: {}),
+					: {
+							categoryLabel,
+							categorySlug:
+								composerCategoryLabel &&
+								fixedFeedbackCategories.includes(composerCategoryLabel)
+									? feedbackSlug(composerCategoryLabel)
+									: 'uncategorised',
+						}
+				: {
+						categoryLabel,
+						categorySlug:
+							categoryLabel === 'Uncategorised'
+								? 'uncategorised'
+								: feedbackSlug(categoryLabel),
+					}),
 		}
 
 		setComposerError(null)
@@ -624,6 +689,8 @@ export function TeacherReviewWorkspace({
 						suffix: anchorSelection.suffix,
 						comment: trimmedText,
 						suggestedAction,
+						feedbackCategoryLabel: categoryLabel,
+						snippetCategoryLabel: categoryLabel,
 					}),
 				},
 			)
@@ -660,6 +727,7 @@ export function TeacherReviewWorkspace({
 				)
 				setActiveAnnotationId(null)
 			}
+			setComposerCategoryLabel('')
 
 		} catch (error) {
 			if (annotationType === 'comment') {
@@ -710,11 +778,11 @@ export function TeacherReviewWorkspace({
 
 		const feedbackItemId = activeAnnotation.id.replace('feedback:', '')
 		const previousItems = feedbackItems
-		const categoryLabel =
-			commentSuggestedAction === 'cut'
-				? 'Cut'
-				: feedbackCategories.find((category) => category.id === commentCategoryId)
-						?.name ?? 'Uncategorised'
+		const categoryLabel = normalizeFeedbackLabel(
+			commentCategoryId,
+			commentSuggestedAction,
+		)
+		const nextTags = parseTagsInput(commentTagsDraft)
 
 		setSidePanelError(null)
 		setSidePanelNotice(null)
@@ -729,7 +797,11 @@ export function TeacherReviewWorkspace({
 								? {
 										...item.anchor,
 										categoryLabel,
-										categorySlug: categoryLabel.toLowerCase().replace(/\s+/g, '-'),
+										categorySlug:
+											categoryLabel === 'Uncategorised'
+												? 'uncategorised'
+												: feedbackSlug(categoryLabel),
+										tags: nextTags,
 										suggestedAction:
 											commentSuggestedAction === 'cut' ? 'cut' : undefined,
 									}
@@ -749,7 +821,8 @@ export function TeacherReviewWorkspace({
 					type: 'comment',
 					id: feedbackItemId,
 					comment: nextComment,
-					feedbackCategoryId: commentCategoryId,
+					feedbackCategoryLabel: categoryLabel,
+					tags: nextTags,
 					suggestedAction: commentSuggestedAction,
 				}),
 			})
@@ -791,6 +864,7 @@ export function TeacherReviewWorkspace({
 
 		const snippetId = activeAnnotation.id.replace('snippet:', '')
 		const previousItems = snippetItems
+		const categoryLabel = normalizeFeedbackLabel(snippetCategoryIdDraft)
 
 		setSidePanelError(null)
 		setSidePanelNotice(null)
@@ -801,7 +875,17 @@ export function TeacherReviewWorkspace({
 					? {
 							...item,
 							note: snippetNoteDraft.trim(),
-							snippetCategoryId: snippetCategoryIdDraft || null,
+							snippetCategoryId: null,
+							anchor: item.anchor
+								? {
+										...item.anchor,
+										categoryLabel,
+										categorySlug:
+											categoryLabel === 'Uncategorised'
+												? 'uncategorised'
+												: feedbackSlug(categoryLabel),
+									}
+								: item.anchor,
 						}
 					: item,
 			),
@@ -817,7 +901,7 @@ export function TeacherReviewWorkspace({
 					type: 'snippet',
 					id: snippetId,
 					note: snippetNoteDraft,
-					snippetCategoryId: snippetCategoryIdDraft,
+					snippetCategoryLabel: categoryLabel,
 				}),
 			})
 			const payload = (await response.json()) as
@@ -842,6 +926,244 @@ export function TeacherReviewWorkspace({
 			)
 		} finally {
 			setIsPanelSaving(false)
+		}
+	}
+
+	const patchSnippetCategoryFromPanel = async (
+		annotation: AnnotationItem,
+		nextCategory: string,
+	) => {
+		if (annotation.type !== 'snippet' || isPublishedReadOnly) {
+			return
+		}
+
+		const snippetId = annotation.id.replace('snippet:', '')
+		const snippetItem = snippetItems.find((item) => item.id === snippetId)
+
+		if (!snippetItem?.anchor) {
+			return
+		}
+
+		const categoryLabel = normalizeFeedbackLabel(nextCategory)
+		const previousItems = snippetItems
+
+		setSavingCommentId(snippetId)
+		setSidePanelError(null)
+		setSnippetItems((current) =>
+			current.map((item) =>
+				item.id === snippetId && item.anchor
+					? {
+							...item,
+							snippetCategoryId: null,
+							anchor: {
+								...item.anchor,
+								categoryLabel,
+								categorySlug:
+									categoryLabel === 'Uncategorised'
+										? 'uncategorised'
+										: feedbackSlug(categoryLabel),
+							},
+						}
+					: item,
+			),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'snippet',
+					id: snippetId,
+					note: snippetItem.note,
+					snippetCategoryLabel: categoryLabel,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; snippet?: SnippetItem }
+				| undefined
+
+			const savedSnippet = payload?.snippet
+			if (!response.ok || payload?.error || !savedSnippet) {
+				throw new Error(payload?.error ?? 'Unable to update snippet.')
+			}
+
+			setSnippetItems((current) =>
+				current.map((item) =>
+					item.id === snippetId ? savedSnippet : item,
+				),
+			)
+			setSidePanelNotice(payload.notice ?? 'Snippet updated.')
+		} catch (error) {
+			setSnippetItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to update snippet.',
+			)
+		} finally {
+			setSavingCommentId(null)
+		}
+	}
+
+	const patchCommentFromPanel = async ({
+		annotation,
+		categoryLabel,
+		tags,
+	}: {
+		annotation: AnnotationItem
+		categoryLabel?: string
+		tags?: string[]
+	}) => {
+		if (annotation.type !== 'comment' || isPublishedReadOnly) {
+			return
+		}
+
+		const feedbackItemId = annotation.id.replace('feedback:', '')
+		const feedbackItem = feedbackItems.find((item) => item.id === feedbackItemId)
+
+		if (!feedbackItem?.anchor) {
+			return
+		}
+
+		const nextCategoryLabel = normalizeFeedbackLabel(
+			categoryLabel ?? annotation.label,
+			feedbackItem.anchor.suggestedAction,
+		)
+		const nextTags = tags ?? feedbackItem.anchor.tags ?? []
+		const previousItems = feedbackItems
+
+		setSavingCommentId(feedbackItemId)
+		setSidePanelError(null)
+		setFeedbackItems((current) =>
+			current.map((item) =>
+				item.id === feedbackItemId && item.anchor
+					? {
+							...item,
+							anchor: {
+								...item.anchor,
+								categoryLabel: nextCategoryLabel,
+								categorySlug:
+									nextCategoryLabel === 'Uncategorised'
+										? 'uncategorised'
+										: feedbackSlug(nextCategoryLabel),
+								tags: nextTags,
+							},
+						}
+					: item,
+			),
+		)
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'comment',
+					id: feedbackItemId,
+					comment: feedbackItem.comment,
+					feedbackCategoryLabel: nextCategoryLabel,
+					tags: nextTags,
+					suggestedAction: feedbackItem.anchor.suggestedAction,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; feedback?: FeedbackItem }
+				| undefined
+
+			const savedFeedback = payload?.feedback
+			if (!response.ok || payload?.error || !savedFeedback) {
+				throw new Error(payload?.error ?? 'Unable to update comment.')
+			}
+
+			setFeedbackItems((current) =>
+				current.map((item) =>
+					item.id === feedbackItemId ? savedFeedback : item,
+				),
+			)
+			setSidePanelNotice(payload.notice ?? 'Comment updated.')
+		} catch (error) {
+			setFeedbackItems(previousItems)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to update comment.',
+			)
+		} finally {
+			setSavingCommentId(null)
+		}
+	}
+
+	const promoteCommentToSnippet = async (annotation: AnnotationItem) => {
+		if (annotation.type !== 'comment' || isPublishedReadOnly) {
+			return
+		}
+
+		const feedbackItemId = annotation.id.replace('feedback:', '')
+		const tempId = `temp-snippet-${Date.now()}`
+		const previousSnippets = snippetItems
+
+		setPromotingCommentId(feedbackItemId)
+		setSidePanelError(null)
+		setSnippetItems((current) => [
+			...current,
+			{
+				id: tempId,
+				note: annotation.text,
+				createdAt: new Date().toISOString(),
+				snippetCategoryId: null,
+				anchor: {
+					...annotation.anchor,
+					categoryLabel: annotation.label,
+					categorySlug:
+						annotation.label === 'Uncategorised'
+							? 'uncategorised'
+							: feedbackSlug(annotation.label),
+				},
+			},
+		])
+
+		try {
+			const response = await fetch(`/api/workshop/${submissionId}/annotations`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					type: 'snippet',
+					sourceFeedbackItemId: feedbackItemId,
+					blockId: annotation.anchor.blockId,
+					startOffset: annotation.anchor.startOffset,
+					endOffset: annotation.anchor.endOffset,
+					quote: annotation.anchor.quote,
+					prefix: annotation.anchor.prefix,
+					suffix: annotation.anchor.suffix,
+					note: annotation.text,
+					snippetCategoryLabel: annotation.label,
+				}),
+			})
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; snippet?: SnippetItem }
+				| undefined
+
+			const savedSnippet = payload?.snippet
+			if (!response.ok || payload?.error || !savedSnippet) {
+				throw new Error(payload?.error ?? 'Unable to save snippet.')
+			}
+
+			setSnippetItems((current) =>
+				current.map((item) =>
+					item.id === tempId ? savedSnippet : item,
+				),
+			)
+			setSidePanelNotice('Comment saved as snippet.')
+		} catch (error) {
+			setSnippetItems(previousSnippets)
+			setSidePanelError(
+				error instanceof Error ? error.message : 'Unable to save snippet.',
+			)
+		} finally {
+			setPromotingCommentId(null)
 		}
 	}
 
@@ -1019,6 +1341,22 @@ export function TeacherReviewWorkspace({
 							className="mt-3 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring"
 							placeholder="Type a note. Enter saves. Empty Enter saves as snippet."
 						/>
+						<label className="mt-3 block">
+							<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								Category
+							</span>
+							<select
+								value={composerCategoryLabel}
+								onChange={(event) => setComposerCategoryLabel(event.target.value)}
+								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								<option value="">Uncategorised</option>
+								{fixedFeedbackCategories.map((category) => (
+									<option key={category} value={category}>
+										{category}
+									</option>
+								))}
+							</select>
+						</label>
 						{composerError ? (
 							<p className="mt-2 text-xs text-amber-100">{composerError}</p>
 						) : null}
@@ -1145,9 +1483,9 @@ export function TeacherReviewWorkspace({
 															}
 															className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 															<option value="">Uncategorised</option>
-															{feedbackCategories.map((category) => (
-																<option key={category.id} value={category.id}>
-																	{category.name}
+															{fixedFeedbackCategories.map((category) => (
+																<option key={category} value={category}>
+																	{category}
 																</option>
 															))}
 														</select>
@@ -1228,11 +1566,46 @@ export function TeacherReviewWorkspace({
 												</div>
 											)
 										) : (
-											<p className="mt-3 leading-relaxed text-parchment-100">
-												{activeBlockItem.text.trim()
-													? activeBlockItem.text
-													: 'Snippet saved without a note.'}
-											</p>
+											<div className="mt-3 space-y-3">
+												<p className="leading-relaxed text-parchment-100">
+													{activeBlockItem.text.trim()
+														? activeBlockItem.text
+														: 'Snippet saved without a note.'}
+												</p>
+												{!isPublishedReadOnly ? (
+													<label className="block max-w-xs">
+														<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+															Category
+														</span>
+														<select
+															value={
+																fixedFeedbackCategories.includes(
+																	activeBlockItem.label,
+																)
+																	? activeBlockItem.label
+																	: ''
+															}
+															disabled={
+																savingCommentId ===
+																activeBlockItem.id.replace('snippet:', '')
+															}
+															onChange={(event) => {
+																void patchSnippetCategoryFromPanel(
+																	activeBlockItem,
+																	event.target.value,
+																)
+															}}
+															className="w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-xs text-parchment-100">
+															<option value="">Uncategorised</option>
+															{fixedFeedbackCategories.map((category) => (
+																<option key={category} value={category}>
+																	{category}
+																</option>
+															))}
+														</select>
+													</label>
+												) : null}
+											</div>
 										)}
 									</div>
 								) : null}
@@ -1258,7 +1631,7 @@ export function TeacherReviewWorkspace({
 							</p>
 						</div>
 						<div className="flex flex-wrap items-center justify-end gap-2">
-							{canExportFeedback ? (
+							{canLiveExportFeedback ? (
 								<Link
 									href={`/app/workshop/${submissionId}/export`}
 									className="inline-flex rounded-full border border-white/18 bg-white/6 px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 shadow-[0_6px_16px_rgba(0,0,0,0.14)] transition hover:border-white/28 hover:bg-white/10 hover:text-parchment-100">
@@ -1295,7 +1668,7 @@ export function TeacherReviewWorkspace({
 							Last published {new Date(summaryPublishedAt).toLocaleString()}
 						</p>
 					) : null}
-					{!canExportFeedback ? (
+					{!canLiveExportFeedback ? (
 						<p className="mt-2 text-xs text-silver-300">
 							Feedback must be published before export is available.
 						</p>
@@ -1337,6 +1710,36 @@ export function TeacherReviewWorkspace({
 							{isPanelOpen ? 'Collapse' : 'Show'}
 						</button>
 					</div>
+					<div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-ink-950 px-3 py-2">
+						<p className="text-sm text-silver-100">
+							{uncategorisedCommentCount} comments uncategorised
+						</p>
+						<button
+							type="button"
+							onClick={() => {
+								setIsPanelOpen(true)
+								setReviewUncategorisedOnly(true)
+								const firstUncategorised = commentAnnotations.find(
+									(item) => item.label === 'Uncategorised',
+								)
+								if (firstUncategorised) {
+									focusAnnotation(firstUncategorised.id)
+								}
+							}}
+							className="rounded-full border border-accent-300/40 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+							Review categories
+						</button>
+					</div>
+					{sidePanelError ? (
+						<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+							{sidePanelError}
+						</p>
+					) : null}
+					{sidePanelNotice ? (
+						<p className="mb-3 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+							{sidePanelNotice}
+						</p>
+					) : null}
 					{!isPanelOpen ? (
 						<p className="text-sm text-silver-200">
 							Annotation list hidden. Markers remain in the manuscript.
@@ -1349,43 +1752,134 @@ export function TeacherReviewWorkspace({
 								<section>
 									<div className="mb-2 flex items-center justify-between gap-2">
 										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
-											Comments
+											{reviewUncategorisedOnly ? 'Uncategorised comments' : 'Comments'}
 										</p>
-										<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
-											{commentCount}
-										</p>
+										<button
+											type="button"
+											onClick={() =>
+												setReviewUncategorisedOnly((value) => !value)
+											}
+											className="text-[10px] uppercase tracking-[0.1em] text-silver-300 transition hover:text-parchment-100">
+											{reviewUncategorisedOnly ? 'Show all' : 'Only uncategorised'}
+										</button>
 									</div>
-									{commentAnnotations.length === 0 ? (
+									{visibleCommentAnnotations.length === 0 ? (
 										<p className="text-sm text-silver-300">No comments yet.</p>
 									) : (
 										<ul className="space-y-2">
-											{commentAnnotations.map((item) => (
-												<li key={item.id}>
-													<button
-														type="button"
-														onClick={() => focusAnnotation(item.id)}
-														className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-															activeAnnotationId === item.id
-																? annotationBorderClass(item.type)
-																: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
-														}`}>
-														<div className="flex flex-wrap items-center gap-2">
-															<p className="text-[11px] uppercase tracking-[0.1em]">
-																Comment
-															</p>
-															<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
-																{item.label}
-															</p>
+											{visibleCommentAnnotations.map((item) => {
+												const feedbackItemId = item.id.replace('feedback:', '')
+												const tagInputId = `tags-${feedbackItemId}`
+												const isSavingThis = savingCommentId === feedbackItemId
+												const isPromotingThis =
+													promotingCommentId === feedbackItemId
+
+												return (
+													<li key={item.id}>
+														<div
+															className={`rounded-xl border px-3 py-3 transition ${
+																activeAnnotationId === item.id
+																	? annotationBorderClass(item.type)
+																	: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+															}`}>
+															<button
+																type="button"
+																onClick={() => focusAnnotation(item.id)}
+																className="block w-full text-left">
+																<div className="flex flex-wrap items-center gap-2">
+																	<p className="text-[11px] uppercase tracking-[0.1em]">
+																		Comment
+																	</p>
+																	<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																		{item.label}
+																	</p>
+																</div>
+																<p className="mt-2 text-sm italic text-parchment-100/90">
+																	{formatQuote(item.anchor.quote)}
+																</p>
+																<p className="mt-2 text-sm leading-relaxed text-current">
+																	{item.text.trim() ? item.text : 'Draft comment'}
+																</p>
+															</button>
+															{!isPublishedReadOnly ? (
+																<div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+																	<label className="block">
+																		<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																			Category
+																		</span>
+																		<select
+																			value={
+																				fixedFeedbackCategories.includes(item.label)
+																					? item.label
+																					: ''
+																			}
+																			disabled={isSavingThis}
+																			onChange={(event) => {
+																				void patchCommentFromPanel({
+																					annotation: item,
+																					categoryLabel: event.target.value,
+																				})
+																			}}
+																			className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100">
+																			<option value="">Uncategorised</option>
+																			{fixedFeedbackCategories.map((category) => (
+																				<option key={category} value={category}>
+																					{category}
+																				</option>
+																			))}
+																		</select>
+																	</label>
+																	<label htmlFor={tagInputId} className="block">
+																		<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																			Tags
+																		</span>
+																		<input
+																			id={tagInputId}
+																			type="text"
+																			defaultValue={(item.tags ?? []).join(', ')}
+																			onBlur={(event) => {
+																				void patchCommentFromPanel({
+																					annotation: item,
+																					tags: parseTagsInput(event.target.value),
+																				})
+																			}}
+																			className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100"
+																			placeholder="motivation, scene work"
+																		/>
+																	</label>
+																	<div className="flex flex-wrap items-center gap-2">
+																		<button
+																			type="button"
+																			disabled={isPromotingThis}
+																			onClick={() => {
+																				void promoteCommentToSnippet(item)
+																			}}
+																			className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+																			{isPromotingThis ? 'Saving...' : 'Save as snippet'}
+																		</button>
+																		{isSavingThis ? (
+																			<p className="text-[11px] text-silver-300">
+																				Saving...
+																			</p>
+																		) : null}
+																	</div>
+																</div>
+															) : null}
+															{item.tags && item.tags.length > 0 ? (
+																<div className="mt-2 flex flex-wrap gap-1.5">
+																	{item.tags.map((tag) => (
+																		<p
+																			key={tag}
+																			className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																			{tag}
+																		</p>
+																	))}
+																</div>
+															) : null}
 														</div>
-														<p className="mt-2 text-sm italic text-parchment-100/90">
-															{formatQuote(item.anchor.quote)}
-														</p>
-														<p className="mt-2 text-sm leading-relaxed text-current">
-															{item.text.trim() ? item.text : 'Draft comment'}
-														</p>
-													</button>
-												</li>
-											))}
+													</li>
+												)
+											})}
 										</ul>
 									)}
 								</section>
@@ -1402,35 +1896,71 @@ export function TeacherReviewWorkspace({
 										<p className="text-sm text-silver-300">No snippets yet.</p>
 									) : (
 										<ul className="space-y-2">
-											{snippetAnnotations.map((item) => (
-												<li key={item.id}>
-													<button
-														type="button"
-														onClick={() => focusAnnotation(item.id)}
-														className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-															activeAnnotationId === item.id
-																? annotationBorderClass(item.type)
-																: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
-														}`}>
-														<div className="flex flex-wrap items-center gap-2">
-															<p className="text-[11px] uppercase tracking-[0.1em]">
-																Snippet
-															</p>
-															<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
-																{item.label}
-															</p>
+											{snippetAnnotations.map((item) => {
+												const snippetId = item.id.replace('snippet:', '')
+												const isSavingThis = savingCommentId === snippetId
+
+												return (
+													<li key={item.id}>
+														<div
+															className={`rounded-xl border px-3 py-3 transition ${
+																activeAnnotationId === item.id
+																	? annotationBorderClass(item.type)
+																	: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+															}`}>
+															<button
+																type="button"
+																onClick={() => focusAnnotation(item.id)}
+																className="block w-full text-left">
+																<div className="flex flex-wrap items-center gap-2">
+																	<p className="text-[11px] uppercase tracking-[0.1em]">
+																		Snippet
+																	</p>
+																	<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																		{item.label}
+																	</p>
+																</div>
+																<p className="mt-2 text-sm italic text-parchment-100/90">
+																	{formatQuote(item.anchor.quote)}
+																</p>
+																<p className="mt-2 text-sm leading-relaxed text-current">
+																	{item.text.trim()
+																		? item.text
+																		: 'Snippet saved without a note.'}
+																</p>
+															</button>
+															{!isPublishedReadOnly ? (
+																<label className="mt-3 block border-t border-white/10 pt-3">
+																	<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																		Category
+																	</span>
+																	<select
+																		value={
+																			fixedFeedbackCategories.includes(item.label)
+																				? item.label
+																				: ''
+																		}
+																		disabled={isSavingThis}
+																		onChange={(event) => {
+																			void patchSnippetCategoryFromPanel(
+																				item,
+																				event.target.value,
+																			)
+																		}}
+																		className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100">
+																		<option value="">Uncategorised</option>
+																		{fixedFeedbackCategories.map((category) => (
+																			<option key={category} value={category}>
+																				{category}
+																			</option>
+																		))}
+																	</select>
+																</label>
+															) : null}
 														</div>
-														<p className="mt-2 text-sm italic text-parchment-100/90">
-															{formatQuote(item.anchor.quote)}
-														</p>
-														<p className="mt-2 text-sm leading-relaxed text-current">
-															{item.text.trim()
-																? item.text
-																: 'Snippet saved without a note.'}
-														</p>
-													</button>
-												</li>
-											))}
+													</li>
+												)
+											})}
 										</ul>
 									)}
 								</section>
@@ -1465,16 +1995,16 @@ export function TeacherReviewWorkspace({
 									Category
 								</label>
 								<select
-									name="snippetCategoryId"
+									name="snippetCategoryLabel"
 									value={snippetCategoryIdDraft}
 									onChange={(event) =>
 										setSnippetCategoryIdDraft(event.target.value)
 									}
 									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 									<option value="">Uncategorised</option>
-									{snippetCategories.map((category) => (
-										<option key={category.id} value={category.id}>
-											{category.name}
+									{fixedFeedbackCategories.map((category) => (
+										<option key={category} value={category}>
+											{category}
 										</option>
 									))}
 								</select>

@@ -20,6 +20,9 @@ function normalizeAnchor(anchor: SelectionRangeAnchor): SelectionRangeAnchor {
 		quote: anchor.quote,
 		prefix: anchor.prefix ?? '',
 		suffix: anchor.suffix ?? '',
+		categoryLabel: anchor.categoryLabel,
+		categorySlug: anchor.categorySlug,
+		tags: anchor.tags ?? [],
 	}
 }
 

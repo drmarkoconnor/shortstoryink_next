@@ -7,6 +7,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 type AnnotationPayload = {
 	type?: 'comment' | 'snippet'
 	id?: string
+	sourceFeedbackItemId?: string
 	blockId?: string
 	startOffset?: number
 	endOffset?: number
@@ -15,8 +16,10 @@ type AnnotationPayload = {
 	suffix?: string
 	comment?: string
 	note?: string
-	feedbackCategoryId?: string
+	feedbackCategoryLabel?: string
+	tags?: string[]
 	snippetCategoryId?: string
+	snippetCategoryLabel?: string
 	suggestedAction?: 'cut'
 }
 
@@ -30,8 +33,28 @@ type SelectionAnchor = {
 	kind?: 'typo' | 'craft' | 'pacing' | 'structure'
 	categoryLabel?: string
 	categorySlug?: string
+	tags?: string[]
 	suggestedAction?: 'cut'
 }
+
+const fixedFeedbackCategoryLabels = [
+	'Character',
+	'Setting',
+	'Plot',
+	'Structure',
+	'Pace',
+	'Point of View',
+	'Voice',
+	'Dialogue',
+	'Image/detail',
+	'Opening',
+	'Ending',
+	'Sentence style',
+	'Theme',
+	'Clarity',
+	'Cut/tighten',
+	'Praise/strength',
+]
 
 function isNonEmptyString(value: unknown) {
 	return typeof value === 'string' && value.trim().length > 0
@@ -43,6 +66,34 @@ function isSelectionAnchor(value: unknown): value is SelectionAnchor {
 	}
 
 	return 'blockId' in value || 'quote' in value
+}
+
+function toCategorySlug(value: string) {
+	return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function normalizeFeedbackCategoryLabel(value: unknown, suggestedAction?: 'cut') {
+	if (suggestedAction === 'cut') {
+		return 'Cut/tighten'
+	}
+
+	const label = typeof value === 'string' ? value.trim() : ''
+	return fixedFeedbackCategoryLabels.includes(label) ? label : 'Uncategorised'
+}
+
+function normalizeTags(value: unknown) {
+	if (!Array.isArray(value)) {
+		return []
+	}
+
+	return [
+		...new Set(
+			value
+				.map((item) => String(item).trim())
+				.filter(Boolean)
+				.slice(0, 12),
+		),
+	]
 }
 
 function toSnippetResponse(row: {
@@ -64,6 +115,9 @@ function toSnippetResponse(row: {
 			quote: string
 			prefix?: string
 			suffix?: string
+			categoryLabel?: string
+			categorySlug?: string
+			tags?: string[]
 		},
 	}
 }
@@ -88,6 +142,7 @@ function toFeedbackResponse(row: {
 			kind?: 'typo' | 'craft' | 'pacing' | 'structure'
 			categoryLabel?: string
 			categorySlug?: string
+			tags?: string[]
 			suggestedAction?: 'cut'
 		},
 	}
@@ -137,6 +192,13 @@ export async function POST(
 	const suffix = String(payload.suffix ?? '').trim()
 	const comment = String(payload.comment ?? '')
 	const suggestedAction = payload.suggestedAction === 'cut' ? 'cut' : undefined
+	const feedbackCategoryLabel = normalizeFeedbackCategoryLabel(
+		payload.feedbackCategoryLabel,
+		suggestedAction,
+	)
+	const snippetCategoryLabel = normalizeFeedbackCategoryLabel(
+		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
+	)
 	const startOffset = Number(payload.startOffset ?? -1)
 	const endOffset = Number(payload.endOffset ?? -1)
 
@@ -186,8 +248,11 @@ export async function POST(
 		const feedbackAnchor = {
 			...anchor,
 			kind: 'craft' as const,
-			categoryLabel: suggestedAction === 'cut' ? 'Cut' : 'Uncategorised',
-			categorySlug: suggestedAction === 'cut' ? 'cut' : 'uncategorised',
+			categoryLabel: feedbackCategoryLabel,
+			categorySlug:
+				feedbackCategoryLabel === 'Uncategorised'
+					? 'uncategorised'
+					: toCategorySlug(feedbackCategoryLabel),
 			suggestedAction,
 		}
 
@@ -230,15 +295,24 @@ export async function POST(
 		})
 	}
 
+	const sourceFeedbackItemId = String(payload.sourceFeedbackItemId ?? '').trim()
 	const snippetInsert = buildSnippetInsert({
 		savedBy: profile.user.id,
 		capturedBy: profile.user.id,
-		sourceType: 'submission',
+		sourceType: sourceFeedbackItemId ? 'feedback_item' : 'submission',
 		sourceSubmissionId: submissionId,
+		sourceFeedbackItemId: sourceFeedbackItemId || null,
 		sourceAuthorId: submissionResult.data.author_id as string,
 		snippetCategoryId: null,
-		anchor,
-		note: null,
+		anchor: {
+			...anchor,
+			categoryLabel: snippetCategoryLabel,
+			categorySlug:
+				snippetCategoryLabel === 'Uncategorised'
+					? 'uncategorised'
+					: toCategorySlug(snippetCategoryLabel),
+		},
+		note: payload.note ?? null,
 		visibility: 'private',
 	})
 
@@ -302,7 +376,16 @@ export async function PATCH(
 
 	if (type === 'comment') {
 		const comment = String(payload.comment ?? '').trim()
-		const feedbackCategoryIdInput = String(payload.feedbackCategoryId ?? '').trim()
+		const suggestedAction = payload.suggestedAction === 'cut' ? 'cut' : undefined
+		const categoryLabel = normalizeFeedbackCategoryLabel(
+			payload.feedbackCategoryLabel,
+			suggestedAction,
+		)
+		const categorySlug =
+			categoryLabel === 'Uncategorised'
+				? 'uncategorised'
+				: toCategorySlug(categoryLabel)
+		const tags = normalizeTags(payload.tags)
 
 		if (!comment) {
 			return NextResponse.json(
@@ -325,29 +408,11 @@ export async function PATCH(
 			)
 		}
 
-		let categoryLabel = 'Uncategorised'
-		let categorySlug = 'uncategorised'
-		const suggestedAction = payload.suggestedAction === 'cut' ? 'cut' : undefined
-
-		if (suggestedAction !== 'cut' && feedbackCategoryIdInput) {
-			const categoryResult = await supabase
-				.from('feedback_categories')
-				.select('name, slug')
-				.eq('id', feedbackCategoryIdInput)
-				.maybeSingle()
-
-			if (categoryResult.data) {
-				categoryLabel =
-					String(categoryResult.data.name ?? '').trim() || 'Uncategorised'
-				categorySlug =
-					String(categoryResult.data.slug ?? '').trim() || 'uncategorised'
-			}
-		}
-
 		const updatedAnchor = {
 			...feedbackItemResult.data.anchor,
-			categoryLabel: suggestedAction === 'cut' ? 'Cut' : categoryLabel,
-			categorySlug: suggestedAction === 'cut' ? 'cut' : categorySlug,
+			categoryLabel,
+			categorySlug,
+			tags,
 			suggestedAction,
 		}
 
@@ -385,13 +450,38 @@ export async function PATCH(
 	}
 
 	const note = String(payload.note ?? '').trim()
-	const snippetCategoryIdInput = String(payload.snippetCategoryId ?? '').trim()
+	const snippetCategoryLabel = normalizeFeedbackCategoryLabel(
+		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
+	)
+	const snippetResult = await supabase
+		.from('snippets')
+		.select('id, anchor')
+		.eq('id', id)
+		.eq('source_submission_id', submissionId)
+		.maybeSingle()
+
+	if (!snippetResult.data || !isSelectionAnchor(snippetResult.data.anchor)) {
+		return NextResponse.json(
+			{ error: 'Unable to load that snippet for editing.' },
+			{ status: 404 },
+		)
+	}
+
+	const updatedAnchor = {
+		...snippetResult.data.anchor,
+		categoryLabel: snippetCategoryLabel,
+		categorySlug:
+			snippetCategoryLabel === 'Uncategorised'
+				? 'uncategorised'
+				: toCategorySlug(snippetCategoryLabel),
+	}
 
 	const updateResult = await supabase
 		.from('snippets')
 		.update({
 			note: note || null,
-			snippet_category_id: snippetCategoryIdInput || null,
+			snippet_category_id: null,
+			anchor: updatedAnchor,
 		})
 		.eq('id', id)
 		.eq('source_submission_id', submissionId)
