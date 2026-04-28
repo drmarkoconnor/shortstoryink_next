@@ -15,6 +15,11 @@ import {
 import { StoryFolio } from '@/components/prototype/story-folio'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
 import { ProtoCard } from '@/components/prototype/card'
+import {
+	feedbackSlug,
+	fixedFeedbackCategories,
+	normalizeFeedbackLabel,
+} from '@/lib/feedback/categories'
 import { paginateManuscript, readingPageOptions } from '@/lib/manuscript/paging'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
@@ -83,43 +88,12 @@ type AnnotationItem = {
 const CUT_SUGGESTION_COMMENT =
 	'Consider the effect of cutting here on pace, clarity, and emphasis.'
 
-const fixedFeedbackCategories = [
-	'Character',
-	'Setting',
-	'Plot',
-	'Structure',
-	'Pace',
-	'Point of View',
-	'Voice',
-	'Dialogue',
-	'Image/detail',
-	'Opening',
-	'Ending',
-	'Sentence style',
-	'Theme',
-	'Clarity',
-	'Cut/tighten',
-	'Praise/strength',
-]
-
 function feedbackLabel(anchor: FeedbackAnchor | null | undefined) {
 	if (anchor?.suggestedAction === 'cut' || anchor?.categoryLabel === 'Cut') {
 		return 'Cut/tighten'
 	}
 
 	return anchor?.categoryLabel?.trim() || 'Uncategorised'
-}
-
-function feedbackSlug(label: string) {
-	return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
-
-function normalizeFeedbackLabel(value: string, suggestedAction?: 'cut' | null) {
-	if (suggestedAction === 'cut') {
-		return 'Cut/tighten'
-	}
-
-	return fixedFeedbackCategories.includes(value) ? value : 'Uncategorised'
 }
 
 function parseTagsInput(value: string) {

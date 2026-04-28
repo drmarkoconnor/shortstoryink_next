@@ -31,6 +31,7 @@ export type CreateSnippetInput = {
 	sourceFeedbackItemId?: string | null
 	sourceAuthorId?: string | null
 	snippetCategoryId?: string | null
+	snippetText?: string | null
 	anchor: SelectionRangeAnchor
 	note?: string | null
 	visibility?: SnippetVisibility

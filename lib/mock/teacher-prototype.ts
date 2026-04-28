@@ -6,6 +6,8 @@ import type {
 export const teacherTabs = [
 	{ href: '/app/teacher', label: 'Home' },
 	{ href: '/app/teacher/review-desk', label: 'Review' },
+	{ href: '/app/teacher/snippets', label: 'Snippets' },
+	{ href: '/app/teacher-studio', label: 'Studio' },
 	{ href: '/app/teacher/archive', label: 'Archive' },
 ]
 
