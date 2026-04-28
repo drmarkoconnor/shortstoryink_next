@@ -1,6 +1,10 @@
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
+import {
+	feedbackSlug,
+	normalizeFeedbackCategoryLabel,
+} from '@/lib/feedback/categories'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -37,25 +41,6 @@ type SelectionAnchor = {
 	suggestedAction?: 'cut'
 }
 
-const fixedFeedbackCategoryLabels = [
-	'Character',
-	'Setting',
-	'Plot',
-	'Structure',
-	'Pace',
-	'Point of View',
-	'Voice',
-	'Dialogue',
-	'Image/detail',
-	'Opening',
-	'Ending',
-	'Sentence style',
-	'Theme',
-	'Clarity',
-	'Cut/tighten',
-	'Praise/strength',
-]
-
 function isNonEmptyString(value: unknown) {
 	return typeof value === 'string' && value.trim().length > 0
 }
@@ -66,19 +51,6 @@ function isSelectionAnchor(value: unknown): value is SelectionAnchor {
 	}
 
 	return 'blockId' in value || 'quote' in value
-}
-
-function toCategorySlug(value: string) {
-	return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
-
-function normalizeFeedbackCategoryLabel(value: unknown, suggestedAction?: 'cut') {
-	if (suggestedAction === 'cut') {
-		return 'Cut/tighten'
-	}
-
-	const label = typeof value === 'string' ? value.trim() : ''
-	return fixedFeedbackCategoryLabels.includes(label) ? label : 'Uncategorised'
 }
 
 function normalizeTags(value: unknown) {
@@ -253,7 +225,7 @@ export async function POST(
 			categorySlug:
 				feedbackCategoryLabel === 'Uncategorised'
 					? 'uncategorised'
-					: toCategorySlug(feedbackCategoryLabel),
+					: feedbackSlug(feedbackCategoryLabel),
 			suggestedAction,
 		}
 
@@ -305,13 +277,16 @@ export async function POST(
 		sourceFeedbackItemId: sourceFeedbackItemId || null,
 		sourceAuthorId: submissionResult.data.author_id as string,
 		snippetCategoryId: null,
+		snippetText: sourceFeedbackItemId
+			? String(payload.note ?? '').trim()
+			: null,
 		anchor: {
 			...anchor,
 			categoryLabel: snippetCategoryLabel,
 			categorySlug:
 				snippetCategoryLabel === 'Uncategorised'
 					? 'uncategorised'
-					: toCategorySlug(snippetCategoryLabel),
+					: feedbackSlug(snippetCategoryLabel),
 			tags: snippetTags,
 		},
 		note: payload.note ?? null,
@@ -386,7 +361,7 @@ export async function PATCH(
 		const categorySlug =
 			categoryLabel === 'Uncategorised'
 				? 'uncategorised'
-				: toCategorySlug(categoryLabel)
+				: feedbackSlug(categoryLabel)
 		const tags = normalizeTags(payload.tags)
 
 		if (!comment) {
@@ -475,7 +450,7 @@ export async function PATCH(
 		categorySlug:
 			snippetCategoryLabel === 'Uncategorised'
 				? 'uncategorised'
-				: toCategorySlug(snippetCategoryLabel),
+				: feedbackSlug(snippetCategoryLabel),
 	}
 
 	const updateResult = await supabase

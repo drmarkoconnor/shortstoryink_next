@@ -37,7 +37,7 @@ export function buildSnippetInsert(input: CreateSnippetInput) {
 		source_feedback_item_id: input.sourceFeedbackItemId ?? null,
 		source_author_id: input.sourceAuthorId ?? null,
 		snippet_category_id: input.snippetCategoryId ?? null,
-		snippet_text: anchor.quote,
+		snippet_text: input.snippetText?.trim() || anchor.quote,
 		anchor,
 		note: input.note?.trim() || null,
 		visibility: normalizeVisibility(input.visibility),
