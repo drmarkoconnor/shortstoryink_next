@@ -90,7 +90,12 @@ export function GuideShell({
 			<header className="border-b border-white/10 bg-ink-950/45">
 				<div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
 					<BrandWordmark />
-					<nav className="flex flex-wrap gap-2 text-sm text-silver-100">
+					<nav className="flex flex-wrap items-center justify-end gap-2 text-sm text-silver-100">
+						<Link
+							href="/app/writer"
+							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-3 py-1.5 text-parchment-100 transition hover:bg-accent-400/30">
+							Back to writing
+						</Link>
 						{guideNav.map((item) => (
 							<Link
 								key={item.href}

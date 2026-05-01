@@ -9,6 +9,7 @@ import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 const writerNavItems = [
 	{ href: '/app/writer', label: 'Write' },
 	{ href: '/app/writer/feedback', label: 'Feedback' },
+	{ href: '/guide/new-writers', label: 'Guide' },
 	{ href: '/app/account', label: 'Account', disabled: true },
 ]
 
