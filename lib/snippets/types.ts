@@ -1,6 +1,6 @@
 import type { SelectionRangeAnchor } from '@/lib/domain/core-flow'
 
-export const snippetSourceTypes = ['submission', 'feedback_item'] as const
+export const snippetSourceTypes = ['submission', 'feedback_item', 'external'] as const
 export type SnippetSourceType = (typeof snippetSourceTypes)[number]
 
 export const snippetVisibilities = ['private', 'group', 'shared'] as const

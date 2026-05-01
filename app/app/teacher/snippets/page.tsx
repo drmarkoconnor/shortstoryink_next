@@ -4,7 +4,7 @@ import {
 	type SnippetLibraryEntry,
 } from '@/components/teacher/snippet-library'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { feedbackSlug, normalizeFeedbackLabel } from '@/lib/feedback/categories'
+import { feedbackSlug, normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -15,12 +15,21 @@ type SnippetRow = {
 	created_at: string
 	anchor: unknown
 	source_submission_id: string | null
+	source_type: string | null
 }
 
 type SelectionAnchor = {
 	categoryLabel?: string
 	categorySlug?: string
 	tags?: unknown[]
+	sourceLabel?: string
+	sourceKind?: string
+	originalSource?: string
+	sourceAuthor?: string
+	sourceTitle?: string
+	sourceName?: string
+	sourceUrl?: string
+	sourceSection?: string
 }
 
 function isSelectionAnchor(value: unknown): value is SelectionAnchor {
@@ -34,7 +43,7 @@ function tagsFromAnchor(anchor: SelectionAnchor | null) {
 }
 
 function categoryFromAnchor(anchor: SelectionAnchor | null) {
-	return normalizeFeedbackLabel(
+	return normalizeSnippetLabel(
 		typeof anchor?.categoryLabel === 'string' ? anchor.categoryLabel : '',
 	)
 }
@@ -47,7 +56,7 @@ export default async function TeacherSnippetLibraryPage() {
 
 	const snippetsResult = await supabase
 		.from('snippets')
-		.select('id, snippet_text, note, created_at, anchor, source_submission_id')
+		.select('id, snippet_text, note, created_at, anchor, source_submission_id, source_type')
 		.eq('saved_by', profile.user.id)
 		.order('created_at', { ascending: false })
 		.limit(100)
@@ -73,6 +82,12 @@ export default async function TeacherSnippetLibraryPage() {
 							: feedbackSlug(categoryLabel),
 				tags: tagsFromAnchor(anchor),
 				sourceSubmissionId: row.source_submission_id,
+				sourceType: row.source_type ?? null,
+				sourceLabel: anchor?.sourceLabel ?? anchor?.sourceAuthor ?? '',
+				sourceTitle: anchor?.sourceKind ?? anchor?.sourceTitle ?? '',
+				sourceName: anchor?.sourceName ?? anchor?.originalSource ?? '',
+				sourceUrl: anchor?.sourceUrl ?? '',
+				sourceSection: anchor?.sourceSection ?? '',
 			}
 		})
 	}

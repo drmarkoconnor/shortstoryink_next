@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import {
 	feedbackSlug,
-	normalizeFeedbackCategoryLabel,
+	normalizeSnippetCategoryLabel,
 } from '@/lib/feedback/categories'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -87,7 +87,7 @@ export async function PATCH(
 	const payload = (await request.json()) as SnippetPayload
 	const text = String(payload.text ?? '').trim()
 	const note = String(payload.note ?? '').trim()
-	const categoryLabel = normalizeFeedbackCategoryLabel(payload.categoryLabel)
+	const categoryLabel = normalizeSnippetCategoryLabel(payload.categoryLabel)
 	const tags = normalizeTags(payload.tags)
 
 	if (!snippetId) {

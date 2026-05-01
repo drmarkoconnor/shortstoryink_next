@@ -17,6 +17,11 @@ export const fixedFeedbackCategories = [
 	'Praise/strength',
 ]
 
+export const fixedSnippetCategories = [
+	'Promoted',
+	...fixedFeedbackCategories,
+]
+
 export function feedbackSlug(label: string) {
 	return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
@@ -39,4 +44,24 @@ export function normalizeFeedbackCategoryLabel(
 
 	const label = typeof value === 'string' ? value.trim() : ''
 	return fixedFeedbackCategories.includes(label) ? label : 'Uncategorised'
+}
+
+export function normalizeSnippetLabel(value: string, suggestedAction?: 'cut' | null) {
+	if (suggestedAction === 'cut') {
+		return 'Cut/tighten'
+	}
+
+	return fixedSnippetCategories.includes(value) ? value : 'Uncategorised'
+}
+
+export function normalizeSnippetCategoryLabel(
+	value: unknown,
+	suggestedAction?: 'cut',
+) {
+	if (suggestedAction === 'cut') {
+		return 'Cut/tighten'
+	}
+
+	const label = typeof value === 'string' ? value.trim() : ''
+	return fixedSnippetCategories.includes(label) ? label : 'Uncategorised'
 }

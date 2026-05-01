@@ -16,4 +16,16 @@ export type SelectionRangeAnchor = {
 	categoryLabel?: string
 	categorySlug?: string
 	tags?: string[]
+	sourceLabel?: string
+	sourceKind?: string
+	originalSource?: string
+	createdByLabel?: string
+	sourceAuthor?: string
+	sourceTitle?: string
+	sourceName?: string
+	sourceUrl?: string
+	sourceSection?: string
+	sourceLicenceNote?: string
+	sourceTypeLabel?: string
+	snippetType?: string
 }

@@ -18,7 +18,9 @@ import { ProtoCard } from '@/components/prototype/card'
 import {
 	feedbackSlug,
 	fixedFeedbackCategories,
+	fixedSnippetCategories,
 	normalizeFeedbackLabel,
+	normalizeSnippetLabel,
 } from '@/lib/feedback/categories'
 import { paginateManuscript, readingPageOptions } from '@/lib/manuscript/paging'
 
@@ -36,6 +38,10 @@ type FeedbackAnchor = {
 	categorySlug?: string
 	tags?: string[]
 	suggestedAction?: 'cut'
+	sourceLabel?: string
+	sourceKind?: string
+	originalSource?: string
+	createdByLabel?: string
 }
 
 type FeedbackItem = {
@@ -128,7 +134,7 @@ function snippetItemToLibraryItem(snippet: SnippetItem): SnippetLibraryItem | nu
 		return null
 	}
 
-	const categoryLabel = normalizeFeedbackLabel(feedbackLabel(snippet.anchor))
+	const categoryLabel = normalizeSnippetLabel(feedbackLabel(snippet.anchor))
 
 	return {
 		id: snippet.id,
@@ -642,7 +648,7 @@ export function TeacherReviewWorkspace({
 
 		setSnippetNoteDraft(activeAnnotation.text)
 		setSnippetCategoryIdDraft(
-			fixedFeedbackCategories.includes(activeAnnotation.label)
+			fixedSnippetCategories.includes(activeAnnotation.label)
 				? activeAnnotation.label
 				: '',
 		)
@@ -941,7 +947,7 @@ export function TeacherReviewWorkspace({
 
 		const snippetId = activeAnnotation.id.replace('snippet:', '')
 		const previousItems = snippetItems
-		const categoryLabel = normalizeFeedbackLabel(snippetCategoryIdDraft)
+		const categoryLabel = normalizeSnippetLabel(snippetCategoryIdDraft)
 
 		setSidePanelError(null)
 		setSidePanelNotice(null)
@@ -1029,7 +1035,7 @@ export function TeacherReviewWorkspace({
 			return
 		}
 
-		const categoryLabel = normalizeFeedbackLabel(nextCategory)
+		const categoryLabel = normalizeSnippetLabel(nextCategory)
 		const previousItems = snippetItems
 
 		setSavingCommentId(snippetId)
@@ -1207,11 +1213,8 @@ export function TeacherReviewWorkspace({
 				snippetCategoryId: null,
 				anchor: {
 					...annotation.anchor,
-					categoryLabel: annotation.label,
-					categorySlug:
-						annotation.label === 'Uncategorised'
-							? 'uncategorised'
-							: feedbackSlug(annotation.label),
+					categoryLabel: 'Promoted',
+					categorySlug: 'promoted',
 				},
 			},
 		])
@@ -1232,7 +1235,7 @@ export function TeacherReviewWorkspace({
 					prefix: annotation.anchor.prefix,
 					suffix: annotation.anchor.suffix,
 					note: annotation.text,
-					snippetCategoryLabel: annotation.label,
+					snippetCategoryLabel: 'Promoted',
 					tags: annotation.tags ?? [],
 				}),
 			})
@@ -2004,7 +2007,7 @@ export function TeacherReviewWorkspace({
 								onChange={(event) => setSnippetSearchCategory(event.target.value)}
 								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 								<option value="">All categories</option>
-								{fixedFeedbackCategories.map((category) => (
+								{fixedSnippetCategories.map((category) => (
 									<option key={category} value={category}>
 										{category}
 									</option>
@@ -2370,7 +2373,7 @@ export function TeacherReviewWorkspace({
 									}
 									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 									<option value="">Uncategorised</option>
-									{fixedFeedbackCategories.map((category) => (
+									{fixedSnippetCategories.map((category) => (
 										<option key={category} value={category}>
 											{category}
 										</option>

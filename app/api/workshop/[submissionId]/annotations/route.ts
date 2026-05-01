@@ -4,7 +4,9 @@ import { requireTeacher } from '@/lib/auth/get-current-profile'
 import {
 	feedbackSlug,
 	normalizeFeedbackCategoryLabel,
+	normalizeSnippetCategoryLabel,
 } from '@/lib/feedback/categories'
+import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -39,6 +41,10 @@ type SelectionAnchor = {
 	categorySlug?: string
 	tags?: string[]
 	suggestedAction?: 'cut'
+	sourceLabel?: string
+	sourceKind?: string
+	originalSource?: string
+	createdByLabel?: string
 }
 
 function isNonEmptyString(value: unknown) {
@@ -90,6 +96,10 @@ function toSnippetResponse(row: {
 			categoryLabel?: string
 			categorySlug?: string
 			tags?: string[]
+			sourceLabel?: string
+			sourceKind?: string
+			originalSource?: string
+			createdByLabel?: string
 		},
 	}
 }
@@ -167,9 +177,6 @@ export async function POST(
 	const feedbackCategoryLabel = normalizeFeedbackCategoryLabel(
 		payload.feedbackCategoryLabel,
 		suggestedAction,
-	)
-	const snippetCategoryLabel = normalizeFeedbackCategoryLabel(
-		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
 	)
 	const snippetTags = normalizeTags(payload.tags)
 	const startOffset = Number(payload.startOffset ?? -1)
@@ -269,6 +276,22 @@ export async function POST(
 	}
 
 	const sourceFeedbackItemId = String(payload.sourceFeedbackItemId ?? '').trim()
+	const promotedSnippetCategoryLabel = sourceFeedbackItemId
+		? 'Promoted'
+		: normalizeSnippetCategoryLabel(
+				payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
+			)
+	const teacherProfileResult = await supabase
+		.from('profiles')
+		.select('display_name')
+		.eq('id', profile.user.id)
+		.maybeSingle()
+	const teacherName = normalizeTeacherDisplayName(
+		(teacherProfileResult.data?.display_name as string | null | undefined) ??
+			(profile.user.user_metadata?.display_name as string | undefined) ??
+			(profile.user.user_metadata?.name as string | undefined) ??
+			profile.user.email,
+	)
 	const snippetInsert = buildSnippetInsert({
 		savedBy: profile.user.id,
 		capturedBy: profile.user.id,
@@ -282,12 +305,17 @@ export async function POST(
 			: null,
 		anchor: {
 			...anchor,
-			categoryLabel: snippetCategoryLabel,
+			categoryLabel: promotedSnippetCategoryLabel,
 			categorySlug:
-				snippetCategoryLabel === 'Uncategorised'
+				promotedSnippetCategoryLabel === 'Uncategorised'
 					? 'uncategorised'
-					: feedbackSlug(snippetCategoryLabel),
+					: feedbackSlug(promotedSnippetCategoryLabel),
 			tags: snippetTags,
+			sourceLabel: teacherName,
+			sourceKind: sourceFeedbackItemId
+				? 'promoted teaching note'
+				: 'teaching snippet',
+			createdByLabel: teacherName,
 		},
 		note: payload.note ?? null,
 		visibility: 'private',
@@ -427,7 +455,7 @@ export async function PATCH(
 	}
 
 	const note = String(payload.note ?? '').trim()
-	const snippetCategoryLabel = normalizeFeedbackCategoryLabel(
+	const snippetCategoryLabel = normalizeSnippetCategoryLabel(
 		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
 	)
 	const snippetResult = await supabase

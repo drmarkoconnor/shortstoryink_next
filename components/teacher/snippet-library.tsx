@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
 	feedbackSlug,
-	fixedFeedbackCategories,
-	normalizeFeedbackLabel,
+	fixedSnippetCategories,
+	normalizeSnippetLabel,
 } from '@/lib/feedback/categories'
 
 export type SnippetLibraryEntry = {
@@ -17,6 +17,12 @@ export type SnippetLibraryEntry = {
 	categorySlug: string
 	tags: string[]
 	sourceSubmissionId: string | null
+	sourceType: string | null
+	sourceLabel: string
+	sourceTitle: string
+	sourceName: string
+	sourceUrl: string
+	sourceSection: string
 }
 
 function compactPreview(value: string, limit = 180) {
@@ -67,12 +73,12 @@ export function SnippetLibrary({
 			Uncategorised: 0,
 		}
 
-		for (const category of fixedFeedbackCategories) {
+		for (const category of fixedSnippetCategories) {
 			counts[category] = 0
 		}
 
 		for (const snippet of snippets) {
-			const label = fixedFeedbackCategories.includes(snippet.categoryLabel)
+			const label = fixedSnippetCategories.includes(snippet.categoryLabel)
 				? snippet.categoryLabel
 				: 'Uncategorised'
 			counts[label] = (counts[label] ?? 0) + 1
@@ -104,6 +110,10 @@ export function SnippetLibrary({
 				snippet.text,
 				snippet.note,
 				snippet.categoryLabel,
+				snippet.sourceLabel,
+				snippet.sourceTitle,
+				snippet.sourceName,
+				snippet.sourceSection,
 				...snippet.tags,
 			]
 				.join(' ')
@@ -153,7 +163,7 @@ export function SnippetLibrary({
 		setActiveSnippetId((current) => (current === snippet.id ? null : snippet.id))
 		setDraftText(snippet.text)
 		setDraftCategory(
-			fixedFeedbackCategories.includes(snippet.categoryLabel)
+			fixedSnippetCategories.includes(snippet.categoryLabel)
 				? snippet.categoryLabel
 				: '',
 		)
@@ -174,7 +184,7 @@ export function SnippetLibrary({
 			return
 		}
 
-		const categoryLabel = normalizeFeedbackLabel(draftCategory)
+		const categoryLabel = normalizeSnippetLabel(draftCategory)
 		const tags = parseTagsInput(draftTags)
 		const previousSnippets = snippets
 
@@ -215,7 +225,16 @@ export function SnippetLibrary({
 				| {
 						error?: string
 						notice?: string
-						snippet?: Omit<SnippetLibraryEntry, 'sourceSubmissionId'>
+						snippet?: Omit<
+							SnippetLibraryEntry,
+							| 'sourceSubmissionId'
+							| 'sourceType'
+							| 'sourceLabel'
+							| 'sourceTitle'
+							| 'sourceName'
+							| 'sourceUrl'
+							| 'sourceSection'
+						>
 				  }
 				| undefined
 
@@ -231,6 +250,12 @@ export function SnippetLibrary({
 								...item,
 								...savedSnippet,
 								sourceSubmissionId: item.sourceSubmissionId,
+								sourceType: item.sourceType,
+								sourceLabel: item.sourceLabel,
+								sourceTitle: item.sourceTitle,
+								sourceName: item.sourceName,
+								sourceUrl: item.sourceUrl,
+								sourceSection: item.sourceSection,
 							}
 						: item,
 				),
@@ -420,7 +445,7 @@ export function SnippetLibrary({
 						<option value="uncategorised">
 							Uncategorised ({categoryCounts.Uncategorised})
 						</option>
-						{fixedFeedbackCategories.map((category) => (
+						{fixedSnippetCategories.map((category) => (
 							<option key={category} value={category}>
 								{category} ({categoryCounts[category] ?? 0})
 							</option>
@@ -533,6 +558,13 @@ export function SnippetLibrary({
 													))}
 												</div>
 											) : null}
+											{snippet.sourceLabel || snippet.sourceTitle ? (
+												<p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
+													{[snippet.sourceLabel, snippet.sourceTitle]
+														.filter(Boolean)
+														.join(', ')}
+												</p>
+											) : null}
 										</button>
 									</div>
 
@@ -568,7 +600,7 @@ export function SnippetLibrary({
 													}}
 													className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 													<option value="">Uncategorised</option>
-													{fixedFeedbackCategories.map((category) => (
+													{fixedSnippetCategories.map((category) => (
 														<option key={category} value={category}>
 															{category}
 														</option>
@@ -626,6 +658,13 @@ export function SnippetLibrary({
 														href={`/app/workshop/${snippet.sourceSubmissionId}`}
 														className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
 														View source
+													</Link>
+												) : null}
+												{snippet.sourceUrl ? (
+													<Link
+														href={snippet.sourceUrl}
+														className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+														Open source
 													</Link>
 												) : null}
 												<button

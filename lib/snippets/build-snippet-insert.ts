@@ -2,6 +2,10 @@ import type { SelectionRangeAnchor } from '@/lib/domain/core-flow'
 import type { CreateSnippetInput, SnippetSourceType, SnippetVisibility } from '@/lib/snippets/types'
 
 function normalizeSourceType(value: SnippetSourceType | undefined) {
+	if (value === 'external') {
+		return 'external'
+	}
+
 	return value === 'feedback_item' ? 'feedback_item' : 'submission'
 }
 
@@ -23,6 +27,18 @@ function normalizeAnchor(anchor: SelectionRangeAnchor): SelectionRangeAnchor {
 		categoryLabel: anchor.categoryLabel,
 		categorySlug: anchor.categorySlug,
 		tags: anchor.tags ?? [],
+		sourceLabel: anchor.sourceLabel,
+		sourceKind: anchor.sourceKind,
+		originalSource: anchor.originalSource,
+		createdByLabel: anchor.createdByLabel,
+		sourceAuthor: anchor.sourceAuthor,
+		sourceTitle: anchor.sourceTitle,
+		sourceName: anchor.sourceName,
+		sourceUrl: anchor.sourceUrl,
+		sourceSection: anchor.sourceSection,
+		sourceLicenceNote: anchor.sourceLicenceNote,
+		sourceTypeLabel: anchor.sourceTypeLabel,
+		snippetType: anchor.snippetType,
 	}
 }
 

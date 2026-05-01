@@ -8,6 +8,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 type SnippetMetricRow = {
 	id: string
 	anchor: unknown
+	source_type?: string | null
 }
 
 type SelectionAnchor = {
@@ -38,7 +39,7 @@ export default async function TeacherStudioPage() {
 
 	const snippetsResult = await supabase
 		.from('snippets')
-		.select('id, anchor')
+		.select('id, anchor, source_type')
 		.eq('saved_by', profile.user.id)
 		.limit(500)
 
@@ -57,6 +58,9 @@ export default async function TeacherStudioPage() {
 			.map((snippet) => categoryLabelFromAnchor(snippet.anchor))
 			.filter((label) => label !== 'Uncategorised'),
 	).size
+	const sourceSnippetCount = snippets.filter(
+		(snippet) => snippet.source_type === 'external',
+	).length
 
 	return (
 		<section className="space-y-5">
@@ -125,18 +129,19 @@ export default async function TeacherStudioPage() {
 					</Link>
 
 					<div className="space-y-3">
-						<section className="surface p-5 opacity-80">
+						<Link
+							href="/app/teacher/documents"
+							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
 							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-								Future
+								Active
 							</p>
 							<h2 className="mt-2 text-lg font-semibold text-parchment-100">
 								Document Builder
 							</h2>
 							<p className="mt-2 text-sm leading-relaxed text-silver-300">
-								Workshop handouts and composed teaching notes will live here
-								later.
+								Assemble printable teaching documents from snippets and text.
 							</p>
-						</section>
+						</Link>
 						<section className="surface p-5 opacity-80">
 							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
 								Future
@@ -148,17 +153,40 @@ export default async function TeacherStudioPage() {
 								Resource collections are planned, but not part of this pass.
 							</p>
 						</section>
-						<section className="surface p-5 opacity-80">
+						<Link
+							href="/app/teacher/sources/new"
+							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
 							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-								Future
+								Active
 							</p>
 							<h2 className="mt-2 text-lg font-semibold text-parchment-100">
-								Imports / Public-domain Sources
+								Sources
 							</h2>
 							<p className="mt-2 text-sm leading-relaxed text-silver-300">
-								External-source imports remain parked for a later ticket.
+								Paste longer passages for reading, or save individual source excerpts.
 							</p>
-						</section>
+							<div className="mt-3 flex flex-wrap gap-2">
+								<span className="rounded-full border border-white/10 bg-ink-950/50 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									{sourceSnippetCount} source snippets
+								</span>
+								<span className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100">
+									Open
+								</span>
+							</div>
+						</Link>
+						<Link
+							href="/app/teacher/sources/read"
+							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
+							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+								Active
+							</p>
+							<h2 className="mt-2 text-lg font-semibold text-parchment-100">
+								Source Reading
+							</h2>
+							<p className="mt-2 text-sm leading-relaxed text-silver-300">
+								Read a pasted source passage and extract multiple attributed snippets.
+							</p>
+						</Link>
 					</div>
 				</div>
 			)}
