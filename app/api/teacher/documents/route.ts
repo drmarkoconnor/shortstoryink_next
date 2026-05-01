@@ -188,3 +188,37 @@ export async function POST(request: Request) {
 		),
 	})
 }
+
+export async function DELETE(request: Request) {
+	const profile = await requireTeacher()
+	const supabase = await createServerSupabaseClient()
+	const requestUrl = new URL(request.url)
+	const documentId = String(requestUrl.searchParams.get('id') ?? '').trim()
+
+	if (!documentId) {
+		return NextResponse.json(
+			{ error: 'Choose a document to delete.' },
+			{ status: 400 },
+		)
+	}
+
+	const result = await supabase
+		.from('teacher_documents')
+		.delete()
+		.eq('id', documentId)
+		.eq('owner_id', profile.user.id)
+
+	if (result.error) {
+		const message = isSchemaCacheMissing(result.error.message)
+			? 'Document deletion is not available until the teacher_documents migration has been applied.'
+			: 'Unable to delete document.'
+		return NextResponse.json({ error: message }, { status: 500 })
+	}
+
+	revalidatePath('/app/teacher/documents')
+
+	return NextResponse.json({
+		notice: 'Document deleted.',
+		documentId,
+	})
+}

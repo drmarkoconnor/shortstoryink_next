@@ -11,7 +11,7 @@ export function MenuTabs({
 	context?: ReactNode
 }) {
 	return (
-		<nav className="surface flex flex-wrap items-center justify-between gap-3 p-2">
+		<nav className="print-controls surface flex flex-wrap items-center justify-between gap-3 p-2">
 			<div className="flex flex-wrap gap-1">
 				{tabs.map((tab) => {
 					const isActive = active === tab.href

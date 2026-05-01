@@ -1,10 +1,8 @@
 'use client'
 
 import { mergeAttributes, Node, type JSONContent } from '@tiptap/core'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { useMemo, useState, type ReactNode } from 'react'
 import {
 	fixedSnippetCategories,
@@ -53,6 +51,7 @@ export type SavedTeachingDocument = {
 type SnippetExampleAttrs = {
 	snippetId: string
 	text: string
+	note: string
 	category: string
 	tags: string[]
 	sourceMetadata: SnippetSourceMetadata
@@ -116,6 +115,13 @@ const SnippetExampleNode = Node.create({
 					'data-snippet-text': String(attributes.text ?? ''),
 				}),
 			},
+			note: {
+				default: '',
+				parseHTML: (element) => element.getAttribute('data-snippet-note') ?? '',
+				renderHTML: (attributes: Record<string, unknown>) => ({
+					'data-snippet-note': String(attributes.note ?? ''),
+				}),
+			},
 			category: {
 				default: 'Uncategorised',
 				parseHTML: (element) =>
@@ -162,11 +168,13 @@ const SnippetExampleNode = Node.create({
 				'data-type': 'snippet-example',
 				class: 'tiptap-snippet-example',
 			}),
-			['p', { class: 'tiptap-snippet-example__meta' }, attrs.category],
 			['blockquote', { class: 'tiptap-snippet-example__text' }, attrs.text],
 			attribution
 				? ['p', { class: 'tiptap-snippet-example__source' }, attribution]
 				: ['p', { class: 'tiptap-snippet-example__source' }, 'Teaching example'],
+			attrs.note
+				? ['p', { class: 'tiptap-snippet-example__note' }, attrs.note]
+				: ['p', { class: 'tiptap-snippet-example__note' }, ''],
 		]
 	},
 })
@@ -181,6 +189,23 @@ function compactPreview(value: string, limit = 150) {
 		return normalized
 	}
 	return `${normalized.slice(0, limit - 1).trimEnd()}...`
+}
+
+function todayStamp() {
+	return new Date().toISOString().slice(0, 10)
+}
+
+function safeFilenamePart(value: string) {
+	return value
+		.trim()
+		.replace(/[\\/:*?"<>|]+/g, '')
+		.replace(/\s+/g, ' ')
+		.slice(0, 90)
+}
+
+function printFilename(title: string) {
+	const safeTitle = safeFilenamePart(title) || 'Teaching document'
+	return `${safeTitle} - ${todayStamp()}`
 }
 
 function categoryForSnippet(snippet: BuilderSnippet) {
@@ -200,6 +225,7 @@ function snippetAttrsFromNode(node: JSONContent): SnippetExampleAttrs {
 	return {
 		snippetId: String(attrs.snippetId ?? ''),
 		text: String(attrs.text ?? ''),
+		note: String(attrs.note ?? ''),
 		category: normalizeSnippetLabel(String(attrs.category ?? 'Uncategorised')),
 		tags,
 		sourceMetadata,
@@ -211,15 +237,107 @@ function snippetAttribution(source: SnippetSourceMetadata) {
 	const kind = source.sourceKind || source.originalSource
 
 	if (label && kind) {
-		return `Source: ${label}, ${kind}`
+		return `${label}, ${kind}`
 	}
 	if (label) {
-		return `Source: ${label}`
+		return label
 	}
 	if (kind) {
-		return `Source: ${kind}`
+		return kind
 	}
 	return ''
+}
+
+function emptyParagraph(text = ''): JSONContent {
+	return text
+		? {
+				type: 'paragraph',
+				content: [{ type: 'text', text }],
+			}
+		: { type: 'paragraph' }
+}
+
+function sectionHeading(title = 'New section'): JSONContent {
+	return {
+		type: 'heading',
+		attrs: { level: 2 },
+		content: [{ type: 'text', text: title }],
+	}
+}
+
+function nodeIsSectionHeading(node: JSONContent) {
+	return node.type === 'heading' && Number(node.attrs?.level ?? 0) === 2
+}
+
+function sectionRanges(content: JSONContent[]) {
+	const ranges: Array<{ start: number; end: number }> = []
+	for (let index = 0; index < content.length; index += 1) {
+		if (!nodeIsSectionHeading(content[index])) {
+			continue
+		}
+		const nextHeading = content.findIndex(
+			(node, nextIndex) => nextIndex > index && nodeIsSectionHeading(node),
+		)
+		ranges.push({
+			start: index,
+			end: nextHeading === -1 ? content.length : nextHeading,
+		})
+	}
+	return ranges
+}
+
+function activeSectionIndex(content: JSONContent[], topLevelIndex = content.length - 1) {
+	for (let index = Math.min(topLevelIndex, content.length - 1); index >= 0; index -= 1) {
+		if (nodeIsSectionHeading(content[index])) {
+			return index
+		}
+	}
+	return -1
+}
+
+function currentTopLevelIndex(editor: Editor) {
+	return editor.state.selection.$from.index(0)
+}
+
+function moveSection(
+	content: JSONContent[],
+	direction: 'up' | 'down',
+	topLevelIndex?: number,
+) {
+	const ranges = sectionRanges(content)
+	const currentStart = activeSectionIndex(content, topLevelIndex)
+	const currentRangeIndex = ranges.findIndex((range) => range.start === currentStart)
+	const targetRangeIndex =
+		direction === 'up' ? currentRangeIndex - 1 : currentRangeIndex + 1
+
+	if (
+		currentRangeIndex < 0 ||
+		targetRangeIndex < 0 ||
+		targetRangeIndex >= ranges.length
+	) {
+		return content
+	}
+
+	const current = ranges[currentRangeIndex]
+	const target = ranges[targetRangeIndex]
+	const currentSlice = content.slice(current.start, current.end)
+	const targetSlice = content.slice(target.start, target.end)
+
+	if (direction === 'up') {
+		return [
+			...content.slice(0, target.start),
+			...currentSlice,
+			...targetSlice,
+			...content.slice(current.end),
+		]
+	}
+
+	return [
+		...content.slice(0, current.start),
+		...targetSlice,
+		...currentSlice,
+		...content.slice(target.end),
+	]
 }
 
 function renderInlineContent(nodes: JSONContent[] | undefined): ReactNode {
@@ -232,9 +350,6 @@ function renderInlineContent(nodes: JSONContent[] | undefined): ReactNode {
 				}
 				if (mark.type === 'italic') {
 					content = <em key={`${index}-italic`}>{content}</em>
-				}
-				if (mark.type === 'underline') {
-					content = <u key={`${index}-underline`}>{content}</u>
 				}
 			}
 			return <span key={index}>{content}</span>
@@ -255,35 +370,6 @@ function renderListItem(node: JSONContent, index: number) {
 				<span key={childIndex}>{renderInlineContent(child.content)}</span>
 			))}
 		</li>
-	)
-}
-
-function renderTable(node: JSONContent, index: number) {
-	return (
-		<div key={index} className="mt-4 overflow-hidden rounded-xl border border-ink-900/12">
-			<table className="w-full border-collapse text-left text-sm text-ink-900/86">
-				<tbody>
-					{(node.content ?? []).map((row, rowIndex) => (
-						<tr key={rowIndex}>
-							{(row.content ?? []).map((cell, cellIndex) => {
-								const Cell = cell.type === 'tableHeader' ? 'th' : 'td'
-								return (
-									<Cell
-										key={cellIndex}
-										className="border border-ink-900/10 px-3 py-2 align-top">
-										{(cell.content ?? []).map((paragraph, paragraphIndex) => (
-											<p key={paragraphIndex}>
-												{renderInlineContent(paragraph.content)}
-											</p>
-										))}
-									</Cell>
-								)
-							})}
-						</tr>
-					))}
-				</tbody>
-			</table>
-		</div>
 	)
 }
 
@@ -329,7 +415,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 	if (node.type === 'blockquote') {
 		return (
-			<blockquote key={index} className="mt-4 border-l-2 border-ink-900/20 bg-white/60 px-4 py-3 text-[15px] italic leading-7 text-ink-900/82">
+			<blockquote key={index} className="mt-4 border-l-2 border-accent-700/35 px-4 py-2 text-[15px] leading-7 text-ink-900/78">
 				{(node.content ?? []).map((child, childIndex) => (
 					<p key={childIndex}>{renderInlineContent(child.content)}</p>
 				))}
@@ -342,16 +428,8 @@ function renderPrintNode(node: JSONContent, index: number) {
 		const attribution = snippetAttribution(attrs.sourceMetadata)
 
 		return (
-			<aside key={index} className="print-break-avoid mt-4 rounded-2xl border border-ink-900/10 bg-white/70 px-4 py-3">
-				<div className="flex flex-wrap items-center gap-2">
-					<p className="text-[10px] uppercase tracking-[0.12em] text-ink-900/45">
-						Teaching example
-					</p>
-					<p className="rounded-full border border-ink-900/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-ink-900/55">
-						{attrs.category}
-					</p>
-				</div>
-				<p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-ink-900/86">
+			<aside key={index} className="print-break-avoid mt-5 border-y border-ink-900/12 py-4">
+				<p className="whitespace-pre-wrap font-serif text-[16px] leading-8 text-ink-900/88">
 					{attrs.text}
 				</p>
 				{attribution ? (
@@ -359,12 +437,13 @@ function renderPrintNode(node: JSONContent, index: number) {
 						{attribution}
 					</p>
 				) : null}
+				{attrs.note ? (
+					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-ink-900/72">
+						{attrs.note}
+					</p>
+				) : null}
 			</aside>
 		)
-	}
-
-	if (node.type === 'table') {
-		return renderTable(node, index)
 	}
 
 	if (node.type === 'paragraph') {
@@ -408,12 +487,14 @@ export function DocumentBuilder({
 
 	const editor = useEditor({
 		extensions: [
-			StarterKit,
-			Underline,
-			Table.configure({ resizable: false }),
-			TableRow,
-			TableHeader,
-			TableCell,
+			StarterKit.configure({
+				codeBlock: false,
+				horizontalRule: false,
+				heading: {
+					levels: [1, 2, 3],
+				},
+				strike: false,
+			}),
 			SnippetExampleNode,
 		],
 		content: editorJson,
@@ -469,6 +550,15 @@ export function DocumentBuilder({
 			.slice(0, 40)
 	}, [snippetCategory, snippetSearch, snippets])
 
+	const documentsByType = useMemo(() => {
+		return teachingDocumentTypes
+			.map((type) => ({
+				type,
+				documents: documents.filter((document) => document.documentType === type),
+			}))
+			.filter((group) => group.documents.length > 0)
+	}, [documents])
+
 	const buttonClass = (active = false) =>
 		`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition ${
 			active
@@ -485,6 +575,14 @@ export function DocumentBuilder({
 
 	const loadDocument = (id: string) => {
 		clearMessages()
+		if (!id) {
+			setDocumentId(null)
+			setTitle('Workshop notes')
+			setDocumentType(defaultDocumentType)
+			setEditorJson(initialContent)
+			editor?.commands.setContent(initialContent)
+			return
+		}
 		const document = documents.find((item) => item.id === id)
 		if (!document) {
 			return
@@ -505,6 +603,17 @@ export function DocumentBuilder({
 		editor?.commands.setContent(initialContent)
 	}
 
+	const printDocument = () => {
+		const previousTitle = document.title
+		document.title = printFilename(title)
+		const restoreTitle = () => {
+			document.title = previousTitle
+			window.removeEventListener('afterprint', restoreTitle)
+		}
+		window.addEventListener('afterprint', restoreTitle, { once: true })
+		window.print()
+	}
+
 	const insertSnippet = (snippet: BuilderSnippet) => {
 		const category = categoryForSnippet(snippet)
 		editor
@@ -515,6 +624,7 @@ export function DocumentBuilder({
 				attrs: {
 					snippetId: snippet.id,
 					text: snippet.text,
+					note: snippet.note,
 					category,
 					tags: snippet.tags,
 					sourceMetadata: snippet.sourceMetadata,
@@ -525,6 +635,34 @@ export function DocumentBuilder({
 		setSnippetSearch('')
 		setSnippetCategory('')
 		setNotice(`Inserted ${category} snippet.`)
+	}
+
+	const addSection = () => {
+		editor
+			?.chain()
+			.focus()
+			.insertContent([sectionHeading(), emptyParagraph('Add a brief section introduction.')])
+			.run()
+	}
+
+	const moveCurrentSection = (direction: 'up' | 'down') => {
+		if (!editor) {
+			return
+		}
+
+		const content = editor.getJSON().content ?? []
+		const movedContent = moveSection(content, direction, currentTopLevelIndex(editor))
+		if (movedContent === content) {
+			return
+		}
+
+		const nextContent: JSONContent = {
+			type: 'doc',
+			content: movedContent,
+		}
+		editor.commands.setContent(nextContent)
+		setEditorJson(nextContent)
+		setNotice(direction === 'up' ? 'Section moved up.' : 'Section moved down.')
 	}
 
 	const saveDocument = async () => {
@@ -584,6 +722,64 @@ export function DocumentBuilder({
 				saveError instanceof Error
 					? saveError.message
 					: 'Unable to save document.',
+			)
+		} finally {
+			setIsSaving(false)
+		}
+	}
+
+	const deleteDocument = async () => {
+		if (!documentId) {
+			setError('Choose a saved document to delete.')
+			return
+		}
+
+		const currentTitle = title.trim() || 'this document'
+		if (!window.confirm(`Delete "${currentTitle}"? This cannot be undone.`)) {
+			return
+		}
+
+		setIsSaving(true)
+		clearMessages()
+
+		try {
+			const response = await fetch(
+				`/api/teacher/documents?id=${encodeURIComponent(documentId)}`,
+				{ method: 'DELETE' },
+			)
+			const payload = (await response.json()) as
+				| { error?: string; notice?: string; documentId?: string }
+				| undefined
+
+			if (!response.ok || payload?.error) {
+				throw new Error(payload?.error ?? 'Unable to delete document.')
+			}
+
+			const deletedId = payload?.documentId ?? documentId
+			const remainingDocuments = documents.filter(
+				(document) => document.id !== deletedId,
+			)
+			setDocuments(remainingDocuments)
+			const nextDocument = remainingDocuments[0]
+			if (nextDocument) {
+				setDocumentId(nextDocument.id)
+				setTitle(nextDocument.title)
+				setDocumentType(nextDocument.documentType)
+				setEditorJson(nextDocument.content)
+				editor?.commands.setContent(nextDocument.content)
+			} else {
+				setDocumentId(null)
+				setTitle('Workshop notes')
+				setDocumentType(defaultDocumentType)
+				setEditorJson(initialContent)
+				editor?.commands.setContent(initialContent)
+			}
+			setNotice(payload?.notice ?? 'Document deleted.')
+		} catch (deleteError) {
+			setError(
+				deleteError instanceof Error
+					? deleteError.message
+					: 'Unable to delete document.',
 			)
 		} finally {
 			setIsSaving(false)
@@ -655,10 +851,14 @@ export function DocumentBuilder({
 								onChange={(event) => loadDocument(event.target.value)}
 								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
 								<option value="">New document</option>
-								{documents.map((document) => (
-									<option key={document.id} value={document.id}>
-										{document.title} · {document.documentType}
-									</option>
+								{documentsByType.map((group) => (
+									<optgroup key={group.type} label={group.type}>
+										{group.documents.map((document) => (
+											<option key={document.id} value={document.id}>
+												{document.title}
+											</option>
+										))}
+									</optgroup>
 								))}
 							</select>
 						</label>
@@ -667,14 +867,24 @@ export function DocumentBuilder({
 						<button type="button" onClick={newDocument} className={buttonClass()}>
 							New
 						</button>
+						<button type="button" onClick={addSection} className={buttonClass()}>
+							Add section
+						</button>
 						<button
 							type="button"
 							onClick={() => setIsSnippetModalOpen(true)}
 							className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
 							Insert snippet
 						</button>
-						<button type="button" onClick={() => window.print()} className={buttonClass()}>
+						<button type="button" onClick={printDocument} className={buttonClass()}>
 							Print
+						</button>
+						<button
+							type="button"
+							onClick={deleteDocument}
+							disabled={!documentId || isSaving}
+							className="rounded-full border border-rose-300/35 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-rose-100 transition hover:border-rose-200/55 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40">
+							Delete
 						</button>
 						<button
 							type="button"
@@ -702,6 +912,9 @@ export function DocumentBuilder({
 				</section>
 
 				<section className="surface p-4 lg:p-5">
+					<p className="mb-3 text-xs uppercase tracking-[0.12em] text-silver-300">
+						Structure and text
+					</p>
 					<div className="flex flex-wrap gap-2">
 						<button
 							type="button"
@@ -717,14 +930,23 @@ export function DocumentBuilder({
 							className={utilityButtonClass}>
 							Redo
 						</button>
+						<button
+							type="button"
+							onClick={() => moveCurrentSection('up')}
+							className={utilityButtonClass}>
+							Section up
+						</button>
+						<button
+							type="button"
+							onClick={() => moveCurrentSection('down')}
+							className={utilityButtonClass}>
+							Section down
+						</button>
 						<button type="button" onClick={() => editor?.chain().focus().toggleBold().run()} className={buttonClass(editor?.isActive('bold'))}>
 							B
 						</button>
 						<button type="button" onClick={() => editor?.chain().focus().toggleItalic().run()} className={buttonClass(editor?.isActive('italic'))}>
 							I
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleUnderline().run()} className={buttonClass(editor?.isActive('underline'))}>
-							U
 						</button>
 						<button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} className={buttonClass(editor?.isActive('heading', { level: 1 }))}>
 							H1
@@ -742,19 +964,7 @@ export function DocumentBuilder({
 							Numbers
 						</button>
 						<button type="button" onClick={() => editor?.chain().focus().toggleBlockquote().run()} className={buttonClass(editor?.isActive('blockquote'))}>
-							Example
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								editor?.chain().focus().insertTable({
-									rows: 2,
-									cols: 2,
-									withHeaderRow: true,
-								}).run()
-							}
-							className={buttonClass(editor?.isActive('table'))}>
-							Table
+							Insight
 						</button>
 					</div>
 					<div className="mt-4">

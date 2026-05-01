@@ -118,28 +118,17 @@ body {
 
 .tiptap-spike blockquote {
 	margin: 1rem 0;
-	padding: 0.75rem 1rem;
+	padding: 0.65rem 1rem;
 	border-left: 2px solid rgba(202, 167, 97, 0.65);
-	background: rgba(248, 246, 242, 0.06);
+	background: transparent;
 	color: rgba(248, 246, 242, 0.9);
-	font-style: italic;
 }
 
 .tiptap-snippet-example {
-	margin: 1rem 0;
-	padding: 0.9rem 1rem;
-	border: 1px solid rgba(202, 167, 97, 0.36);
-	border-radius: 1rem;
-	background: rgba(202, 167, 97, 0.08);
-}
-
-.tiptap-snippet-example__meta {
-	margin: 0 0 0.5rem !important;
-	color: rgba(202, 167, 97, 0.92);
-	font-size: 0.68rem;
-	font-weight: 700;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
+	margin: 1.15rem 0;
+	padding: 0.9rem 0;
+	border-top: 1px solid rgba(248, 246, 242, 0.16);
+	border-bottom: 1px solid rgba(248, 246, 242, 0.16);
 }
 
 .tiptap-snippet-example__text {
@@ -148,7 +137,11 @@ body {
 	border-left: 0 !important;
 	background: transparent !important;
 	color: rgba(248, 246, 242, 0.95) !important;
+	font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+	font-size: 1rem;
 	font-style: normal !important;
+	line-height: 1.8;
+	white-space: pre-wrap;
 }
 
 .tiptap-snippet-example__source {
@@ -159,25 +152,13 @@ body {
 	text-transform: uppercase;
 }
 
-.tiptap-spike table {
-	width: 100%;
-	margin: 1rem 0;
-	border-collapse: collapse;
-	overflow: hidden;
-	border: 1px solid rgba(248, 246, 242, 0.16);
-	border-radius: 0.75rem;
-}
-
-.tiptap-spike th,
-.tiptap-spike td {
-	border: 1px solid rgba(248, 246, 242, 0.14);
-	padding: 0.55rem 0.7rem;
-	vertical-align: top;
-}
-
-.tiptap-spike th {
-	background: rgba(248, 246, 242, 0.08);
-	font-weight: 700;
+.tiptap-snippet-example__note {
+	margin: 0.7rem 0 0 !important;
+	padding-left: 0.75rem;
+	border-left: 1px solid rgba(248, 246, 242, 0.18);
+	color: rgba(190, 193, 201, 0.84);
+	font-size: 0.9rem;
+	line-height: 1.65;
 }
 
 @media print {
