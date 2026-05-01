@@ -3,7 +3,7 @@
 import { mergeAttributes, Node, type JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import {
 	fixedSnippetCategories,
 	normalizeSnippetLabel,
@@ -340,6 +340,43 @@ function moveSection(
 	]
 }
 
+function documentSectionDomId(topLevelIndex: number) {
+	return `document-section-${topLevelIndex}`
+}
+
+function textFromNode(node: JSONContent | undefined): string {
+	if (!node) {
+		return ''
+	}
+	if (typeof node.text === 'string') {
+		return node.text
+	}
+	return (node.content ?? []).map(textFromNode).join('')
+}
+
+function headingTitle(node: JSONContent, fallback: string) {
+	return textFromNode(node).replace(/\s+/g, ' ').trim() || fallback
+}
+
+function outlineSections(content: JSONContent[] | undefined) {
+	return (content ?? [])
+		.map((node, topLevelIndex) => ({ node, topLevelIndex }))
+		.filter(({ node }) => nodeIsSectionHeading(node))
+		.map(({ node, topLevelIndex }) => ({
+			id: documentSectionDomId(topLevelIndex),
+			title: headingTitle(node, `Section ${topLevelIndex + 1}`),
+			topLevelIndex,
+		}))
+}
+
+function editorPositionForTopLevelIndex(editor: Editor, topLevelIndex: number) {
+	let position = 1
+	for (let index = 0; index < topLevelIndex; index += 1) {
+		position += editor.state.doc.child(index).nodeSize
+	}
+	return Math.min(position + 1, editor.state.doc.content.size)
+}
+
 function renderInlineContent(nodes: JSONContent[] | undefined): ReactNode {
 	return (nodes ?? []).map((node, index) => {
 		if (node.type === 'text') {
@@ -385,7 +422,11 @@ function renderPrintNode(node: JSONContent, index: number) {
 		}
 		if (level === 2) {
 			return (
-				<h2 key={index} className="literary-title mt-6 text-2xl text-ink-900">
+				<h2
+					key={index}
+					id={documentSectionDomId(index)}
+					data-document-section-index={index}
+					className="literary-title mt-6 scroll-mt-24 text-2xl text-ink-900">
 					{renderInlineContent(node.content)}
 				</h2>
 			)
@@ -466,6 +507,7 @@ export function DocumentBuilder({
 	initialDocuments: SavedTeachingDocument[]
 	persistenceNotice?: string | null
 }) {
+	const previewRef = useRef<HTMLElement | null>(null)
 	const [snippets] = useState(initialSnippets)
 	const [documents, setDocuments] = useState(initialDocuments)
 	const [documentId, setDocumentId] = useState<string | null>(
@@ -484,6 +526,9 @@ export function DocumentBuilder({
 	const [isSaving, setIsSaving] = useState(false)
 	const [notice, setNotice] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [activeSectionTopLevelIndex, setActiveSectionTopLevelIndex] = useState<
+		number | null
+	>(null)
 
 	const editor = useEditor({
 		extensions: [
@@ -558,6 +603,10 @@ export function DocumentBuilder({
 			}))
 			.filter((group) => group.documents.length > 0)
 	}, [documents])
+	const sections = useMemo(
+		() => outlineSections(editorJson.content),
+		[editorJson],
+	)
 
 	const buttonClass = (active = false) =>
 		`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition ${
@@ -575,6 +624,7 @@ export function DocumentBuilder({
 
 	const loadDocument = (id: string) => {
 		clearMessages()
+		setActiveSectionTopLevelIndex(null)
 		if (!id) {
 			setDocumentId(null)
 			setTitle('Workshop notes')
@@ -596,6 +646,7 @@ export function DocumentBuilder({
 
 	const newDocument = () => {
 		clearMessages()
+		setActiveSectionTopLevelIndex(null)
 		setDocumentId(null)
 		setTitle('Workshop notes')
 		setDocumentType(defaultDocumentType)
@@ -662,7 +713,23 @@ export function DocumentBuilder({
 		}
 		editor.commands.setContent(nextContent)
 		setEditorJson(nextContent)
+		setActiveSectionTopLevelIndex(null)
 		setNotice(direction === 'up' ? 'Section moved up.' : 'Section moved down.')
+	}
+
+	const goToSection = (section: { id: string; topLevelIndex: number }) => {
+		setActiveSectionTopLevelIndex(section.topLevelIndex)
+		const previewSection = previewRef.current?.querySelector<HTMLElement>(
+			`[data-document-section-index="${section.topLevelIndex}"]`,
+		)
+		previewSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		if (editor) {
+			editor
+				.chain()
+				.focus()
+				.setTextSelection(editorPositionForTopLevelIndex(editor, section.topLevelIndex))
+				.run()
+		}
 	}
 
 	const saveDocument = async () => {
@@ -761,6 +828,7 @@ export function DocumentBuilder({
 			)
 			setDocuments(remainingDocuments)
 			const nextDocument = remainingDocuments[0]
+			setActiveSectionTopLevelIndex(null)
 			if (nextDocument) {
 				setDocumentId(nextDocument.id)
 				setTitle(nextDocument.title)
@@ -787,94 +855,62 @@ export function DocumentBuilder({
 	}
 
 	return (
-		<div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
-			<main className="space-y-4">
-				<article className="document-print print-shell rounded-[28px] bg-parchment-50 px-6 py-8 text-ink-900 shadow-[0_20px_60px_rgba(0,0,0,0.18)] lg:px-10">
-					<div className="border-b border-ink-900/10 pb-5">
-						<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
-							shortstory.ink teaching document
-						</p>
-						<p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-ink-900/45">
-							{documentType}
-						</p>
-						<h1 className="literary-title mt-2 text-4xl text-ink-900">
-							{title.trim() || 'Untitled document'}
-						</h1>
-					</div>
-					<div className="mt-2">
-						{(editorJson.content ?? []).map((node, index) =>
-							renderPrintNode(node, index),
-						)}
-					</div>
-				</article>
-			</main>
-
-			<aside className="document-builder-controls space-y-4 xl:sticky xl:top-24 xl:self-start">
-				<section className="surface p-4 lg:p-5">
-					<div className="grid gap-3">
-						<label className="block">
-							<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
-								Document title
-							</span>
-							<input
-								value={title}
-								onChange={(event) => {
-									clearMessages()
-									setTitle(event.target.value)
-								}}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
-							/>
-						</label>
-						<label className="block">
-							<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
-								Document type
-							</span>
-							<select
-								value={documentType}
-								onChange={(event) =>
-									setDocumentType(normalizeDocumentType(event.target.value))
-								}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-								{teachingDocumentTypes.map((type) => (
-									<option key={type} value={type}>
-										{type}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="block">
-							<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
-								Load saved
-							</span>
-							<select
-								value={documentId ?? ''}
-								onChange={(event) => loadDocument(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-								<option value="">New document</option>
-								{documentsByType.map((group) => (
-									<optgroup key={group.type} label={group.type}>
-										{group.documents.map((document) => (
-											<option key={document.id} value={document.id}>
-												{document.title}
-											</option>
-										))}
-									</optgroup>
-								))}
-							</select>
-						</label>
-					</div>
-					<div className="mt-4 flex flex-wrap gap-2">
+		<div className="space-y-4">
+			<section className="document-builder-controls surface p-4">
+				<div className="grid gap-3 xl:grid-cols-[minmax(220px,1.1fr)_220px_260px_auto] xl:items-end">
+					<label className="block">
+						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							Document title
+						</span>
+						<input
+							value={title}
+							onChange={(event) => {
+								clearMessages()
+								setTitle(event.target.value)
+							}}
+							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						/>
+					</label>
+					<label className="block">
+						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							Document type
+						</span>
+						<select
+							value={documentType}
+							onChange={(event) =>
+								setDocumentType(normalizeDocumentType(event.target.value))
+							}
+							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							{teachingDocumentTypes.map((type) => (
+								<option key={type} value={type}>
+									{type}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="block">
+						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							Load saved
+						</span>
+						<select
+							value={documentId ?? ''}
+							onChange={(event) => loadDocument(event.target.value)}
+							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							<option value="">New document</option>
+							{documentsByType.map((group) => (
+								<optgroup key={group.type} label={group.type}>
+									{group.documents.map((document) => (
+										<option key={document.id} value={document.id}>
+											{document.title}
+										</option>
+									))}
+								</optgroup>
+							))}
+						</select>
+					</label>
+					<div className="flex flex-wrap gap-2 xl:justify-end">
 						<button type="button" onClick={newDocument} className={buttonClass()}>
 							New
-						</button>
-						<button type="button" onClick={addSection} className={buttonClass()}>
-							Add section
-						</button>
-						<button
-							type="button"
-							onClick={() => setIsSnippetModalOpen(true)}
-							className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
-							Insert snippet
 						</button>
 						<button type="button" onClick={printDocument} className={buttonClass()}>
 							Print
@@ -894,84 +930,194 @@ export function DocumentBuilder({
 							{isSaving ? 'Saving...' : 'Save'}
 						</button>
 					</div>
-					{persistenceNotice ? (
-						<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-							{persistenceNotice}
-						</p>
-					) : null}
-					{notice ? (
-						<p className="mt-3 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
-							{notice}
-						</p>
-					) : null}
-					{error ? (
-						<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-							{error}
-						</p>
-					) : null}
-				</section>
+				</div>
+				{persistenceNotice || notice || error ? (
+					<div className="mt-3 grid gap-2 lg:grid-cols-3">
+						{persistenceNotice ? (
+							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+								{persistenceNotice}
+							</p>
+						) : null}
+						{notice ? (
+							<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+								{notice}
+							</p>
+						) : null}
+						{error ? (
+							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+								{error}
+							</p>
+						) : null}
+					</div>
+				) : null}
+			</section>
 
-				<section className="surface p-4 lg:p-5">
-					<p className="mb-3 text-xs uppercase tracking-[0.12em] text-silver-300">
-						Structure and text
-					</p>
-					<div className="flex flex-wrap gap-2">
-						<button
-							type="button"
-							onClick={() => editor?.chain().focus().undo().run()}
-							disabled={!editor?.can().undo()}
-							className={utilityButtonClass}>
-							Undo
-						</button>
-						<button
-							type="button"
-							onClick={() => editor?.chain().focus().redo().run()}
-							disabled={!editor?.can().redo()}
-							className={utilityButtonClass}>
-							Redo
-						</button>
-						<button
-							type="button"
-							onClick={() => moveCurrentSection('up')}
-							className={utilityButtonClass}>
-							Section up
-						</button>
-						<button
-							type="button"
-							onClick={() => moveCurrentSection('down')}
-							className={utilityButtonClass}>
-							Section down
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleBold().run()} className={buttonClass(editor?.isActive('bold'))}>
-							B
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleItalic().run()} className={buttonClass(editor?.isActive('italic'))}>
-							I
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} className={buttonClass(editor?.isActive('heading', { level: 1 }))}>
-							H1
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className={buttonClass(editor?.isActive('heading', { level: 2 }))}>
-							H2
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} className={buttonClass(editor?.isActive('heading', { level: 3 }))}>
-							H3
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleBulletList().run()} className={buttonClass(editor?.isActive('bulletList'))}>
-							Bullets
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleOrderedList().run()} className={buttonClass(editor?.isActive('orderedList'))}>
-							Numbers
-						</button>
-						<button type="button" onClick={() => editor?.chain().focus().toggleBlockquote().run()} className={buttonClass(editor?.isActive('blockquote'))}>
-							Insight
-						</button>
-					</div>
-					<div className="mt-4">
-						<EditorContent editor={editor} />
-					</div>
-				</section>
-			</aside>
+			<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+				<main className="min-w-0 space-y-4">
+					<article
+						ref={previewRef}
+						className="document-print print-shell rounded-[28px] bg-parchment-50 px-6 py-8 text-ink-900 shadow-[0_20px_60px_rgba(0,0,0,0.18)] lg:px-10">
+						<div className="border-b border-ink-900/10 pb-5">
+							<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
+								shortstory.ink teaching document
+							</p>
+							<p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-ink-900/45">
+								{documentType}
+							</p>
+							<h1 className="literary-title mt-2 text-4xl text-ink-900">
+								{title.trim() || 'Untitled document'}
+							</h1>
+						</div>
+						<div className="mt-2">
+							{(editorJson.content ?? []).map((node, index) =>
+								renderPrintNode(node, index),
+							)}
+						</div>
+					</article>
+				</main>
+
+				<aside className="document-builder-controls min-w-0 space-y-4">
+					<section className="surface p-4 lg:p-5">
+						<div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
+							<div>
+								<div className="flex items-center justify-between gap-3">
+									<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+										Outline
+									</p>
+									<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+										H2
+									</span>
+								</div>
+								{sections.length ? (
+									<ol className="mt-3 max-h-40 space-y-1 overflow-y-auto pr-1">
+										{sections.map((section, index) => (
+											<li key={section.id}>
+												<button
+													type="button"
+													onClick={() => goToSection(section)}
+													className={`block w-full rounded-lg border px-2.5 py-2 text-left text-xs leading-snug transition ${
+														activeSectionTopLevelIndex === section.topLevelIndex
+															? 'border-accent-300/45 bg-accent-300/12 text-parchment-100'
+															: 'border-white/10 bg-white/5 text-silver-200 hover:border-white/20 hover:text-parchment-100'
+													}`}>
+													<span className="mr-2 text-silver-400">
+														{index + 1}.
+													</span>
+													{section.title}
+												</button>
+											</li>
+										))}
+									</ol>
+								) : (
+									<p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-300">
+										Add H2 sections to build an outline.
+									</p>
+								)}
+							</div>
+
+							<div>
+								<p className="mb-3 text-xs uppercase tracking-[0.12em] text-silver-300">
+									Structure and text
+								</p>
+								<div className="flex flex-wrap gap-2">
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().undo().run()}
+										disabled={!editor?.can().undo()}
+										className={utilityButtonClass}>
+										Undo
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().redo().run()}
+										disabled={!editor?.can().redo()}
+										className={utilityButtonClass}>
+										Redo
+									</button>
+									<button
+										type="button"
+										onClick={() => moveCurrentSection('up')}
+										className={utilityButtonClass}>
+										Section up
+									</button>
+									<button
+										type="button"
+										onClick={() => moveCurrentSection('down')}
+										className={utilityButtonClass}>
+										Section down
+									</button>
+									<button type="button" onClick={addSection} className={buttonClass()}>
+										Add section
+									</button>
+									<button
+										type="button"
+										onClick={() => setIsSnippetModalOpen(true)}
+										className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+										Insert snippet
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().toggleBold().run()}
+										className={buttonClass(editor?.isActive('bold'))}>
+										B
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().toggleItalic().run()}
+										className={buttonClass(editor?.isActive('italic'))}>
+										I
+									</button>
+									<button
+										type="button"
+										onClick={() =>
+											editor?.chain().focus().toggleHeading({ level: 1 }).run()
+										}
+										className={buttonClass(editor?.isActive('heading', { level: 1 }))}>
+										H1
+									</button>
+									<button
+										type="button"
+										onClick={() =>
+											editor?.chain().focus().toggleHeading({ level: 2 }).run()
+										}
+										className={buttonClass(editor?.isActive('heading', { level: 2 }))}>
+										H2
+									</button>
+									<button
+										type="button"
+										onClick={() =>
+											editor?.chain().focus().toggleHeading({ level: 3 }).run()
+										}
+										className={buttonClass(editor?.isActive('heading', { level: 3 }))}>
+										H3
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().toggleBulletList().run()}
+										className={buttonClass(editor?.isActive('bulletList'))}>
+										Bullets
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+										className={buttonClass(editor?.isActive('orderedList'))}>
+										Numbers
+									</button>
+									<button
+										type="button"
+										onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+										className={buttonClass(editor?.isActive('blockquote'))}>
+										Insight
+									</button>
+								</div>
+							</div>
+						</div>
+						<div className="mt-4">
+							<EditorContent editor={editor} />
+						</div>
+					</section>
+				</aside>
+			</div>
 
 			{isSnippetModalOpen ? (
 				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
