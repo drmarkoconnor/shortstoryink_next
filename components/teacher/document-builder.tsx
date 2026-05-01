@@ -1,6 +1,7 @@
 'use client'
 
 import { mergeAttributes, Node, type JSONContent } from '@tiptap/core'
+import { NodeSelection } from '@tiptap/pm/state'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
@@ -43,18 +44,30 @@ export type SavedTeachingDocument = {
 	id: string
 	title: string
 	documentType: TeachingDocumentType
+	groupIds: string[]
 	content: JSONContent
 	createdAt: string
 	updatedAt: string
+}
+
+export type TeacherDocumentGroup = {
+	id: string
+	title: string
 }
 
 type SnippetExampleAttrs = {
 	snippetId: string
 	text: string
 	note: string
+	includeNote: boolean
 	category: string
 	tags: string[]
 	sourceMetadata: SnippetSourceMetadata
+}
+
+type SelectedSnippetExample = {
+	position: number
+	attrs: SnippetExampleAttrs
 }
 
 const defaultDocumentType: TeachingDocumentType = 'Teaching note'
@@ -122,6 +135,15 @@ const SnippetExampleNode = Node.create({
 					'data-snippet-note': String(attributes.note ?? ''),
 				}),
 			},
+			includeNote: {
+				default: true,
+				parseHTML: (element) =>
+					element.getAttribute('data-snippet-include-note') !== 'false',
+				renderHTML: (attributes: Record<string, unknown>) => ({
+					'data-snippet-include-note':
+						attributes.includeNote === false ? 'false' : 'true',
+				}),
+			},
 			category: {
 				default: 'Uncategorised',
 				parseHTML: (element) =>
@@ -172,7 +194,7 @@ const SnippetExampleNode = Node.create({
 			attribution
 				? ['p', { class: 'tiptap-snippet-example__source' }, attribution]
 				: ['p', { class: 'tiptap-snippet-example__source' }, 'Teaching example'],
-			attrs.note
+			attrs.includeNote && attrs.note
 				? ['p', { class: 'tiptap-snippet-example__note' }, attrs.note]
 				: ['p', { class: 'tiptap-snippet-example__note' }, ''],
 		]
@@ -226,6 +248,7 @@ function snippetAttrsFromNode(node: JSONContent): SnippetExampleAttrs {
 		snippetId: String(attrs.snippetId ?? ''),
 		text: String(attrs.text ?? ''),
 		note: String(attrs.note ?? ''),
+		includeNote: attrs.includeNote !== false,
 		category: normalizeSnippetLabel(String(attrs.category ?? 'Uncategorised')),
 		tags,
 		sourceMetadata,
@@ -377,6 +400,24 @@ function editorPositionForTopLevelIndex(editor: Editor, topLevelIndex: number) {
 	return Math.min(position + 1, editor.state.doc.content.size)
 }
 
+function selectedSnippetFromEditor(editor: Editor): SelectedSnippetExample | null {
+	const { selection } = editor.state
+	if (
+		!(selection instanceof NodeSelection) ||
+		selection.node.type.name !== 'snippetExample'
+	) {
+		return null
+	}
+
+	return {
+		position: selection.from,
+		attrs: snippetAttrsFromNode({
+			type: 'snippetExample',
+			attrs: selection.node.attrs,
+		}),
+	}
+}
+
 function renderInlineContent(nodes: JSONContent[] | undefined): ReactNode {
 	return (nodes ?? []).map((node, index) => {
 		if (node.type === 'text') {
@@ -469,16 +510,30 @@ function renderPrintNode(node: JSONContent, index: number) {
 		const attribution = snippetAttribution(attrs.sourceMetadata)
 
 		return (
-			<aside key={index} className="print-break-avoid mt-5 border-y border-ink-900/12 py-4">
-				<p className="whitespace-pre-wrap font-serif text-[16px] leading-8 text-ink-900/88">
-					{attrs.text}
-				</p>
+			<aside
+				key={index}
+				className="print-break-avoid mt-5 border-l-2 border-accent-700/45 py-2 pl-5">
+				<div className="relative">
+					<span
+						aria-hidden="true"
+						className="absolute -left-4 -top-3 font-serif text-5xl leading-none text-accent-700/40">
+						&ldquo;
+					</span>
+					<p className="whitespace-pre-wrap font-serif text-[17px] italic leading-8 text-ink-900/88">
+						{attrs.text}
+					</p>
+					<span
+						aria-hidden="true"
+						className="mt-1 block text-right font-serif text-4xl leading-none text-accent-700/35">
+						&rdquo;
+					</span>
+				</div>
 				{attribution ? (
-					<p className="mt-3 text-[11px] uppercase tracking-[0.1em] text-ink-900/45">
+					<p className="mt-1 text-[11px] uppercase tracking-[0.1em] text-ink-900/45">
 						{attribution}
 					</p>
 				) : null}
-				{attrs.note ? (
+				{attrs.includeNote && attrs.note ? (
 					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-ink-900/72">
 						{attrs.note}
 					</p>
@@ -501,26 +556,34 @@ function renderPrintNode(node: JSONContent, index: number) {
 export function DocumentBuilder({
 	initialSnippets,
 	initialDocuments,
+	initialGroups,
 	persistenceNotice,
 }: {
 	initialSnippets: BuilderSnippet[]
 	initialDocuments: SavedTeachingDocument[]
+	initialGroups: TeacherDocumentGroup[]
 	persistenceNotice?: string | null
 }) {
 	const previewRef = useRef<HTMLElement | null>(null)
 	const [snippets] = useState(initialSnippets)
+	const [groups] = useState(initialGroups)
 	const [documents, setDocuments] = useState(initialDocuments)
-	const [documentId, setDocumentId] = useState<string | null>(
-		initialDocuments[0]?.id ?? null,
-	)
-	const [title, setTitle] = useState(initialDocuments[0]?.title ?? 'Workshop notes')
+	const [documentId, setDocumentId] = useState<string | null>(null)
+	const [title, setTitle] = useState('Workshop notes')
 	const [documentType, setDocumentType] = useState<TeachingDocumentType>(
-		initialDocuments[0]?.documentType ?? defaultDocumentType,
+		defaultDocumentType,
 	)
-	const [editorJson, setEditorJson] = useState<JSONContent>(
-		initialDocuments[0]?.content ?? initialContent,
-	)
+	const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
+	const [editorJson, setEditorJson] = useState<JSONContent>(initialContent)
 	const [isSnippetModalOpen, setIsSnippetModalOpen] = useState(false)
+	const [includeSnippetNotes, setIncludeSnippetNotes] = useState(true)
+	const [selectedSnippet, setSelectedSnippet] =
+		useState<SelectedSnippetExample | null>(null)
+	const [editingSnippet, setEditingSnippet] =
+		useState<SelectedSnippetExample | null>(null)
+	const [snippetTextDraft, setSnippetTextDraft] = useState('')
+	const [snippetNoteDraft, setSnippetNoteDraft] = useState('')
+	const [snippetIncludeNoteDraft, setSnippetIncludeNoteDraft] = useState(true)
 	const [snippetSearch, setSnippetSearch] = useState('')
 	const [snippetCategory, setSnippetCategory] = useState('')
 	const [isSaving, setIsSaving] = useState(false)
@@ -552,8 +615,12 @@ export function DocumentBuilder({
 		},
 		onUpdate({ editor: activeEditor }) {
 			setEditorJson(activeEditor.getJSON())
+			setSelectedSnippet(selectedSnippetFromEditor(activeEditor))
 			setNotice(null)
 			setError(null)
+		},
+		onSelectionUpdate({ editor: activeEditor }) {
+			setSelectedSnippet(selectedSnippetFromEditor(activeEditor))
 		},
 	})
 
@@ -622,6 +689,15 @@ export function DocumentBuilder({
 		setError(null)
 	}
 
+	const toggleGroup = (groupId: string) => {
+		clearMessages()
+		setSelectedGroupIds((current) =>
+			current.includes(groupId)
+				? current.filter((id) => id !== groupId)
+				: [...current, groupId],
+		)
+	}
+
 	const loadDocument = (id: string) => {
 		clearMessages()
 		setActiveSectionTopLevelIndex(null)
@@ -629,6 +705,7 @@ export function DocumentBuilder({
 			setDocumentId(null)
 			setTitle('Workshop notes')
 			setDocumentType(defaultDocumentType)
+			setSelectedGroupIds([])
 			setEditorJson(initialContent)
 			editor?.commands.setContent(initialContent)
 			return
@@ -640,6 +717,7 @@ export function DocumentBuilder({
 		setDocumentId(document.id)
 		setTitle(document.title)
 		setDocumentType(document.documentType)
+		setSelectedGroupIds(document.groupIds)
 		setEditorJson(document.content)
 		editor?.commands.setContent(document.content)
 	}
@@ -650,6 +728,7 @@ export function DocumentBuilder({
 		setDocumentId(null)
 		setTitle('Workshop notes')
 		setDocumentType(defaultDocumentType)
+		setSelectedGroupIds([])
 		setEditorJson(initialContent)
 		editor?.commands.setContent(initialContent)
 	}
@@ -676,6 +755,7 @@ export function DocumentBuilder({
 					snippetId: snippet.id,
 					text: snippet.text,
 					note: snippet.note,
+					includeNote: includeSnippetNotes,
 					category,
 					tags: snippet.tags,
 					sourceMetadata: snippet.sourceMetadata,
@@ -686,6 +766,43 @@ export function DocumentBuilder({
 		setSnippetSearch('')
 		setSnippetCategory('')
 		setNotice(`Inserted ${category} snippet.`)
+	}
+
+	const openSelectedSnippetEditor = () => {
+		if (!selectedSnippet) {
+			setError('Select a snippet example in the editor first.')
+			return
+		}
+		setSnippetTextDraft(selectedSnippet.attrs.text)
+		setSnippetNoteDraft(selectedSnippet.attrs.note)
+		setSnippetIncludeNoteDraft(selectedSnippet.attrs.includeNote)
+		setEditingSnippet(selectedSnippet)
+		clearMessages()
+	}
+
+	const updateEditedSnippet = () => {
+		if (!editor || !editingSnippet) {
+			return
+		}
+		const text = snippetTextDraft.trim()
+		if (!text) {
+			setError('Snippet text cannot be empty.')
+			return
+		}
+		editor
+			.chain()
+			.focus()
+			.setNodeSelection(editingSnippet.position)
+			.updateAttributes('snippetExample', {
+				text,
+				note: snippetNoteDraft.trim(),
+				includeNote: snippetIncludeNoteDraft,
+			})
+			.run()
+		const nextSelection = selectedSnippetFromEditor(editor)
+		setSelectedSnippet(nextSelection)
+		setEditingSnippet(null)
+		setNotice('Snippet adjusted for this handout.')
 	}
 
 	const addSection = () => {
@@ -755,6 +872,7 @@ export function DocumentBuilder({
 					id: documentId,
 					title: nextTitle,
 					documentType,
+					groupIds: selectedGroupIds,
 					content,
 				}),
 			})
@@ -773,6 +891,7 @@ export function DocumentBuilder({
 			setDocumentId(savedDocument.id)
 			setTitle(savedDocument.title)
 			setDocumentType(normalizeDocumentType(savedDocument.documentType))
+			setSelectedGroupIds(savedDocument.groupIds)
 			setEditorJson(savedDocument.content)
 			setDocuments((current) => {
 				const exists = current.some((item) => item.id === savedDocument.id)
@@ -827,21 +946,13 @@ export function DocumentBuilder({
 				(document) => document.id !== deletedId,
 			)
 			setDocuments(remainingDocuments)
-			const nextDocument = remainingDocuments[0]
 			setActiveSectionTopLevelIndex(null)
-			if (nextDocument) {
-				setDocumentId(nextDocument.id)
-				setTitle(nextDocument.title)
-				setDocumentType(nextDocument.documentType)
-				setEditorJson(nextDocument.content)
-				editor?.commands.setContent(nextDocument.content)
-			} else {
-				setDocumentId(null)
-				setTitle('Workshop notes')
-				setDocumentType(defaultDocumentType)
-				setEditorJson(initialContent)
-				editor?.commands.setContent(initialContent)
-			}
+			setDocumentId(null)
+			setTitle('Workshop notes')
+			setDocumentType(defaultDocumentType)
+			setSelectedGroupIds([])
+			setEditorJson(initialContent)
+			editor?.commands.setContent(initialContent)
 			setNotice(payload?.notice ?? 'Document deleted.')
 		} catch (deleteError) {
 			setError(
@@ -857,7 +968,7 @@ export function DocumentBuilder({
 	return (
 		<div className="space-y-4">
 			<section className="document-builder-controls surface p-4">
-				<div className="grid gap-3 xl:grid-cols-[minmax(220px,1.1fr)_220px_260px_auto] xl:items-end">
+				<div className="grid gap-3 xl:grid-cols-[minmax(220px,1fr)_210px_260px_minmax(220px,0.9fr)_auto] xl:items-end">
 					<label className="block">
 						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
 							Document title
@@ -908,6 +1019,41 @@ export function DocumentBuilder({
 							))}
 						</select>
 					</label>
+					<div>
+						<div className="mb-1 flex items-center justify-between gap-2">
+							<span className="block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								Available to
+							</span>
+							<span className="text-[11px] text-silver-400">
+								{selectedGroupIds.length
+									? `${selectedGroupIds.length} group${
+											selectedGroupIds.length === 1 ? '' : 's'
+										}`
+									: 'No group'}
+							</span>
+						</div>
+						<div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-xl border border-white/15 bg-ink-900 px-2 py-2">
+							{groups.length ? (
+								groups.map((group) => (
+									<label
+										key={group.id}
+										className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-1 text-[11px] text-silver-100">
+										<input
+											type="checkbox"
+											checked={selectedGroupIds.includes(group.id)}
+											onChange={() => toggleGroup(group.id)}
+											className="h-3 w-3 accent-burgundy-400"
+										/>
+										<span>{group.title}</span>
+									</label>
+								))
+							) : (
+								<p className="text-xs text-silver-400">
+									No groups available yet.
+								</p>
+							)}
+						</div>
+					</div>
 					<div className="flex flex-wrap gap-2 xl:justify-end">
 						<button type="button" onClick={newDocument} className={buttonClass()}>
 							New
@@ -952,7 +1098,7 @@ export function DocumentBuilder({
 				) : null}
 			</section>
 
-			<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+			<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]">
 				<main className="min-w-0 space-y-4">
 					<article
 						ref={previewRef}
@@ -977,49 +1123,54 @@ export function DocumentBuilder({
 				</main>
 
 				<aside className="document-builder-controls min-w-0 space-y-4">
-					<section className="surface p-4 lg:p-5">
-						<div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)]">
-							<div>
-								<div className="flex items-center justify-between gap-3">
-									<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-										Outline
-									</p>
-									<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
-										H2
-									</span>
-								</div>
-								{sections.length ? (
-									<ol className="mt-3 max-h-40 space-y-1 overflow-y-auto pr-1">
-										{sections.map((section, index) => (
-											<li key={section.id}>
-												<button
-													type="button"
-													onClick={() => goToSection(section)}
-													className={`block w-full rounded-lg border px-2.5 py-2 text-left text-xs leading-snug transition ${
-														activeSectionTopLevelIndex === section.topLevelIndex
-															? 'border-accent-300/45 bg-accent-300/12 text-parchment-100'
-															: 'border-white/10 bg-white/5 text-silver-200 hover:border-white/20 hover:text-parchment-100'
-													}`}>
-													<span className="mr-2 text-silver-400">
-														{index + 1}.
-													</span>
-													{section.title}
-												</button>
-											</li>
-										))}
-									</ol>
-								) : (
-									<p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-300">
-										Add H2 sections to build an outline.
-									</p>
-								)}
+					<section className="surface p-3 lg:p-4">
+						<div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_132px]">
+							<div className="min-w-0">
+								<EditorContent editor={editor} />
 							</div>
 
-							<div>
-								<p className="mb-3 text-xs uppercase tracking-[0.12em] text-silver-300">
-									Structure and text
-								</p>
-								<div className="flex flex-wrap gap-2">
+							<div className="space-y-3">
+								<div>
+									<div className="flex items-center justify-between gap-2">
+										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+											Outline
+										</p>
+										<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+											H2
+										</span>
+									</div>
+									{sections.length ? (
+										<ol className="mt-2 max-h-32 space-y-1 overflow-y-auto pr-1">
+											{sections.map((section, index) => (
+												<li key={section.id}>
+													<button
+														type="button"
+														onClick={() => goToSection(section)}
+														className={`block w-full rounded-lg border px-2 py-1.5 text-left text-[11px] leading-snug transition ${
+															activeSectionTopLevelIndex === section.topLevelIndex
+																? 'border-accent-300/45 bg-accent-300/12 text-parchment-100'
+																: 'border-white/10 bg-white/5 text-silver-200 hover:border-white/20 hover:text-parchment-100'
+														}`}>
+														<span className="mr-1.5 text-silver-400">
+															{index + 1}.
+														</span>
+														{section.title}
+													</button>
+												</li>
+											))}
+										</ol>
+									) : (
+										<p className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-silver-300">
+											No H2 yet
+										</p>
+									)}
+								</div>
+
+								<div>
+									<p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-silver-300">
+										Tools
+									</p>
+									<div className="grid gap-1.5">
 									<button
 										type="button"
 										onClick={() => editor?.chain().focus().undo().run()}
@@ -1054,6 +1205,13 @@ export function DocumentBuilder({
 										onClick={() => setIsSnippetModalOpen(true)}
 										className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
 										Insert snippet
+									</button>
+									<button
+										type="button"
+										onClick={openSelectedSnippetEditor}
+										disabled={!selectedSnippet}
+										className={utilityButtonClass}>
+										Edit snippet
 									</button>
 									<button
 										type="button"
@@ -1112,8 +1270,6 @@ export function DocumentBuilder({
 								</div>
 							</div>
 						</div>
-						<div className="mt-4">
-							<EditorContent editor={editor} />
 						</div>
 					</section>
 				</aside>
@@ -1162,6 +1318,17 @@ export function DocumentBuilder({
 									))}
 								</select>
 							</div>
+							<label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+								<input
+									type="checkbox"
+									checked={includeSnippetNotes}
+									onChange={(event) =>
+										setIncludeSnippetNotes(event.target.checked)
+									}
+									className="h-4 w-4 accent-burgundy-400"
+								/>
+								<span>Include the teacher note when inserting snippets</span>
+							</label>
 						</div>
 						<div className="max-h-[56vh] overflow-y-auto p-4">
 							{filteredSnippets.length === 0 ? (
@@ -1193,6 +1360,80 @@ export function DocumentBuilder({
 									})}
 								</ul>
 							)}
+						</div>
+					</div>
+				</div>
+			) : null}
+
+			{editingSnippet ? (
+				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
+					<div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
+						<div className="border-b border-white/10 p-4">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+										Handout-only edit
+									</p>
+									<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+										Adjust inserted snippet
+									</h2>
+								</div>
+								<button
+									type="button"
+									onClick={() => setEditingSnippet(null)}
+									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									Close
+								</button>
+							</div>
+						</div>
+						<div className="space-y-4 p-4">
+							<label className="block">
+								<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									Snippet text
+								</span>
+								<textarea
+									value={snippetTextDraft}
+									onChange={(event) => setSnippetTextDraft(event.target.value)}
+									rows={8}
+									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-3 text-sm leading-6 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+								/>
+							</label>
+							<label className="block">
+								<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									Teacher note
+								</span>
+								<textarea
+									value={snippetNoteDraft}
+									onChange={(event) => setSnippetNoteDraft(event.target.value)}
+									rows={4}
+									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-3 text-sm leading-6 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+								/>
+							</label>
+							<label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+								<input
+									type="checkbox"
+									checked={snippetIncludeNoteDraft}
+									onChange={(event) =>
+										setSnippetIncludeNoteDraft(event.target.checked)
+									}
+									className="h-4 w-4 accent-burgundy-400"
+								/>
+								<span>Show the teacher note in this handout</span>
+							</label>
+							<div className="flex flex-wrap justify-end gap-2">
+								<button
+									type="button"
+									onClick={() => setEditingSnippet(null)}
+									className={utilityButtonClass}>
+									Cancel
+								</button>
+								<button
+									type="button"
+									onClick={updateEditedSnippet}
+									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+									Update snippet
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

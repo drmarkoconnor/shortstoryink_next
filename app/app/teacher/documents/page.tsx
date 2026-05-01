@@ -5,6 +5,7 @@ import {
 	type BuilderSnippet,
 	type SavedTeachingDocument,
 	type SnippetSourceMetadata,
+	type TeacherDocumentGroup,
 } from '@/components/teacher/document-builder'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { normalizeTeacherDisplayName } from '@/lib/display-names'
@@ -34,6 +35,11 @@ type DocumentRow = {
 	body: unknown
 	created_at: string
 	updated_at: string
+}
+
+type WorkshopRow = {
+	id: string
+	title: string
 }
 
 type SelectionAnchor = {
@@ -190,11 +196,21 @@ function typeFromBody(body: unknown): TeachingDocumentType {
 	return normalizeDocumentType(body.metadata.documentType)
 }
 
+function groupIdsFromBody(body: unknown) {
+	if (!isRecord(body) || !isRecord(body.metadata)) {
+		return []
+	}
+	return Array.isArray(body.metadata.groupIds)
+		? body.metadata.groupIds.map((id) => String(id).trim()).filter(Boolean)
+		: []
+}
+
 export default async function TeacherDocumentsPage() {
 	const profile = await requireTeacher()
 	const supabase = await createServerSupabaseClient()
 	let snippets: BuilderSnippet[] = []
 	let documents: SavedTeachingDocument[] = []
+	let groups: TeacherDocumentGroup[] = []
 	let snippetsError: string | null = null
 	let documentsNotice: string | null = null
 
@@ -256,6 +272,18 @@ export default async function TeacherDocumentsPage() {
 		})
 	}
 
+	const groupsResult = await supabase
+		.from('workshops')
+		.select('id, title')
+		.order('title', { ascending: true })
+
+	if (!groupsResult.error) {
+		groups = ((groupsResult.data ?? []) as WorkshopRow[]).map((row) => ({
+			id: row.id,
+			title: row.title,
+		}))
+	}
+
 	const documentsResult = await supabase
 		.from('teacher_documents')
 		.select('id, title, body, created_at, updated_at')
@@ -272,6 +300,7 @@ export default async function TeacherDocumentsPage() {
 			id: row.id,
 			title: row.title,
 			documentType: typeFromBody(row.body),
+			groupIds: groupIdsFromBody(row.body),
 			content: contentFromBody(row.body),
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
@@ -305,6 +334,7 @@ export default async function TeacherDocumentsPage() {
 				<DocumentBuilder
 					initialSnippets={snippets}
 					initialDocuments={documents}
+					initialGroups={groups}
 					persistenceNotice={documentsNotice}
 				/>
 			)}

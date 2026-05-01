@@ -12,6 +12,7 @@ type DocumentPayload = {
 	id?: string | null
 	title?: string
 	documentType?: string
+	groupIds?: unknown
 	content?: unknown
 }
 
@@ -110,6 +111,24 @@ function typeFromBody(body: unknown) {
 	return normalizeDocumentType(body.metadata.documentType)
 }
 
+function groupIdsFromBody(body: unknown) {
+	if (!isRecord(body) || !isRecord(body.metadata)) {
+		return []
+	}
+	return Array.isArray(body.metadata.groupIds)
+		? body.metadata.groupIds.map((id) => String(id).trim()).filter(Boolean)
+		: []
+}
+
+function normalizeGroupIds(value: unknown) {
+	if (!Array.isArray(value)) {
+		return []
+	}
+	return Array.from(
+		new Set(value.map((id) => String(id).trim()).filter(Boolean)),
+	).slice(0, 40)
+}
+
 function toDocumentResponse(row: {
 	id: string
 	title: string
@@ -121,6 +140,7 @@ function toDocumentResponse(row: {
 		id: row.id,
 		title: row.title,
 		documentType: typeFromBody(row.body),
+		groupIds: groupIdsFromBody(row.body),
 		content: contentFromBody(row.body),
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
@@ -134,6 +154,7 @@ export async function POST(request: Request) {
 	const documentId = String(payload.id ?? '').trim()
 	const title = String(payload.title ?? '').trim()
 	const documentType = normalizeDocumentType(payload.documentType)
+	const groupIds = normalizeGroupIds(payload.groupIds)
 	const content = normalizeContent(payload.content)
 
 	if (!title) {
@@ -144,6 +165,7 @@ export async function POST(request: Request) {
 		version: 'tiptap_document_v1',
 		metadata: {
 			documentType,
+			groupIds,
 		},
 		editor: content,
 	}
