@@ -1,12 +1,19 @@
 'use client'
 
-import type { ChangeEvent, FormEvent } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StoryFolio } from '@/components/prototype/story-folio'
 import { fixedFeedbackCategories } from '@/lib/feedback/categories'
+import type { ManuscriptParagraph } from '@/lib/manuscript/paragraphs'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
+import {
+	type GutenbergSearchResult,
+	mapGutenbergResultToSourceMetadata,
+	sourceAuthorLabel,
+} from '@/lib/source-providers/gutenberg'
 
 const MAX_TEXT_FILE_BYTES = 3 * 1024 * 1024
+const SOURCE_READING_SESSION_STORAGE_KEY = 'shortstoryink:source-reading-session:v1'
 
 type SourceSnippet = {
 	id: string
@@ -29,16 +36,29 @@ type SelectedSourcePassage = {
 	composerLeft: number
 }
 
-type GutendexResult = {
-	id: number
+type SourceSearchMatch = {
+	index: number
+	paragraphId: string
+	start: number
+	end: number
+}
+
+type StoredSourceReadingSession = {
+	version: 1
+	author: string
 	title: string
-	authors: string[]
-	languages: string[]
-	subjects: string[]
-	downloadCount: number
-	plainTextUrl: string
-	hasPlainText: boolean
-	gutenbergUrl: string
+	source: string
+	sourceUrl: string
+	sourceSection: string
+	licenceNote: string
+	sourceText: string
+	loadedFileName: string
+	gutenbergId: number | null
+	sourceSearchQuery: string
+	activeSourceMatchIndex: number
+	gutendexQuery: string
+	gutendexLanguage: string
+	savedAt: string
 }
 
 function parseTags(value: string) {
@@ -79,8 +99,38 @@ function formatNumber(value: number) {
 	return new Intl.NumberFormat('en').format(value)
 }
 
-function authorLabel(authors: string[]) {
-	return authors.length ? authors.join('; ') : 'Unknown author'
+function wordCount(value: string) {
+	return value.trim().split(/\s+/).filter(Boolean).length
+}
+
+function findSourceTextMatches(
+	paragraphs: ManuscriptParagraph[],
+	query: string,
+): SourceSearchMatch[] {
+	const normalizedQuery = query.trim().toLowerCase()
+	if (!normalizedQuery) {
+		return []
+	}
+
+	const matches: SourceSearchMatch[] = []
+
+	for (const paragraph of paragraphs) {
+		const text = paragraph.text
+		const haystack = text.toLowerCase()
+		let start = haystack.indexOf(normalizedQuery)
+
+		while (start >= 0) {
+			matches.push({
+				index: matches.length,
+				paragraphId: paragraph.id,
+				start,
+				end: start + normalizedQuery.length,
+			})
+			start = haystack.indexOf(normalizedQuery, start + normalizedQuery.length)
+		}
+	}
+
+	return matches
 }
 
 function elementForSelectionNode(node: Node) {
@@ -97,6 +147,43 @@ function selectionPopupRect(range: Range) {
 		(rect) => rect.width > 0 || rect.height > 0,
 	)
 	return rects.at(-1) ?? range.getBoundingClientRect()
+}
+
+function safeStoredSession(value: string | null): StoredSourceReadingSession | null {
+	if (!value) {
+		return null
+	}
+
+	try {
+		const parsed = JSON.parse(value) as Partial<StoredSourceReadingSession>
+		if (parsed.version !== 1) {
+			return null
+		}
+
+		return {
+			version: 1,
+			author: parsed.author ?? '',
+			title: parsed.title ?? '',
+			source: parsed.source ?? 'manual',
+			sourceUrl: parsed.sourceUrl ?? '',
+			sourceSection: parsed.sourceSection ?? '',
+			licenceNote: parsed.licenceNote ?? '',
+			sourceText: parsed.sourceText ?? '',
+			loadedFileName: parsed.loadedFileName ?? '',
+			gutenbergId:
+				typeof parsed.gutenbergId === 'number' ? parsed.gutenbergId : null,
+			sourceSearchQuery: parsed.sourceSearchQuery ?? '',
+			activeSourceMatchIndex:
+				typeof parsed.activeSourceMatchIndex === 'number'
+					? parsed.activeSourceMatchIndex
+					: 0,
+			gutendexQuery: parsed.gutendexQuery ?? '',
+			gutendexLanguage: parsed.gutendexLanguage ?? 'en',
+			savedAt: parsed.savedAt ?? '',
+		}
+	} catch {
+		return null
+	}
 }
 
 export function SourceReadingWorkspace() {
@@ -126,11 +213,142 @@ export function SourceReadingWorkspace() {
 	const [loadedFileName, setLoadedFileName] = useState('')
 	const [gutendexQuery, setGutendexQuery] = useState('')
 	const [gutendexLanguage, setGutendexLanguage] = useState('en')
-	const [gutendexResults, setGutendexResults] = useState<GutendexResult[]>([])
+	const [gutendexResults, setGutendexResults] = useState<GutenbergSearchResult[]>([])
 	const [gutendexCount, setGutendexCount] = useState(0)
 	const [gutendexMessage, setGutendexMessage] = useState('')
+	const [gutendexDiagnosticUrl, setGutendexDiagnosticUrl] = useState('')
 	const [activeGutendexId, setActiveGutendexId] = useState<number | null>(null)
+	const [loadedGutenbergId, setLoadedGutenbergId] = useState<number | null>(null)
+	const [sourceSearchQuery, setSourceSearchQuery] = useState('')
+	const [activeSourceMatchIndex, setActiveSourceMatchIndex] = useState(0)
+	const [hasRestoredSession, setHasRestoredSession] = useState(false)
+	const [hasCheckedStoredSession, setHasCheckedStoredSession] = useState(false)
 	const paragraphs = useMemo(() => toManuscriptParagraphs(sourceText), [sourceText])
+	const sourceSearchMatches = useMemo(
+		() => findSourceTextMatches(paragraphs, sourceSearchQuery),
+		[paragraphs, sourceSearchQuery],
+	)
+	const sourceSearchMatchesByParagraph = useMemo(() => {
+		const matchesByParagraph = new Map<string, SourceSearchMatch[]>()
+		for (const match of sourceSearchMatches) {
+			matchesByParagraph.set(match.paragraphId, [
+				...(matchesByParagraph.get(match.paragraphId) ?? []),
+				match,
+			])
+		}
+		return matchesByParagraph
+	}, [sourceSearchMatches])
+	const loadedSourceWordCount = useMemo(() => wordCount(sourceText), [sourceText])
+
+	useEffect(() => {
+		const storedSession = safeStoredSession(
+			window.sessionStorage.getItem(SOURCE_READING_SESSION_STORAGE_KEY),
+		)
+		setHasCheckedStoredSession(true)
+
+		if (!storedSession) {
+			return
+		}
+
+		setAuthor(storedSession.author)
+		setTitle(storedSession.title)
+		setSource(storedSession.source)
+		setSourceUrl(storedSession.sourceUrl)
+		setSourceSection(storedSession.sourceSection)
+		setLicenceNote(storedSession.licenceNote)
+		setSourceText(storedSession.sourceText)
+		setLoadedFileName(storedSession.loadedFileName)
+		setLoadedGutenbergId(storedSession.gutenbergId)
+		setSourceSearchQuery(storedSession.sourceSearchQuery)
+		setActiveSourceMatchIndex(storedSession.activeSourceMatchIndex)
+		setGutendexQuery(storedSession.gutendexQuery)
+		setGutendexLanguage(storedSession.gutendexLanguage)
+		setHasRestoredSession(Boolean(storedSession.sourceText.trim()))
+		if (storedSession.sourceText.trim()) {
+			setNotice('Restored source text from this browser session.')
+			window.setTimeout(() => setNotice(null), 2200)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (!hasCheckedStoredSession) {
+			return
+		}
+
+		const hasSessionContent = Boolean(
+			sourceText.trim() ||
+				author.trim() ||
+				title.trim() ||
+				sourceUrl.trim() ||
+				sourceSection.trim() ||
+				licenceNote.trim(),
+		)
+
+		if (!hasSessionContent) {
+			window.sessionStorage.removeItem(SOURCE_READING_SESSION_STORAGE_KEY)
+			return
+		}
+
+		const storedSession: StoredSourceReadingSession = {
+			version: 1,
+			author,
+			title,
+			source,
+			sourceUrl,
+			sourceSection,
+			licenceNote,
+			sourceText,
+			loadedFileName,
+			gutenbergId: loadedGutenbergId,
+			sourceSearchQuery,
+			activeSourceMatchIndex,
+			gutendexQuery,
+			gutendexLanguage,
+			savedAt: new Date().toISOString(),
+		}
+
+		window.sessionStorage.setItem(
+			SOURCE_READING_SESSION_STORAGE_KEY,
+			JSON.stringify(storedSession),
+		)
+	}, [
+		activeSourceMatchIndex,
+		author,
+		gutendexLanguage,
+		gutendexQuery,
+		hasCheckedStoredSession,
+		licenceNote,
+		loadedFileName,
+		loadedGutenbergId,
+		source,
+		sourceSearchQuery,
+		sourceSection,
+		sourceText,
+		sourceUrl,
+		title,
+	])
+
+	useEffect(() => {
+		if (sourceSearchMatches.length === 0) {
+			setActiveSourceMatchIndex(0)
+			return
+		}
+
+		setActiveSourceMatchIndex((current) =>
+			Math.min(Math.max(current, 0), sourceSearchMatches.length - 1),
+		)
+	}, [sourceSearchMatches.length])
+
+	useEffect(() => {
+		if (!sourceSearchMatches.length) {
+			return
+		}
+
+		const activeMatch = sourceReaderRef.current?.querySelector(
+			`[data-source-match-index="${activeSourceMatchIndex}"]`,
+		)
+		activeMatch?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+	}, [activeSourceMatchIndex, sourceSearchMatches.length])
 
 	const clearMessages = () => {
 		setNotice(null)
@@ -267,6 +485,12 @@ export function SourceReadingWorkspace() {
 
 		setSourceText('')
 		setSelectedPassage(null)
+		setSourceSearchQuery('')
+		setActiveSourceMatchIndex(0)
+		setLoadedFileName('')
+		setLoadedGutenbergId(null)
+		setHasRestoredSession(false)
+		window.sessionStorage.removeItem(SOURCE_READING_SESSION_STORAGE_KEY)
 		clearMessages()
 	}
 
@@ -305,7 +529,10 @@ export function SourceReadingWorkspace() {
 
 			setSourceText(text)
 			setSelectedPassage(null)
+			setSourceSearchQuery('')
+			setActiveSourceMatchIndex(0)
 			setLoadedFileName(file.name)
+			setLoadedGutenbergId(null)
 			if (!title.trim()) {
 				setTitle(draftTitleFromFilename(file.name))
 			}
@@ -334,6 +561,7 @@ export function SourceReadingWorkspace() {
 
 		clearMessages()
 		setGutendexMessage('')
+		setGutendexDiagnosticUrl('')
 		setIsSearchingGutendex(true)
 
 		try {
@@ -347,11 +575,13 @@ export function SourceReadingWorkspace() {
 				| {
 						error?: string
 						count?: number
-						results?: GutendexResult[]
+						results?: GutenbergSearchResult[]
+						diagnosticUrl?: string
 				  }
 				| undefined
 
 			if (!response.ok || payload?.error) {
+				setGutendexDiagnosticUrl(payload?.diagnosticUrl ?? '')
 				throw new Error(payload?.error ?? 'Unable to search Gutendex.')
 			}
 
@@ -374,21 +604,23 @@ export function SourceReadingWorkspace() {
 		}
 	}
 
-	const metadataNeedsConfirmation = (result: GutendexResult) => {
-		const nextAuthor = authorLabel(result.authors)
+	const metadataNeedsConfirmation = (result: GutenbergSearchResult) => {
+		const metadata = mapGutenbergResultToSourceMetadata(result)
 		return (
-			(author.trim() && author.trim() !== nextAuthor) ||
-			(title.trim() && title.trim() !== result.title) ||
-			(source.trim() && source.trim() !== 'manual' && source.trim() !== 'Project Gutenberg') ||
-			(sourceUrl.trim() && sourceUrl.trim() !== result.gutenbergUrl) ||
-			(licenceNote.trim() &&
-				licenceNote.trim() !== 'Public domain text from Project Gutenberg.')
+			(author.trim() && author.trim() !== metadata.author) ||
+			(title.trim() && title.trim() !== metadata.title) ||
+			(source.trim() &&
+				source.trim() !== 'manual' &&
+				source.trim() !== metadata.source) ||
+			(sourceUrl.trim() && sourceUrl.trim() !== metadata.sourceUrl) ||
+			(licenceNote.trim() && licenceNote.trim() !== metadata.licenceNote)
 		)
 	}
 
-	const loadGutendexResult = async (result: GutendexResult) => {
+	const loadGutendexResult = async (result: GutenbergSearchResult) => {
 		clearMessages()
 		setGutendexMessage('')
+		setGutendexDiagnosticUrl('')
 
 		if (
 			metadataNeedsConfirmation(result) &&
@@ -399,11 +631,12 @@ export function SourceReadingWorkspace() {
 			return
 		}
 
-		setAuthor(authorLabel(result.authors))
-		setTitle(result.title)
-		setSource('Project Gutenberg')
-		setSourceUrl(result.gutenbergUrl)
-		setLicenceNote('Public domain text from Project Gutenberg.')
+		const metadata = mapGutenbergResultToSourceMetadata(result)
+		setAuthor(metadata.author)
+		setTitle(metadata.title)
+		setSource(metadata.source)
+		setSourceUrl(metadata.sourceUrl)
+		setLicenceNote(metadata.licenceNote)
 
 		if (!result.plainTextUrl) {
 			setGutendexMessage(
@@ -428,7 +661,10 @@ export function SourceReadingWorkspace() {
 
 			setSourceText(payload.text)
 			setSelectedPassage(null)
+			setSourceSearchQuery('')
+			setActiveSourceMatchIndex(0)
 			setLoadedFileName(`Project Gutenberg #${result.id}`)
+			setLoadedGutenbergId(result.id)
 			setIsFinderOpen(false)
 			setNotice(`Loaded ${result.title}.`)
 			window.setTimeout(() => setNotice(null), 1800)
@@ -442,6 +678,66 @@ export function SourceReadingWorkspace() {
 			setIsLoadingGutendexText(false)
 			setActiveGutendexId(null)
 		}
+	}
+
+	const goToPreviousSourceMatch = () => {
+		if (!sourceSearchMatches.length) {
+			return
+		}
+		setActiveSourceMatchIndex((current) =>
+			current === 0 ? sourceSearchMatches.length - 1 : current - 1,
+		)
+	}
+
+	const goToNextSourceMatch = () => {
+		if (!sourceSearchMatches.length) {
+			return
+		}
+		setActiveSourceMatchIndex((current) =>
+			current === sourceSearchMatches.length - 1 ? 0 : current + 1,
+		)
+	}
+
+	const clearSourceSearch = () => {
+		setSourceSearchQuery('')
+		setActiveSourceMatchIndex(0)
+	}
+
+	const renderHighlightedParagraph = (paragraph: ManuscriptParagraph) => {
+		const matches = sourceSearchMatchesByParagraph.get(paragraph.id) ?? []
+		if (!matches.length) {
+			return paragraph.text
+		}
+
+		const parts: ReactNode[] = []
+		let cursor = 0
+
+		for (const match of matches) {
+			if (match.start > cursor) {
+				parts.push(paragraph.text.slice(cursor, match.start))
+			}
+
+			const isActive = match.index === activeSourceMatchIndex
+			parts.push(
+				<mark
+					key={`${paragraph.id}-${match.index}`}
+					data-source-match-index={match.index}
+					className={`rounded px-0.5 ${
+						isActive
+							? 'bg-accent-300/85 text-ink-950 ring-2 ring-accent-500/40'
+							: 'bg-amber-200/60 text-ink-950'
+					}`}>
+					{paragraph.text.slice(match.start, match.end)}
+				</mark>,
+			)
+			cursor = match.end
+		}
+
+		if (cursor < paragraph.text.length) {
+			parts.push(paragraph.text.slice(cursor))
+		}
+
+		return parts
 	}
 
 	return (
@@ -518,44 +814,47 @@ export function SourceReadingWorkspace() {
 				<div
 					ref={sourceReaderRef}
 					onMouseUp={captureSelection}
-					onKeyUp={captureSelection}>
-					<StoryFolio
-						title={title.trim() || 'Source reading session'}
-						eyebrow="Source reading"
-						footer={
-							<div className="flex flex-wrap items-center justify-between gap-3">
-								<p className="text-xs uppercase tracking-[0.12em] text-ink-900/45">
-									{paragraphs.length} paragraphs
+					onKeyUp={captureSelection}
+					className="xl:sticky xl:top-24 xl:max-h-[calc(100vh-7.5rem)] xl:overflow-y-auto xl:pr-2">
+					<div className="pb-2">
+						<StoryFolio
+							title={title.trim() || 'Source reading session'}
+							eyebrow="Source reading"
+							footer={
+								<div className="flex flex-wrap items-center justify-between gap-3">
+									<p className="text-xs uppercase tracking-[0.12em] text-ink-900/45">
+										{paragraphs.length} paragraphs
+									</p>
+									<button
+										type="button"
+										onClick={clearSourceText}
+										className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white">
+										Clear source text
+									</button>
+								</div>
+							}>
+							{paragraphs.length === 0 ? (
+								<p className="text-ink-900/55">
+									Paste a longer passage in the right-hand panel, then select text here
+									to save teaching snippets.
 								</p>
-								<button
-									type="button"
-									onClick={clearSourceText}
-									className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white">
-									Clear source text
-								</button>
-							</div>
-						}>
-						{paragraphs.length === 0 ? (
-							<p className="text-ink-900/55">
-								Paste a longer passage in the right-hand panel, then select text here
-								to save teaching snippets.
-							</p>
-						) : (
-							paragraphs.map((paragraph) => (
-								<p
-									key={paragraph.id}
-									data-source-paragraph="true"
-									data-source-id={paragraph.id}
-									className="scroll-mt-24">
-									{paragraph.text}
-								</p>
-							))
-						)}
-					</StoryFolio>
+							) : (
+								paragraphs.map((paragraph) => (
+									<p
+										key={paragraph.id}
+										data-source-paragraph="true"
+										data-source-id={paragraph.id}
+										className="scroll-mt-24">
+										{renderHighlightedParagraph(paragraph)}
+									</p>
+								))
+							)}
+						</StoryFolio>
+					</div>
 				</div>
 			</main>
 
-			<aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+			<aside className="space-y-4 xl:max-h-[calc(100vh-7.5rem)] xl:overflow-y-auto xl:sticky xl:top-24 xl:self-start xl:pr-2">
 				<section className="surface space-y-3 p-4">
 					<div className="flex items-center justify-between gap-3">
 						<div>
@@ -582,6 +881,95 @@ export function SourceReadingWorkspace() {
 							{error}
 						</p>
 					) : null}
+					{hasRestoredSession ? (
+						<p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+							Restored source text from this browser session.
+						</p>
+					) : null}
+					{sourceText.trim() ? (
+						<div className="rounded-2xl border border-white/10 bg-ink-950/45 p-3">
+							<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+								Loaded source
+							</p>
+							<p className="mt-1 text-sm font-semibold text-parchment-100">
+								{title.trim() || loadedFileName || 'Untitled source'}
+							</p>
+							<p className="mt-1 text-xs text-silver-300">
+								{[author.trim(), source.trim()].filter(Boolean).join(' / ') ||
+									'Metadata not set'}
+							</p>
+							<div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
+								<span>{formatNumber(loadedSourceWordCount)} words</span>
+								<span>{formatNumber(paragraphs.length)} paragraphs</span>
+							</div>
+							{sourceUrl.trim() ? (
+								<a
+									href={sourceUrl}
+									target="_blank"
+									rel="noreferrer"
+									className="mt-2 block truncate text-xs text-accent-100 underline-offset-4 hover:underline">
+									{sourceUrl}
+								</a>
+							) : null}
+						</div>
+					) : null}
+					<div className="space-y-2">
+						<div className="flex items-center justify-between gap-3">
+							<label
+								htmlFor="source-reader-search"
+								className="text-xs uppercase tracking-[0.12em] text-silver-300">
+								Search text
+							</label>
+							<span className="text-xs text-silver-300">
+								{sourceSearchQuery.trim()
+									? `${sourceSearchMatches.length} matches`
+									: 'No search'}
+							</span>
+						</div>
+						<div className="flex gap-2">
+							<input
+								id="source-reader-search"
+								value={sourceSearchQuery}
+								onChange={(event) => {
+									setSourceSearchQuery(event.target.value)
+									setActiveSourceMatchIndex(0)
+								}}
+								disabled={!sourceText.trim()}
+								className="min-w-0 flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 disabled:cursor-not-allowed disabled:opacity-55"
+								placeholder="Find in loaded text"
+							/>
+							<button
+								type="button"
+								onClick={clearSourceSearch}
+								disabled={!sourceSearchQuery}
+								className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+								Clear
+							</button>
+						</div>
+						<div className="flex items-center justify-between gap-2">
+							<p className="text-xs text-silver-300">
+								{sourceSearchMatches.length
+									? `${activeSourceMatchIndex + 1} of ${sourceSearchMatches.length}`
+									: 'Case-insensitive plain text search'}
+							</p>
+							<div className="flex gap-2">
+								<button
+									type="button"
+									onClick={goToPreviousSourceMatch}
+									disabled={!sourceSearchMatches.length}
+									className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+									Previous
+								</button>
+								<button
+									type="button"
+									onClick={goToNextSourceMatch}
+									disabled={!sourceSearchMatches.length}
+									className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+									Next
+								</button>
+							</div>
+						</div>
+					</div>
 				</section>
 
 				<section className="surface space-y-3 p-4">
@@ -680,6 +1068,15 @@ export function SourceReadingWorkspace() {
 								{gutendexMessage ? (
 									<p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
 										{gutendexMessage}
+										{gutendexDiagnosticUrl ? (
+											<a
+												href={gutendexDiagnosticUrl}
+												target="_blank"
+												rel="noreferrer"
+												className="mt-2 block text-xs text-amber-100 underline-offset-4 hover:underline">
+												Open Gutendex query
+											</a>
+										) : null}
 									</p>
 								) : null}
 								{gutendexResults.length ? (
@@ -697,7 +1094,7 @@ export function SourceReadingWorkspace() {
 															{result.title}
 														</p>
 														<p className="mt-1 text-xs text-silver-300">
-															{authorLabel(result.authors)}
+															{sourceAuthorLabel(result.authors)}
 														</p>
 														<p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
 															#{result.id} / {result.languages.join(', ') || 'language unknown'} /{' '}

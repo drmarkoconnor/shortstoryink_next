@@ -1,44 +1,18 @@
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
+import {
+	type GutendexBook,
+	mapGutendexBook,
+} from '@/lib/source-providers/gutenberg'
 
-type GutendexPerson = {
-	name?: string
-	birth_year?: number | null
-	death_year?: number | null
-}
-
-type GutendexBook = {
-	id?: number
-	title?: string
-	authors?: GutendexPerson[]
-	subjects?: string[]
-	languages?: string[]
-	formats?: Record<string, string>
-	download_count?: number
-}
+const GUTENDEX_SEARCH_TIMEOUT_MS = 20000
 
 function normalizeText(value: string | null) {
 	return value?.trim() ?? ''
 }
 
-function plainTextUrl(formats: Record<string, string> | undefined) {
-	if (!formats) {
-		return ''
-	}
-
-	const plainTextEntries = Object.entries(formats).filter(([mimeType, url]) => {
-		return mimeType.toLowerCase().startsWith('text/plain') && Boolean(url)
-	})
-
-	return (
-		plainTextEntries.find(([mimeType]) => mimeType.toLowerCase().includes('utf-8'))?.[1] ??
-		plainTextEntries[0]?.[1] ??
-		''
-	)
-}
-
-function gutenbergLandingUrl(id: number) {
-	return `https://www.gutenberg.org/ebooks/${id}`
+function timeoutMessage(elapsedMs: number) {
+	return `Gutendex did not respond within ${Math.round(elapsedMs / 1000)} seconds. This is an upstream Project Gutenberg metadata service issue, not a problem with the source reader.`
 }
 
 export async function GET(request: Request) {
@@ -61,15 +35,21 @@ export async function GET(request: Request) {
 		gutendexUrl.searchParams.set('languages', language)
 	}
 
+	const startedAt = Date.now()
+
 	try {
 		const response = await fetch(gutendexUrl, {
 			headers: { Accept: 'application/json' },
-			signal: AbortSignal.timeout(10000),
+			signal: AbortSignal.timeout(GUTENDEX_SEARCH_TIMEOUT_MS),
 		})
 
 		if (!response.ok) {
 			return NextResponse.json(
-				{ error: 'Unable to search Gutendex right now.' },
+				{
+					error: `Gutendex returned ${response.status} ${response.statusText || 'error'}.`,
+					diagnosticUrl: gutendexUrl.toString(),
+					provider: 'Gutendex',
+				},
 				{ status: 502 },
 			)
 		}
@@ -79,38 +59,29 @@ export async function GET(request: Request) {
 			results?: GutendexBook[]
 		}
 
-		const results = (payload.results ?? []).slice(0, 12).flatMap((book) => {
-			if (!book.id || !book.title) {
-				return []
-			}
-
-			const authors = (book.authors ?? [])
-				.map((author) => author.name?.trim())
-				.filter(Boolean) as string[]
-			const textUrl = plainTextUrl(book.formats)
-
-			return [
-				{
-					id: book.id,
-					title: book.title,
-					authors,
-					languages: book.languages ?? [],
-					subjects: (book.subjects ?? []).slice(0, 4),
-					downloadCount: book.download_count ?? 0,
-					plainTextUrl: textUrl,
-					hasPlainText: Boolean(textUrl),
-					gutenbergUrl: gutenbergLandingUrl(book.id),
-				},
-			]
-		})
+		const results = (payload.results ?? [])
+			.slice(0, 12)
+			.map(mapGutendexBook)
+			.filter((book) => book !== null)
 
 		return NextResponse.json({
 			count: payload.count ?? results.length,
 			results,
 		})
-	} catch {
+	} catch (searchError) {
+		const elapsedMs = Date.now() - startedAt
+		const isTimeout =
+			searchError instanceof DOMException && searchError.name === 'TimeoutError'
+
 		return NextResponse.json(
-			{ error: 'Gutendex search did not respond. Please try again.' },
+			{
+				error: isTimeout
+					? timeoutMessage(elapsedMs)
+					: 'Gutendex search failed before returning results.',
+				diagnosticUrl: gutendexUrl.toString(),
+				elapsedMs,
+				provider: 'Gutendex',
+			},
 			{ status: 504 },
 		)
 	}
