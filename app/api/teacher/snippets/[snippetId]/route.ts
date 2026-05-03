@@ -5,6 +5,7 @@ import {
 	feedbackSlug,
 	normalizeSnippetCategoryLabel,
 } from '@/lib/feedback/categories'
+import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type SnippetPayload = {
@@ -43,6 +44,20 @@ function normalizeTags(value: unknown) {
 				.slice(0, 12),
 		),
 	]
+}
+
+function isSchemaCacheMissing(message: string | null | undefined) {
+	if (!message) {
+		return false
+	}
+
+	const normalized = message.toLowerCase()
+	return (
+		normalized.includes('schema cache') ||
+		normalized.includes('could not find the') ||
+		normalized.includes('column') ||
+		(normalized.includes('relation') && normalized.includes('does not exist'))
+	)
 }
 
 function toSnippetResponse(row: {
@@ -85,7 +100,7 @@ export async function PATCH(
 	const { snippetId } = await params
 	const supabase = await createServerSupabaseClient()
 	const payload = (await request.json()) as SnippetPayload
-	const text = String(payload.text ?? '').trim()
+	const text = cleanSnippetText(String(payload.text ?? ''))
 	const note = String(payload.note ?? '').trim()
 	const categoryLabel = normalizeSnippetCategoryLabel(payload.categoryLabel)
 	const tags = normalizeTags(payload.tags)
@@ -122,24 +137,41 @@ export async function PATCH(
 		tags,
 	}
 
-	const updateResult = await supabase
-		.from('snippets')
-		.update({
-			snippet_text: text,
-			note: note || null,
-			snippet_category_id: null,
-			anchor: updatedAnchor,
-		})
-		.eq('id', snippetId)
-		.eq('saved_by', profile.user.id)
-		.select('id, snippet_text, note, created_at, anchor')
-		.single()
+	const updatePayload = {
+		snippet_text: text,
+		note: note || null,
+		anchor: updatedAnchor,
+	}
+
+	const updateSnippet = (includeCategoryColumn: boolean) =>
+		supabase
+			.from('snippets')
+			.update({
+				...updatePayload,
+				...(includeCategoryColumn ? { snippet_category_id: null } : {}),
+			})
+			.eq('id', snippetId)
+			.eq('saved_by', profile.user.id)
+			.select('id, snippet_text, note, created_at, anchor')
+			.single()
+
+	let updateResult = await updateSnippet(true)
+
+	if (updateResult.error && isSchemaCacheMissing(updateResult.error.message)) {
+		updateResult = await updateSnippet(false)
+	}
 
 	if (updateResult.error || !updateResult.data) {
-		return NextResponse.json({ error: 'Unable to update snippet.' }, { status: 500 })
+		const message = isSchemaCacheMissing(updateResult.error?.message)
+			? 'Snippet categories need the latest snippet migration to be applied in Supabase before saving.'
+			: 'Unable to update snippet.'
+		return NextResponse.json({ error: message }, { status: 500 })
 	}
 
 	revalidatePath('/app/teacher/snippets')
+	revalidatePath('/app/teacher/library')
+	revalidatePath('/app/teacher/documents')
+	revalidatePath('/app/teacher')
 	revalidatePath('/app/teacher-studio')
 
 	return NextResponse.json({
@@ -179,6 +211,8 @@ export async function DELETE(
 	}
 
 	revalidatePath('/app/teacher/snippets')
+	revalidatePath('/app/teacher/documents')
+	revalidatePath('/app/teacher')
 	revalidatePath('/app/teacher-studio')
 
 	return NextResponse.json({

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
 import { SubmissionHistorySelect } from '@/components/writer/submission-history-select'
 
@@ -18,6 +19,13 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+}
+
+type WriterDocumentResource = {
+	id: string
+	title: string
+	documentType: string
+	updatedAt: string
 }
 
 function countWords(value: string) {
@@ -40,6 +48,8 @@ export function WriterSubmissionComposer({
 	inReviewCount,
 	publishedCount,
 	abuSubmissionWordLimit,
+	availableDocuments,
+	documentsError,
 }: {
 	writerName: string
 	createSubmissionAction: (formData: FormData) => void
@@ -56,7 +66,10 @@ export function WriterSubmissionComposer({
 	inReviewCount: number
 	publishedCount: number
 	abuSubmissionWordLimit: number
+	availableDocuments: WriterDocumentResource[]
+	documentsError: string | null
 }) {
+	const router = useRouter()
 	const [draftBody, setDraftBody] = useState('')
 	const [selectedWorkshopId, setSelectedWorkshopId] =
 		useState(defaultWorkshopId)
@@ -231,6 +244,42 @@ export function WriterSubmissionComposer({
 						</p>
 					) : null}
 				</div>
+
+				{availableDocuments.length > 0 || documentsError ? (
+					<div className="mt-5 border-t border-white/10 pt-4">
+						<label className="block">
+							<span className="mb-1.5 block text-sm text-silver-100">
+								Documents
+							</span>
+							<select
+								value=""
+								onChange={(event) => {
+									const documentId = event.target.value
+									if (documentId) {
+										router.push(`/app/writer/documents/${documentId}`)
+									}
+								}}
+								disabled={availableDocuments.length === 0}
+								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
+								<option value="">
+									{availableDocuments.length > 0
+										? 'Available documents'
+										: 'No documents available'}
+								</option>
+								{availableDocuments.map((document) => (
+									<option key={document.id} value={document.id}>
+										{document.title} · {document.documentType}
+									</option>
+								))}
+							</select>
+						</label>
+						{documentsError ? (
+							<p className="mt-2 text-xs leading-5 text-amber-100">
+								{documentsError}
+							</p>
+						) : null}
+					</div>
+				) : null}
 
 				<button
 					type="submit"

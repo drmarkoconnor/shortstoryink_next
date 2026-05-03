@@ -19,6 +19,7 @@ export function MenuTabs({
 						<Link
 							key={tab.href}
 							href={tab.href}
+							prefetch={false}
 							className={`rounded-full px-3.5 py-2 text-xs uppercase tracking-[0.09em] transition ${
 								isActive
 									? 'bg-burgundy-500/80 text-parchment-100 shadow-[0_0_0_1px_rgba(248,246,242,0.08)]'

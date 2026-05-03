@@ -5,7 +5,9 @@ import { WriterSubmissionComposer } from '@/components/writer/writer-submission-
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { normalizeTeachingDocumentType } from '@/lib/teacher-documents/types'
 import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
 
 const ABU_SUBMISSION_WORD_LIMIT = 2000
@@ -28,8 +30,44 @@ type WriterSubmission = {
 	commentCount?: number
 }
 
+type WriterDocumentResource = {
+	id: string
+	title: string
+	documentType: string
+	updatedAt: string
+}
+
+type DocumentRow = {
+	id: string
+	title: string
+	body: unknown
+	updated_at: string
+}
+
 function toMessage(value: string | string[] | undefined) {
 	return typeof value === 'string' && value.trim() ? value : null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value && typeof value === 'object')
+}
+
+function groupIdsFromDocumentBody(body: unknown) {
+	if (!isRecord(body) || !isRecord(body.metadata)) {
+		return []
+	}
+
+	return Array.isArray(body.metadata.groupIds)
+		? body.metadata.groupIds.map((id) => String(id).trim()).filter(Boolean)
+		: []
+}
+
+function documentTypeFromBody(body: unknown) {
+	if (!isRecord(body) || !isRecord(body.metadata)) {
+		return 'Teaching note'
+	}
+
+	return normalizeTeachingDocumentType(body.metadata.documentType)
 }
 
 function isLegacySchemaError(message: string | null | undefined) {
@@ -311,23 +349,26 @@ export default async function WriterPage({
 	let workshopError: string | null = null
 	let submissions: WriterSubmission[] = []
 	let submissionsError: string | null = null
+	let availableDocuments: WriterDocumentResource[] = []
+	let documentsError: string | null = null
+	let writerWorkshopIds: string[] = []
 
 	if (mode === 'modern') {
 		const { data: memberRows, error: membershipError } = await supabase
 			.from('workshop_members')
 			.select('workshop_id')
 			.eq('profile_id', user.id)
-		const workshopIds = (memberRows ?? []).map(
+		writerWorkshopIds = (memberRows ?? []).map(
 			(row) => row.workshop_id as string,
 		)
 
 		if (membershipError) {
 			workshopError = `Unable to load your workshops: ${membershipError.message}`
-		} else if (workshopIds.length > 0) {
+		} else if (writerWorkshopIds.length > 0) {
 			const { data: workshopRows, error } = await supabase
 				.from('workshops')
 				.select('id, title, slug')
-				.in('id', workshopIds)
+				.in('id', writerWorkshopIds)
 				.order('title', { ascending: true })
 
 			if (error) {
@@ -423,6 +464,40 @@ export default async function WriterPage({
 		}
 	}
 
+	if (mode === 'modern') {
+		writerWorkshopIds = workshops.map((workshop) => workshop.id)
+	}
+
+	if (mode === 'modern' && writerWorkshopIds.length > 0) {
+		const adminSupabase = createAdminSupabaseClient()
+		const { data: documentRows, error } = await adminSupabase
+			.from('teacher_documents')
+			.select('id, title, body, updated_at')
+			.order('updated_at', { ascending: false })
+			.limit(80)
+
+		if (error) {
+			documentsError = isLegacySchemaError(error.message)
+				? 'Shared documents are not available until the teacher_documents migration has been applied.'
+				: 'Unable to load shared documents.'
+		} else {
+			const writerWorkshopSet = new Set(writerWorkshopIds)
+			availableDocuments = ((documentRows ?? []) as DocumentRow[])
+				.filter((document) =>
+					groupIdsFromDocumentBody(document.body).some((groupId) =>
+						writerWorkshopSet.has(groupId),
+					),
+				)
+				.map((document) => ({
+					id: document.id,
+					title: document.title,
+					documentType: documentTypeFromBody(document.body),
+					updatedAt: document.updated_at,
+				}))
+				.slice(0, 12)
+		}
+	}
+
 	const isWorkshopRequired = mode === 'modern'
 	const defaultWorkshopId =
 		workshops.find((workshop) => isAbuWorkshopSlug(workshop.slug))?.id ??
@@ -471,6 +546,8 @@ export default async function WriterPage({
 				inReviewCount={inReviewCount}
 				publishedCount={publishedCount}
 				abuSubmissionWordLimit={ABU_SUBMISSION_WORD_LIMIT}
+				availableDocuments={availableDocuments}
+				documentsError={documentsError}
 			/>
 		</section>
 	)

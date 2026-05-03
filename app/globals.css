@@ -126,26 +126,48 @@ body {
 
 .tiptap-snippet-example {
 	margin: 1.15rem 0;
-	padding: 0.9rem 0;
-	border-top: 1px solid rgba(248, 246, 242, 0.16);
-	border-bottom: 1px solid rgba(248, 246, 242, 0.16);
+	padding: 0.85rem 0 0.85rem 1.2rem;
+	border-left: 2px solid rgba(202, 167, 97, 0.7);
+	quotes: '\201C' '\201D';
 }
 
 .tiptap-snippet-example__text {
+	position: relative;
 	margin: 0 !important;
 	padding: 0 !important;
 	border-left: 0 !important;
 	background: transparent !important;
 	color: rgba(248, 246, 242, 0.95) !important;
 	font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
-	font-size: 1rem;
-	font-style: normal !important;
+	font-size: 1.08rem;
+	font-style: italic !important;
 	line-height: 1.8;
 	white-space: pre-wrap;
 }
 
+.tiptap-snippet-example__text::before {
+	position: absolute;
+	left: -1rem;
+	top: -0.45rem;
+	color: rgba(202, 167, 97, 0.42);
+	content: open-quote;
+	font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+	font-size: 3rem;
+	line-height: 1;
+}
+
+.tiptap-snippet-example__text::after {
+	display: block;
+	color: rgba(202, 167, 97, 0.36);
+	content: close-quote;
+	font-family: Georgia, Cambria, 'Times New Roman', Times, serif;
+	font-size: 2.2rem;
+	line-height: 1;
+	text-align: right;
+}
+
 .tiptap-snippet-example__source {
-	margin: 0.65rem 0 0 !important;
+	margin: 0.35rem 0 0 !important;
 	color: rgba(190, 193, 201, 0.76);
 	font-size: 0.72rem;
 	letter-spacing: 0.08em;
@@ -159,6 +181,10 @@ body {
 	color: rgba(190, 193, 201, 0.84);
 	font-size: 0.9rem;
 	line-height: 1.65;
+}
+
+.tiptap-snippet-example__note:empty {
+	display: none;
 }
 
 @media print {

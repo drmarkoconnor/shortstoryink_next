@@ -309,6 +309,7 @@ export function TeacherReviewWorkspace({
 	const mainRef = useRef<HTMLDivElement | null>(null)
 	const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
+	const inlineCommentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const publishTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
 	useEffect(() => {
@@ -362,7 +363,10 @@ export function TeacherReviewWorkspace({
 
 	useEffect(() => {
 		if (selectedAnchor && !isInlineEditingComment) {
-			composerTextareaRef.current?.focus()
+			const frame = window.requestAnimationFrame(() => {
+				composerTextareaRef.current?.focus()
+			})
+			return () => window.cancelAnimationFrame(frame)
 		}
 	}, [selectedAnchor, isInlineEditingComment])
 
@@ -430,6 +434,22 @@ export function TeacherReviewWorkspace({
 		return annotations.find((item) => item.id === activeAnnotationId) ?? null
 	}, [activeAnnotationId, annotations])
 
+	useEffect(() => {
+		if (
+			activeAnnotation?.type === 'comment' &&
+			isInlineEditingComment &&
+			!isPublishedReadOnly
+		) {
+			const frame = window.requestAnimationFrame(() => {
+				const textarea = inlineCommentTextareaRef.current
+				textarea?.focus()
+				const end = textarea?.value.length ?? 0
+				textarea?.setSelectionRange(end, end)
+			})
+			return () => window.cancelAnimationFrame(frame)
+		}
+	}, [activeAnnotation, isInlineEditingComment, isPublishedReadOnly])
+
 	const commentCount = feedbackItems.length
 	const snippetCount = snippetItems.length
 	const commentAnnotations = annotations.filter((item) => item.type === 'comment')
@@ -442,31 +462,29 @@ export function TeacherReviewWorkspace({
 		: commentAnnotations
 	const filteredSnippetLibrary = useMemo(() => {
 		const query = snippetSearchQuery.trim().toLowerCase()
-		return snippetLibraryItems
-			.filter((item) => {
-				if (
-					snippetSearchCategory &&
-					item.categoryLabel !== snippetSearchCategory
-				) {
-					return false
-				}
+		return snippetLibraryItems.filter((item) => {
+			if (
+				snippetSearchCategory &&
+				item.categoryLabel !== snippetSearchCategory
+			) {
+				return false
+			}
 
-				if (!query) {
-					return true
-				}
+			if (!query) {
+				return true
+			}
 
-				const haystack = [
-					item.text,
-					item.anchor?.quote ?? '',
-					item.categoryLabel,
-					...item.tags,
-				]
-					.join(' ')
-					.toLowerCase()
+			const haystack = [
+				item.text,
+				item.anchor?.quote ?? '',
+				item.categoryLabel,
+				...item.tags,
+			]
+				.join(' ')
+				.toLowerCase()
 
-				return haystack.includes(query)
-			})
-			.slice(0, 8)
+			return haystack.includes(query)
+		})
 	}, [snippetLibraryItems, snippetSearchCategory, snippetSearchQuery])
 
 	const totalPages = pagedManuscript.pages.length
@@ -643,6 +661,7 @@ export function TeacherReviewWorkspace({
 			setCommentSuggestedAction(activeAnnotation.anchor.suggestedAction ?? null)
 			setSnippetNoteDraft('')
 			setSnippetCategoryIdDraft('')
+			setIsInlineEditingComment(!isPublishedReadOnly)
 			return
 		}
 
@@ -657,7 +676,7 @@ export function TeacherReviewWorkspace({
 		setCommentTagsDraft('')
 		setCommentSuggestedAction(null)
 		setIsInlineEditingComment(false)
-	}, [activeAnnotation, activeFeedbackCategoryLabel])
+	}, [activeAnnotation, activeFeedbackCategoryLabel, isPublishedReadOnly])
 
 	const saveNewAnnotation = async (
 		annotationIntent: 'comment' | 'snippet' | 'cut',
@@ -1765,11 +1784,12 @@ export function TeacherReviewWorkspace({
 										{activeBlockItem.type === 'comment' ? (
 											isInlineEditingComment &&
 											activeAnnotationId === activeBlockItem.id ? (
-												<form
-													onSubmit={saveActiveComment}
-													className="mt-3 space-y-3">
-													<textarea
-														name="comment"
+													<form
+														onSubmit={saveActiveComment}
+														className="mt-3 space-y-3">
+														<textarea
+															ref={inlineCommentTextareaRef}
+															name="comment"
 														rows={commentDraft.includes('\n') ? 5 : 4}
 														value={commentDraft}
 														onChange={(event) => setCommentDraft(event.target.value)}
