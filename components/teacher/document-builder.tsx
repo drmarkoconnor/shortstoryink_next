@@ -4,16 +4,22 @@ import { mergeAttributes, Node, type JSONContent } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import {
 	fixedSnippetCategories,
 	normalizeSnippetLabel,
 } from '@/lib/feedback/categories'
+import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
 import {
 	normalizeTeachingDocumentType,
 	teachingDocumentTypes,
 	type TeachingDocumentType,
 } from '@/lib/teacher-documents/types'
+import type {
+	TeachingLibraryItemType,
+	TeachingLibraryReferenceType,
+} from '@/lib/teacher-library/types'
 
 export type SnippetSourceMetadata = {
 	sourceType?: string
@@ -55,6 +61,18 @@ export type TeacherDocumentGroup = {
 	title: string
 }
 
+export type BuilderLibraryItem = {
+	id: string
+	itemType: TeachingLibraryItemType
+	title: string
+	body: string
+	referenceType: TeachingLibraryReferenceType | null
+	url: string | null
+	categoryLabel: string
+	tags: string[]
+	updatedAt: string
+}
+
 type SnippetExampleAttrs = {
 	snippetId: string
 	text: string
@@ -69,6 +87,37 @@ type SelectedSnippetExample = {
 	position: number
 	attrs: SnippetExampleAttrs
 }
+
+type SnippetInsertionStyle = 'quoted' | 'plain'
+
+type LibraryInsertItem =
+	| {
+			id: string
+			type: 'note'
+			title: string
+			body: string
+			categoryLabel: string
+			tags: string[]
+	  }
+	| {
+			id: string
+			type: 'reference'
+			title: string
+			body: string
+			referenceType: TeachingLibraryReferenceType | null
+			url: string | null
+			categoryLabel: string
+			tags: string[]
+	  }
+	| {
+			id: string
+			type: 'example'
+			title: string
+			body: string
+			categoryLabel: string
+			tags: string[]
+			snippet: BuilderSnippet
+	  }
 
 const defaultDocumentType: TeachingDocumentType = 'Teaching note'
 
@@ -228,6 +277,36 @@ function safeFilenamePart(value: string) {
 function printFilename(title: string) {
 	const safeTitle = safeFilenamePart(title) || 'Teaching document'
 	return `${safeTitle} - ${todayStamp()}`
+}
+
+function textParagraphNodes(value: string): JSONContent[] {
+	return value
+		.split(/\n{2,}/)
+		.map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
+		.filter(Boolean)
+		.map((paragraph) => ({
+			type: 'paragraph',
+			content: [{ type: 'text', text: paragraph }],
+		}))
+}
+
+function stableDocumentSignature({
+	title,
+	documentType,
+	groupIds,
+	content,
+}: {
+	title: string
+	documentType: TeachingDocumentType
+	groupIds: string[]
+	content: JSONContent
+}) {
+	return JSON.stringify({
+		title: title.trim(),
+		documentType,
+		groupIds: [...groupIds].sort(),
+		content,
+	})
 }
 
 function categoryForSnippet(snippet: BuilderSnippet) {
@@ -555,18 +634,26 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 export function DocumentBuilder({
 	initialSnippets,
+	initialLibraryItems,
 	initialDocuments,
 	initialGroups,
 	persistenceNotice,
 }: {
 	initialSnippets: BuilderSnippet[]
+	initialLibraryItems: BuilderLibraryItem[]
 	initialDocuments: SavedTeachingDocument[]
 	initialGroups: TeacherDocumentGroup[]
 	persistenceNotice?: string | null
 }) {
 	const previewRef = useRef<HTMLElement | null>(null)
-	const [snippets] = useState(initialSnippets)
-	const [groups] = useState(initialGroups)
+	const lastSavedDocumentSignature = useRef('')
+	const availabilityAutosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	)
+	const router = useRouter()
+	const [snippets, setSnippets] = useState(initialSnippets)
+	const [libraryItems, setLibraryItems] = useState(initialLibraryItems)
+	const [groups, setGroups] = useState(initialGroups)
 	const [documents, setDocuments] = useState(initialDocuments)
 	const [documentId, setDocumentId] = useState<string | null>(null)
 	const [title, setTitle] = useState('Workshop notes')
@@ -574,9 +661,13 @@ export function DocumentBuilder({
 		defaultDocumentType,
 	)
 	const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
+	const [availabilitySaveRevision, setAvailabilitySaveRevision] = useState(0)
 	const [editorJson, setEditorJson] = useState<JSONContent>(initialContent)
+	const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false)
 	const [isSnippetModalOpen, setIsSnippetModalOpen] = useState(false)
 	const [includeSnippetNotes, setIncludeSnippetNotes] = useState(true)
+	const [snippetInsertionStyle, setSnippetInsertionStyle] =
+		useState<SnippetInsertionStyle>('quoted')
 	const [selectedSnippet, setSelectedSnippet] =
 		useState<SelectedSnippetExample | null>(null)
 	const [editingSnippet, setEditingSnippet] =
@@ -586,6 +677,9 @@ export function DocumentBuilder({
 	const [snippetIncludeNoteDraft, setSnippetIncludeNoteDraft] = useState(true)
 	const [snippetSearch, setSnippetSearch] = useState('')
 	const [snippetCategory, setSnippetCategory] = useState('')
+	const [librarySearch, setLibrarySearch] = useState('')
+	const [libraryTypeFilter, setLibraryTypeFilter] = useState('')
+	const [libraryCategoryFilter, setLibraryCategoryFilter] = useState('')
 	const [isSaving, setIsSaving] = useState(false)
 	const [notice, setNotice] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -624,6 +718,35 @@ export function DocumentBuilder({
 		},
 	})
 
+	useEffect(() => {
+		setSnippets(initialSnippets)
+	}, [initialSnippets])
+
+	useEffect(() => {
+		setLibraryItems(initialLibraryItems)
+	}, [initialLibraryItems])
+
+	useEffect(() => {
+		setGroups(initialGroups)
+	}, [initialGroups])
+
+	useEffect(() => {
+		setDocuments(initialDocuments)
+	}, [initialDocuments])
+
+	useEffect(() => {
+		if (lastSavedDocumentSignature.current) {
+			return
+		}
+
+		lastSavedDocumentSignature.current = stableDocumentSignature({
+			title,
+			documentType,
+			groupIds: selectedGroupIds,
+			content: editorJson,
+		})
+	}, [documentType, editorJson, selectedGroupIds, title])
+
 	const categoryCounts = useMemo(() => {
 		const counts: Record<string, number> = { Uncategorised: 0 }
 		for (const category of fixedSnippetCategories) {
@@ -654,13 +777,104 @@ export function DocumentBuilder({
 				if (!query) {
 					return true
 				}
-				return [snippet.text, snippet.note, label, ...snippet.tags]
+				return [
+					snippet.text,
+					snippet.note,
+					label,
+					snippet.sourceMetadata.sourceLabel,
+					snippet.sourceMetadata.sourceKind,
+					snippet.sourceMetadata.originalSource,
+					snippet.sourceMetadata.createdByLabel,
+					snippet.sourceMetadata.sourceName,
+					snippet.sourceMetadata.sourceUrl,
+					snippet.sourceMetadata.sourceSection,
+					snippet.sourceMetadata.sourceTypeLabel,
+					...snippet.tags,
+				]
 					.join(' ')
 					.toLowerCase()
 					.includes(query)
 			})
-			.slice(0, 40)
 	}, [snippetCategory, snippetSearch, snippets])
+
+	const libraryInsertItems = useMemo<LibraryInsertItem[]>(() => {
+		return [
+			...libraryItems.map((item) =>
+				item.itemType === 'reference'
+					? ({
+							id: item.id,
+							type: 'reference' as const,
+							title: item.title,
+							body: item.body,
+							referenceType: item.referenceType,
+							url: item.url,
+							categoryLabel: item.categoryLabel,
+							tags: item.tags,
+						} satisfies LibraryInsertItem)
+					: ({
+							id: item.id,
+							type: 'note' as const,
+							title: item.title,
+							body: item.body,
+							categoryLabel: item.categoryLabel,
+							tags: item.tags,
+						} satisfies LibraryInsertItem),
+			),
+			...snippets.map((snippet) => ({
+				id: snippet.id,
+				type: 'example' as const,
+				title: snippet.note.trim() || compactPreview(snippet.text, 72),
+				body: snippet.text,
+				categoryLabel: categoryForSnippet(snippet),
+				tags: snippet.tags,
+				snippet,
+			})),
+		]
+	}, [libraryItems, snippets])
+
+	const libraryCategories = useMemo(() => {
+		return [
+			'Uncategorised',
+			...fixedSnippetCategories,
+			...libraryInsertItems.map((item) => item.categoryLabel),
+		].filter((category, index, all) => category && all.indexOf(category) === index)
+	}, [libraryInsertItems])
+
+	const filteredLibraryItems = useMemo(() => {
+		const query = librarySearch.trim().toLowerCase()
+		return libraryInsertItems
+			.filter((item) => {
+				if (libraryTypeFilter && item.type !== libraryTypeFilter) {
+					return false
+				}
+				if (
+					libraryCategoryFilter &&
+					item.categoryLabel !== libraryCategoryFilter
+				) {
+					return false
+				}
+				if (!query) {
+					return true
+				}
+				return [
+					item.title,
+					item.body,
+					item.categoryLabel,
+					item.type,
+					...item.tags,
+					item.type === 'reference' ? item.referenceType : '',
+					item.type === 'reference' ? item.url : '',
+				]
+					.join(' ')
+					.toLowerCase()
+					.includes(query)
+			})
+	}, [
+		libraryCategoryFilter,
+		libraryInsertItems,
+		librarySearch,
+		libraryTypeFilter,
+	])
 
 	const documentsByType = useMemo(() => {
 		return teachingDocumentTypes
@@ -684,10 +898,10 @@ export function DocumentBuilder({
 	const utilityButtonClass =
 		'rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/15 disabled:hover:text-silver-200'
 
-	const clearMessages = () => {
+	const clearMessages = useCallback(() => {
 		setNotice(null)
 		setError(null)
-	}
+	}, [])
 
 	const toggleGroup = (groupId: string) => {
 		clearMessages()
@@ -696,6 +910,7 @@ export function DocumentBuilder({
 				? current.filter((id) => id !== groupId)
 				: [...current, groupId],
 		)
+		setAvailabilitySaveRevision((revision) => revision + 1)
 	}
 
 	const loadDocument = (id: string) => {
@@ -708,6 +923,12 @@ export function DocumentBuilder({
 			setSelectedGroupIds([])
 			setEditorJson(initialContent)
 			editor?.commands.setContent(initialContent)
+			lastSavedDocumentSignature.current = stableDocumentSignature({
+				title: 'Workshop notes',
+				documentType: defaultDocumentType,
+				groupIds: [],
+				content: initialContent,
+			})
 			return
 		}
 		const document = documents.find((item) => item.id === id)
@@ -720,6 +941,12 @@ export function DocumentBuilder({
 		setSelectedGroupIds(document.groupIds)
 		setEditorJson(document.content)
 		editor?.commands.setContent(document.content)
+		lastSavedDocumentSignature.current = stableDocumentSignature({
+			title: document.title,
+			documentType: document.documentType,
+			groupIds: document.groupIds,
+			content: document.content,
+		})
 	}
 
 	const newDocument = () => {
@@ -731,6 +958,12 @@ export function DocumentBuilder({
 		setSelectedGroupIds([])
 		setEditorJson(initialContent)
 		editor?.commands.setContent(initialContent)
+		lastSavedDocumentSignature.current = stableDocumentSignature({
+			title: 'Workshop notes',
+			documentType: defaultDocumentType,
+			groupIds: [],
+			content: initialContent,
+		})
 	}
 
 	const printDocument = () => {
@@ -744,8 +977,22 @@ export function DocumentBuilder({
 		window.print()
 	}
 
-	const insertSnippet = (snippet: BuilderSnippet) => {
+	const insertSnippet = (
+		snippet: BuilderSnippet,
+		style: SnippetInsertionStyle = snippetInsertionStyle,
+	) => {
 		const category = categoryForSnippet(snippet)
+		const text = cleanSnippetText(snippet.text)
+
+		if (style === 'plain') {
+			editor?.chain().focus().insertContent(textParagraphNodes(text)).run()
+			setIsSnippetModalOpen(false)
+			setSnippetSearch('')
+			setSnippetCategory('')
+			setNotice(`Inserted ${category} snippet as plain text.`)
+			return
+		}
+
 		editor
 			?.chain()
 			.focus()
@@ -753,7 +1000,7 @@ export function DocumentBuilder({
 				type: 'snippetExample',
 				attrs: {
 					snippetId: snippet.id,
-					text: snippet.text,
+					text,
 					note: snippet.note,
 					includeNote: includeSnippetNotes,
 					category,
@@ -766,6 +1013,80 @@ export function DocumentBuilder({
 		setSnippetSearch('')
 		setSnippetCategory('')
 		setNotice(`Inserted ${category} snippet.`)
+	}
+
+	const insertTeachingNote = (item: Extract<LibraryInsertItem, { type: 'note' }>) => {
+		if (!editor) {
+			return
+		}
+
+		const content: JSONContent[] = [
+			{
+				type: 'heading',
+				attrs: { level: 3 },
+				content: [{ type: 'text', text: item.title }],
+			},
+			...textParagraphNodes(item.body),
+		]
+		editor.chain().focus().insertContent(content).run()
+		setIsLibraryModalOpen(false)
+		setNotice('Inserted teaching note.')
+	}
+
+	const insertReference = (
+		item: Extract<LibraryInsertItem, { type: 'reference' }>,
+	) => {
+		if (!editor) {
+			return
+		}
+
+		const heading = item.referenceType
+			? `${item.title} (${item.referenceType})`
+			: item.title
+		const paragraphs: JSONContent[] = [
+			{
+				type: 'paragraph',
+				content: [
+					{
+						type: 'text',
+						text: heading,
+						marks: [{ type: 'bold' }],
+					},
+				],
+			},
+			...textParagraphNodes(item.body),
+		]
+
+		if (item.url) {
+			paragraphs.push({
+				type: 'paragraph',
+				content: [{ type: 'text', text: item.url }],
+			})
+		}
+
+		editor
+			.chain()
+			.focus()
+			.insertContent({
+				type: 'blockquote',
+				content: paragraphs,
+			})
+			.run()
+		setIsLibraryModalOpen(false)
+		setNotice('Inserted reference.')
+	}
+
+	const insertLibraryItem = (item: LibraryInsertItem) => {
+		if (item.type === 'example') {
+			insertSnippet(item.snippet)
+			setIsLibraryModalOpen(false)
+			return
+		}
+		if (item.type === 'reference') {
+			insertReference(item)
+			return
+		}
+		insertTeachingNote(item)
 	}
 
 	const openSelectedSnippetEditor = () => {
@@ -784,7 +1105,7 @@ export function DocumentBuilder({
 		if (!editor || !editingSnippet) {
 			return
 		}
-		const text = snippetTextDraft.trim()
+		const text = cleanSnippetText(snippetTextDraft)
 		if (!text) {
 			setError('Snippet text cannot be empty.')
 			return
@@ -849,25 +1170,51 @@ export function DocumentBuilder({
 		}
 	}
 
-	const saveDocument = async () => {
+	const saveDocument = useCallback(async (
+		options: { keepalive?: boolean; silent?: boolean } = {},
+	) => {
 		const nextTitle = title.trim()
 		if (!nextTitle) {
-			setError('Enter a document title.')
+			if (!options.silent) {
+				setError('Enter a document title.')
+			}
 			return
 		}
 		if (!editor) {
-			setError('Editor is still loading.')
+			if (!options.silent) {
+				setError('Editor is still loading.')
+			}
 			return
 		}
 
 		const content = editor.getJSON()
-		setIsSaving(true)
-		clearMessages()
+		const nextSignature = stableDocumentSignature({
+			title: nextTitle,
+			documentType,
+			groupIds: selectedGroupIds,
+			content,
+		})
+		const isDefaultDraft =
+			!documentId &&
+			nextTitle === 'Workshop notes' &&
+			documentType === defaultDocumentType &&
+			selectedGroupIds.length === 0 &&
+			JSON.stringify(content) === JSON.stringify(initialContent)
+
+		if (isDefaultDraft || nextSignature === lastSavedDocumentSignature.current) {
+			return
+		}
+
+		if (!options.silent) {
+			setIsSaving(true)
+			clearMessages()
+		}
 
 		try {
 			const response = await fetch('/api/teacher/documents', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				keepalive: options.keepalive,
 				body: JSON.stringify({
 					id: documentId,
 					title: nextTitle,
@@ -893,6 +1240,12 @@ export function DocumentBuilder({
 			setDocumentType(normalizeDocumentType(savedDocument.documentType))
 			setSelectedGroupIds(savedDocument.groupIds)
 			setEditorJson(savedDocument.content)
+			lastSavedDocumentSignature.current = stableDocumentSignature({
+				title: savedDocument.title,
+				documentType: normalizeDocumentType(savedDocument.documentType),
+				groupIds: savedDocument.groupIds,
+				content: savedDocument.content,
+			})
 			setDocuments((current) => {
 				const exists = current.some((item) => item.id === savedDocument.id)
 				if (exists) {
@@ -902,17 +1255,91 @@ export function DocumentBuilder({
 				}
 				return [savedDocument, ...current]
 			})
-			setNotice(payload.notice ?? 'Document saved.')
+			if (!options.silent) {
+				setNotice(payload.notice ?? 'Document saved.')
+			}
+			router.refresh()
 		} catch (saveError) {
-			setError(
-				saveError instanceof Error
-					? saveError.message
-					: 'Unable to save document.',
-			)
+			if (!options.silent) {
+				setError(
+					saveError instanceof Error
+						? saveError.message
+						: 'Unable to save document.',
+				)
+			}
 		} finally {
-			setIsSaving(false)
+			if (!options.silent) {
+				setIsSaving(false)
+			}
 		}
-	}
+	}, [clearMessages, documentId, documentType, editor, router, selectedGroupIds, title])
+
+	useEffect(() => {
+		const autosaveDocument = (keepalive = false) => {
+			if (isSaving) {
+				return
+			}
+
+			void saveDocument({
+				keepalive,
+				silent: true,
+			})
+		}
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'hidden') {
+				autosaveDocument(true)
+			}
+		}
+
+		const handlePageHide = () => autosaveDocument(true)
+		const handleDocumentClick = (event: MouseEvent) => {
+			const target = event.target
+			if (!(target instanceof Element)) {
+				return
+			}
+
+			const link = target.closest('a[href]')
+			if (link) {
+				autosaveDocument(true)
+			}
+		}
+
+		document.addEventListener('visibilitychange', handleVisibilityChange)
+		window.addEventListener('pagehide', handlePageHide)
+		document.addEventListener('click', handleDocumentClick, { capture: true })
+
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange)
+			window.removeEventListener('pagehide', handlePageHide)
+			document.removeEventListener('click', handleDocumentClick, { capture: true })
+		}
+	}, [isSaving, saveDocument])
+
+	useEffect(() => {
+		if (availabilitySaveRevision === 0 || isSaving) {
+			return
+		}
+
+		if (availabilityAutosaveTimer.current) {
+			clearTimeout(availabilityAutosaveTimer.current)
+		}
+
+		const scheduledRevision = availabilitySaveRevision
+		availabilityAutosaveTimer.current = setTimeout(() => {
+			void saveDocument({ silent: true }).finally(() => {
+				setAvailabilitySaveRevision((currentRevision) =>
+					currentRevision === scheduledRevision ? 0 : currentRevision,
+				)
+			})
+		}, 650)
+
+		return () => {
+			if (availabilityAutosaveTimer.current) {
+				clearTimeout(availabilityAutosaveTimer.current)
+			}
+		}
+	}, [availabilitySaveRevision, isSaving, saveDocument])
 
 	const deleteDocument = async () => {
 		if (!documentId) {
@@ -953,7 +1380,14 @@ export function DocumentBuilder({
 			setSelectedGroupIds([])
 			setEditorJson(initialContent)
 			editor?.commands.setContent(initialContent)
+			lastSavedDocumentSignature.current = stableDocumentSignature({
+				title: 'Workshop notes',
+				documentType: defaultDocumentType,
+				groupIds: [],
+				content: initialContent,
+			})
 			setNotice(payload?.notice ?? 'Document deleted.')
+			router.refresh()
 		} catch (deleteError) {
 			setError(
 				deleteError instanceof Error
@@ -1070,7 +1504,9 @@ export function DocumentBuilder({
 						</button>
 						<button
 							type="button"
-							onClick={saveDocument}
+							onClick={() => {
+								void saveDocument()
+							}}
 							disabled={isSaving}
 							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
 							{isSaving ? 'Saving...' : 'Save'}
@@ -1208,6 +1644,12 @@ export function DocumentBuilder({
 									</button>
 									<button
 										type="button"
+										onClick={() => setIsLibraryModalOpen(true)}
+										className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+										Insert library
+									</button>
+									<button
+										type="button"
 										onClick={openSelectedSnippetEditor}
 										disabled={!selectedSnippet}
 										className={utilityButtonClass}>
@@ -1275,6 +1717,120 @@ export function DocumentBuilder({
 				</aside>
 			</div>
 
+			{isLibraryModalOpen ? (
+				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
+					<div className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
+						<div className="border-b border-white/10 p-4">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+										Teaching Library
+									</p>
+									<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+										Insert library item
+									</h2>
+								</div>
+								<button
+									type="button"
+									onClick={() => setIsLibraryModalOpen(false)}
+									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									Close
+								</button>
+							</div>
+							<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_190px]">
+								<input
+									type="search"
+									value={librarySearch}
+									onChange={(event) => setLibrarySearch(event.target.value)}
+									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+									placeholder="Search notes, examples, references"
+								/>
+								<select
+									value={libraryTypeFilter}
+									onChange={(event) => setLibraryTypeFilter(event.target.value)}
+									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+									<option value="">All types</option>
+									<option value="note">Notes</option>
+									<option value="example">Examples</option>
+									<option value="reference">References</option>
+								</select>
+								<select
+									value={libraryCategoryFilter}
+									onChange={(event) =>
+										setLibraryCategoryFilter(event.target.value)
+									}
+									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+									<option value="">All categories</option>
+									{libraryCategories.map((category) => (
+										<option key={category} value={category}>
+											{category}
+										</option>
+									))}
+									</select>
+								</div>
+								<div className="mt-3 flex flex-wrap items-center gap-2">
+									<span className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+										Examples insert as
+									</span>
+									<button
+										type="button"
+										onClick={() => setSnippetInsertionStyle('quoted')}
+										className={buttonClass(snippetInsertionStyle === 'quoted')}>
+										Quoted
+									</button>
+									<button
+										type="button"
+										onClick={() => setSnippetInsertionStyle('plain')}
+										className={buttonClass(snippetInsertionStyle === 'plain')}>
+										Plain
+									</button>
+								</div>
+							</div>
+						<div className="max-h-[56vh] overflow-y-auto p-4">
+							{filteredLibraryItems.length === 0 ? (
+								<p className="text-sm text-silver-300">No library items found.</p>
+							) : (
+								<ul className="space-y-2">
+									{filteredLibraryItems.map((item) => (
+										<li key={`${item.type}-${item.id}`}>
+											<button
+												type="button"
+												onClick={() => insertLibraryItem(item)}
+												className="block w-full rounded-xl border border-white/10 bg-ink-950/70 px-3 py-3 text-left transition hover:border-accent-300/35 hover:bg-accent-300/8">
+												<span className="flex flex-wrap items-center gap-2">
+													<span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
+														{item.type}
+													</span>
+													<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+														{item.categoryLabel}
+													</span>
+													{item.type === 'reference' && item.referenceType ? (
+														<span className="text-[11px] uppercase tracking-[0.1em] text-silver-400">
+															{item.referenceType}
+														</span>
+													) : null}
+												</span>
+												<span className="mt-2 block text-sm font-semibold text-parchment-100">
+													{item.title}
+												</span>
+												<span className="mt-1 block text-sm leading-relaxed text-silver-200">
+													{compactPreview(item.body)}
+												</span>
+												{item.type === 'reference' && item.url ? (
+													<span className="mt-2 block truncate text-[11px] text-silver-400">
+														{item.url}
+													</span>
+												) : null}
+											</button>
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					</div>
+				</div>
+			) : null}
+
 			{isSnippetModalOpen ? (
 				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
 					<div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
@@ -1295,16 +1851,16 @@ export function DocumentBuilder({
 									Close
 								</button>
 							</div>
-							<div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
-								<input
-									type="search"
-									value={snippetSearch}
-									onChange={(event) => setSnippetSearch(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
-									placeholder="Search snippet text, notes, or tags"
-								/>
-								<select
-									value={snippetCategory}
+								<div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+									<input
+										type="search"
+										value={snippetSearch}
+										onChange={(event) => setSnippetSearch(event.target.value)}
+										className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+										placeholder="Search text, note, author, source, tag"
+									/>
+									<select
+										value={snippetCategory}
 									onChange={(event) => setSnippetCategory(event.target.value)}
 									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
 									<option value="">All snippets ({snippets.length})</option>
@@ -1316,19 +1872,38 @@ export function DocumentBuilder({
 											{category} ({categoryCounts[category] ?? 0})
 										</option>
 									))}
-								</select>
-							</div>
-							<label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
-								<input
-									type="checkbox"
-									checked={includeSnippetNotes}
-									onChange={(event) =>
-										setIncludeSnippetNotes(event.target.checked)
-									}
-									className="h-4 w-4 accent-burgundy-400"
-								/>
-								<span>Include the teacher note when inserting snippets</span>
-							</label>
+									</select>
+								</div>
+								<div className="mt-3 flex flex-wrap items-center gap-2">
+									<span className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+										Insert as
+									</span>
+									<button
+										type="button"
+										onClick={() => setSnippetInsertionStyle('quoted')}
+										className={buttonClass(snippetInsertionStyle === 'quoted')}>
+										Quoted
+									</button>
+									<button
+										type="button"
+										onClick={() => setSnippetInsertionStyle('plain')}
+										className={buttonClass(snippetInsertionStyle === 'plain')}>
+										Plain
+									</button>
+								</div>
+								{snippetInsertionStyle === 'quoted' ? (
+									<label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+										<input
+											type="checkbox"
+											checked={includeSnippetNotes}
+											onChange={(event) =>
+												setIncludeSnippetNotes(event.target.checked)
+											}
+											className="h-4 w-4 accent-burgundy-400"
+										/>
+										<span>Include the teacher note when inserting snippets</span>
+									</label>
+								) : null}
 						</div>
 						<div className="max-h-[56vh] overflow-y-auto p-4">
 							{filteredSnippets.length === 0 ? (

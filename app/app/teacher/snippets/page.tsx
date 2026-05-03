@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
 import {
 	SnippetLibrary,
@@ -7,6 +8,7 @@ import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { feedbackSlug, normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
 type SnippetRow = {
 	id: string
@@ -59,7 +61,7 @@ export default async function TeacherSnippetLibraryPage() {
 		.select('id, snippet_text, note, created_at, anchor, source_submission_id, source_type')
 		.eq('saved_by', profile.user.id)
 		.order('created_at', { ascending: false })
-		.limit(100)
+		.limit(teacherSnippetLibraryLimit)
 
 	if (snippetsResult.error) {
 		loadError = snippetsResult.error.message
@@ -94,7 +96,17 @@ export default async function TeacherSnippetLibraryPage() {
 
 	return (
 		<section className="space-y-5">
-			<MenuTabs tabs={teacherTabs} active="/app/teacher/snippets" />
+			<MenuTabs
+				tabs={teacherTabs}
+				active="/app/teacher-studio"
+				context={
+					<Link
+						href="/app/teacher-studio"
+						className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						Return to Studio
+					</Link>
+				}
+			/>
 
 			<div className="surface p-5 lg:p-6">
 				<div className="flex flex-wrap items-start justify-between gap-3">

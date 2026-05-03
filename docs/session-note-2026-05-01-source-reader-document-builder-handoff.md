@@ -2,6 +2,93 @@
 
 Date: 2026-05-01
 
+## Continuation note
+
+Current branch as of the follow-up review:
+
+- `document-builder-handout-readiness`
+
+Current committed head:
+
+- `8a196ae` - `Refine handout document builder`
+
+Working tree status:
+
+- in progress after writer-document exposure pass
+
+This branch now includes the earlier document-builder correction work described
+below, plus the newer handout-readiness pass:
+
+- group availability metadata is saved in `teacher_documents.body.metadata.groupIds`
+- `/app/teacher/documents` loads teacher-readable workshops for the document
+  availability selector
+- saved documents preserve and reload selected group IDs
+- inserted snippet examples can omit teacher notes by default
+- inserted snippet examples can be edited inside the handout without changing
+  the source snippet
+- example-block presentation was tightened for both editor and print preview
+- delete behaviour now returns the builder to a fresh draft after removal
+- snippet-library edits now tolerate older/local Supabase schemas where
+  `snippet_category_id` is not yet visible in the PostgREST schema cache; the
+  route falls back to updating text, note, category, and tags through snippet
+  anchor metadata
+- snippet text is now lightly cleaned on source-excerpt save and snippet-library
+  update: line breaks, tabs, double spaces, control characters, and zero-width
+  characters are collapsed/removed
+- snippet library search now includes source/author fields and can filter by
+  whether a teacher note is present
+- snippet library and document builder attempt silent autosave when the page is
+  hidden or the teacher follows an in-app link
+- snippet/document saves refresh the relevant Next router/server data while
+  keeping the active document in place
+- teacher home now promotes Review, Archive, and Studio links, makes the
+  awaiting-review count link to Review, and includes protected group CRUD
+  controls
+- `/app/writer` now surfaces group-available teaching documents in a compact
+  document selector
+- `/app/writer/documents/[documentId]` renders a read-only document only when
+  the writer belongs to one of the document's saved availability groups
+- Teacher Studio cards no longer stretch to fill the right-column height, which
+  removes the large blank area shown in the 2026-05-01 screenshot
+- Teacher Studio snippet panel now uses the former blank area for library
+  intelligence: source/tag/note counts plus top categories, authors, and
+  sources
+- teacher user-access writer selection now loads the chosen writer immediately
+  on dropdown change instead of requiring a separate Open/Load button
+- document group availability checkboxes now trigger a short debounced save, so
+  writer access changes persist without remembering the main Save button
+- writer-facing exposed documents now use the same print shell conventions as
+  the builder preview, include a `Print or save PDF` action, and render snippet
+  examples with the polished quotation/attribution treatment
+
+Teaching Library correction captured on 2026-05-02:
+
+- do not build a broad Teaching Resources catalogue or curriculum system yet
+- the product remains a feedback engine with strong teaching reuse
+- Teaching Library v1 is intentionally constrained to notes, existing snippet
+  examples, and lightweight references
+- notes are teacher-written explanations with title, body, category, and tags
+- references are only title, book/article/video type, optional URL, short note,
+  category, and tags
+- examples continue to be existing snippets; no duplicate example storage
+- Library must focus on fast search, recall, and insertion into documents
+- explicitly out of scope: lesson type, programme week, difficulty, curriculum
+  structures, group exposure controls, large resource catalogues, external APIs,
+  AI suggestions, and complex tagging
+
+Validation from this follow-up review:
+
+- `npm run typecheck` passed
+- `npm run lint` passed
+- `npm run build` passed
+- `git diff --check` passed
+
+Review note:
+
+- the code branch is technically clean; the main remaining checks are manual UX
+  checks for print preview, PDF filename/title restoration, snippet example
+  selection/editing, and save/load of selected availability groups.
+
 ## Current branch state
 
 Current branch:

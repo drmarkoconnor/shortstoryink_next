@@ -1,7 +1,9 @@
 import type { JSONContent } from '@tiptap/core'
+import Link from 'next/link'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
 import {
 	DocumentBuilder,
+	type BuilderLibraryItem,
 	type BuilderSnippet,
 	type SavedTeachingDocument,
 	type SnippetSourceMetadata,
@@ -13,9 +15,17 @@ import { normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
+	teacherLibraryItemLimit,
+	teacherSnippetLibraryLimit,
+} from '@/lib/teacher-library/query-limits'
+import {
 	normalizeTeachingDocumentType,
 	type TeachingDocumentType,
 } from '@/lib/teacher-documents/types'
+import {
+	normalizeTeachingLibraryItemType,
+	normalizeTeachingLibraryReferenceType,
+} from '@/lib/teacher-library/types'
 
 type SnippetRow = {
 	id: string
@@ -40,6 +50,18 @@ type DocumentRow = {
 type WorkshopRow = {
 	id: string
 	title: string
+}
+
+type LibraryRow = {
+	id: string
+	item_type: string | null
+	title: string
+	body: string | null
+	reference_type: string | null
+	url: string | null
+	category_label: string | null
+	tags: string[] | null
+	updated_at: string
 }
 
 type SelectionAnchor = {
@@ -209,6 +231,7 @@ export default async function TeacherDocumentsPage() {
 	const profile = await requireTeacher()
 	const supabase = await createServerSupabaseClient()
 	let snippets: BuilderSnippet[] = []
+	let libraryItems: BuilderLibraryItem[] = []
 	let documents: SavedTeachingDocument[] = []
 	let groups: TeacherDocumentGroup[] = []
 	let snippetsError: string | null = null
@@ -233,7 +256,7 @@ export default async function TeacherDocumentsPage() {
 		)
 		.eq('saved_by', profile.user.id)
 		.order('created_at', { ascending: false })
-		.limit(100)
+		.limit(teacherSnippetLibraryLimit)
 
 	if (snippetsResult.error) {
 		snippetsError = snippetsResult.error.message
@@ -272,6 +295,42 @@ export default async function TeacherDocumentsPage() {
 		})
 	}
 
+	const libraryResult = await supabase
+		.from('teaching_library_items')
+		.select(
+			'id, item_type, title, body, reference_type, url, category_label, tags, updated_at',
+		)
+		.eq('owner_id', profile.user.id)
+		.order('updated_at', { ascending: false })
+		.limit(teacherLibraryItemLimit)
+
+	if (libraryResult.error) {
+		const libraryNotice = isSchemaCacheMissing(libraryResult.error.message)
+			? 'Teaching Library notes and references need the teaching_library_items migration before they can be inserted. Snippet examples still work.'
+			: `Teaching Library notes and references could not be loaded: ${libraryResult.error.message}`
+		documentsNotice = documentsNotice
+			? `${documentsNotice} ${libraryNotice}`
+			: libraryNotice
+	} else {
+		libraryItems = ((libraryResult.data ?? []) as LibraryRow[]).map((row) => {
+			const itemType = normalizeTeachingLibraryItemType(row.item_type)
+			return {
+				id: row.id,
+				itemType,
+				title: row.title,
+				body: row.body ?? '',
+				referenceType:
+					itemType === 'reference'
+						? normalizeTeachingLibraryReferenceType(row.reference_type)
+						: null,
+				url: row.url,
+				categoryLabel: normalizeSnippetLabel(row.category_label ?? ''),
+				tags: row.tags ?? [],
+				updatedAt: row.updated_at,
+			}
+		})
+	}
+
 	const groupsResult = await supabase
 		.from('workshops')
 		.select('id, title')
@@ -283,6 +342,7 @@ export default async function TeacherDocumentsPage() {
 			title: row.title,
 		}))
 	}
+	const activeGroupIds = new Set(groups.map((group) => group.id))
 
 	const documentsResult = await supabase
 		.from('teacher_documents')
@@ -300,7 +360,9 @@ export default async function TeacherDocumentsPage() {
 			id: row.id,
 			title: row.title,
 			documentType: typeFromBody(row.body),
-			groupIds: groupIdsFromBody(row.body),
+			groupIds: groupIdsFromBody(row.body).filter((groupId) =>
+				activeGroupIds.has(groupId),
+			),
 			content: contentFromBody(row.body),
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
@@ -311,18 +373,13 @@ export default async function TeacherDocumentsPage() {
 		<section className="space-y-5">
 			<MenuTabs
 				tabs={teacherTabs}
-				active="/app/teacher/documents"
+				active="/app/teacher-studio"
 				context={
-					<div className="document-builder-controls flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-						<div className="min-w-0">
-							<p className="text-[10px] uppercase tracking-[0.12em] text-silver-400">
-								Teacher Studio
-							</p>
-							<p className="truncate text-sm text-parchment-100">
-								Document Builder
-							</p>
-						</div>
-					</div>
+					<Link
+						href="/app/teacher-studio"
+						className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						Return to Studio
+					</Link>
 				}
 			/>
 
@@ -333,6 +390,7 @@ export default async function TeacherDocumentsPage() {
 			) : (
 				<DocumentBuilder
 					initialSnippets={snippets}
+					initialLibraryItems={libraryItems}
 					initialDocuments={documents}
 					initialGroups={groups}
 					persistenceNotice={documentsNotice}

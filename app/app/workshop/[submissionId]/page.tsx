@@ -4,6 +4,7 @@ import { TeacherReviewWorkspace } from '@/components/teacher/review-workspace'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
 type SchemaMode = 'modern' | 'legacy'
 
@@ -342,7 +343,7 @@ export default async function WorkshopSubmissionPage({
 			.select('id, snippet_text, note, created_at, anchor')
 			.eq('saved_by', profile.user.id)
 			.order('created_at', { ascending: false })
-			.limit(80)
+			.limit(teacherSnippetLibraryLimit)
 
 		snippetLibrary = (
 			(snippetLibraryRows ?? []) as Array<{

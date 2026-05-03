@@ -7,6 +7,7 @@ import {
 	normalizeSnippetCategoryLabel,
 } from '@/lib/feedback/categories'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
+import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type SourceExcerptPayload = {
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
 	const sourceUrl = optionalUrl(normalizeText(payload.sourceUrl))
 	const sourceSection = normalizeText(payload.sourceSection)
 	const sourceLicenceNote = normalizeText(payload.licenceNote)
-	const excerpt = normalizeText(payload.excerpt)
+	const excerpt = cleanSnippetText(String(payload.excerpt ?? ''))
 	const note = normalizeText(payload.note)
 	const categoryLabel = normalizeSnippetCategoryLabel(payload.categoryLabel)
 	const tags = normalizeTags(payload.tags)
@@ -169,6 +170,7 @@ export async function POST(request: Request) {
 
 	revalidatePath('/app/teacher/snippets')
 	revalidatePath('/app/teacher/documents')
+	revalidatePath('/app/teacher')
 	revalidatePath('/app/teacher-studio')
 
 	return NextResponse.json({

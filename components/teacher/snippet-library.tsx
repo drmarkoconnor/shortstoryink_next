@@ -1,12 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
 	feedbackSlug,
 	fixedSnippetCategories,
 	normalizeSnippetLabel,
 } from '@/lib/feedback/categories'
+import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
+import {
+	isNearTeacherLibraryLimit,
+	teacherSnippetLibraryLimit,
+} from '@/lib/teacher-library/query-limits'
 
 export type SnippetLibraryEntry = {
 	id: string
@@ -44,6 +50,13 @@ function parseTagsInput(value: string) {
 	].slice(0, 12)
 }
 
+function loadLimitTitle(count: number, limit: number) {
+	if (isNearTeacherLibraryLimit(count, limit)) {
+		return `Approaching the temporary client load limit of ${limit}. Return to the codebase soon to add pagination or server-side search.`
+	}
+	return `This client view currently loads up to ${limit} snippets.`
+}
+
 export function SnippetLibrary({
 	initialSnippets,
 }: {
@@ -52,6 +65,7 @@ export function SnippetLibrary({
 	const [snippets, setSnippets] = useState(initialSnippets)
 	const [searchQuery, setSearchQuery] = useState('')
 	const [categoryFilter, setCategoryFilter] = useState('')
+	const [noteFilter, setNoteFilter] = useState('')
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>(null)
 	const [draftText, setDraftText] = useState('')
 	const [draftCategory, setDraftCategory] = useState('')
@@ -62,11 +76,12 @@ export function SnippetLibrary({
 	const [selectedSnippetIds, setSelectedSnippetIds] = useState<string[]>([])
 	const [notice, setNotice] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const router = useRouter()
 
-	const clearMessages = () => {
+	const clearMessages = useCallback(() => {
 		setNotice(null)
 		setError(null)
-	}
+	}, [])
 
 	const categoryCounts = useMemo(() => {
 		const counts: Record<string, number> = {
@@ -87,6 +102,20 @@ export function SnippetLibrary({
 		return counts
 	}, [snippets])
 
+	const noteCounts = useMemo(() => {
+		return snippets.reduce(
+			(counts, snippet) => {
+				if (snippet.note.trim()) {
+					counts.withNote += 1
+				} else {
+					counts.withoutNote += 1
+				}
+				return counts
+			},
+			{ withNote: 0, withoutNote: 0 },
+		)
+	}, [snippets])
+
 	const filteredSnippets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase()
 
@@ -102,6 +131,13 @@ export function SnippetLibrary({
 				return false
 			}
 
+			if (noteFilter === 'with-note' && !snippet.note.trim()) {
+				return false
+			}
+			if (noteFilter === 'without-note' && snippet.note.trim()) {
+				return false
+			}
+
 			if (!query) {
 				return true
 			}
@@ -113,6 +149,7 @@ export function SnippetLibrary({
 				snippet.sourceLabel,
 				snippet.sourceTitle,
 				snippet.sourceName,
+				snippet.sourceUrl,
 				snippet.sourceSection,
 				...snippet.tags,
 			]
@@ -121,7 +158,7 @@ export function SnippetLibrary({
 
 			return haystack.includes(query)
 		})
-	}, [categoryFilter, searchQuery, snippets])
+	}, [categoryFilter, noteFilter, searchQuery, snippets])
 	const isUncategorisedFilter = categoryFilter === 'uncategorised'
 	const visibleSnippetIds = useMemo(
 		() => filteredSnippets.map((snippet) => snippet.id),
@@ -135,6 +172,10 @@ export function SnippetLibrary({
 		visibleSnippetIds.length > 0 &&
 		visibleSnippetIds.every((id) => selectedSnippetIds.includes(id))
 	const isBulkDeleting = deletingSnippetId === 'bulk'
+	const isNearSnippetLoadLimit = isNearTeacherLibraryLimit(
+		snippets.length,
+		teacherSnippetLibraryLimit,
+	)
 
 	useEffect(() => {
 		if (!isUncategorisedFilter) {
@@ -161,7 +202,7 @@ export function SnippetLibrary({
 
 	const openSnippet = (snippet: SnippetLibraryEntry) => {
 		setActiveSnippetId((current) => (current === snippet.id ? null : snippet.id))
-		setDraftText(snippet.text)
+		setDraftText(cleanSnippetText(snippet.text))
 		setDraftCategory(
 			fixedSnippetCategories.includes(snippet.categoryLabel)
 				? snippet.categoryLabel
@@ -172,13 +213,11 @@ export function SnippetLibrary({
 		clearMessages()
 	}
 
-	const saveSnippet = async (
-		event: FormEvent<HTMLFormElement>,
+	const saveSnippetDraft = useCallback(async (
 		snippet: SnippetLibraryEntry,
+		options: { close?: boolean; keepalive?: boolean; silent?: boolean } = {},
 	) => {
-		event.preventDefault()
-
-		const nextText = draftText.trim()
+		const nextText = cleanSnippetText(draftText)
 		if (!nextText) {
 			setError('Snippet text cannot be empty.')
 			return
@@ -186,17 +225,33 @@ export function SnippetLibrary({
 
 		const categoryLabel = normalizeSnippetLabel(draftCategory)
 		const tags = parseTagsInput(draftTags)
+		const nextNote = draftNote.trim()
+		const hasChanges =
+			nextText !== cleanSnippetText(snippet.text) ||
+			nextNote !== snippet.note.trim() ||
+			categoryLabel !== snippet.categoryLabel ||
+			tags.join('\u0000') !== snippet.tags.join('\u0000')
+
+		if (!hasChanges) {
+			if (options.close) {
+				setActiveSnippetId(null)
+			}
+			return
+		}
+
 		const previousSnippets = snippets
 
-		setSavingSnippetId(snippet.id)
-		clearMessages()
+		if (!options.silent) {
+			setSavingSnippetId(snippet.id)
+			clearMessages()
+		}
 		setSnippets((current) =>
 			current.map((item) =>
 				item.id === snippet.id
 					? {
 							...item,
 							text: nextText,
-							note: draftNote.trim(),
+							note: nextNote,
 							categoryLabel,
 							categorySlug:
 								categoryLabel === 'Uncategorised'
@@ -214,9 +269,10 @@ export function SnippetLibrary({
 				headers: {
 					'Content-Type': 'application/json',
 				},
+				keepalive: options.keepalive,
 				body: JSON.stringify({
 					text: nextText,
-					note: draftNote,
+					note: nextNote,
 					categoryLabel,
 					tags,
 				}),
@@ -259,23 +315,88 @@ export function SnippetLibrary({
 							}
 						: item,
 				),
-			)
-			setNotice(payload.notice ?? 'Snippet updated.')
-			setActiveSnippetId(null)
-			setSelectedSnippetIds((current) =>
-				current.filter((id) => id !== snippet.id || categoryLabel === 'Uncategorised'),
-			)
-		} catch (saveError) {
-			setSnippets(previousSnippets)
-			setError(
-				saveError instanceof Error
-					? saveError.message
-					: 'Unable to save snippet.',
-			)
-		} finally {
-			setSavingSnippetId(null)
+				)
+				if (!options.silent) {
+					setNotice(payload.notice ?? 'Snippet updated.')
+				}
+				if (options.close ?? true) {
+					setActiveSnippetId(null)
+				}
+				setSelectedSnippetIds((current) =>
+					current.filter((id) => id !== snippet.id || categoryLabel === 'Uncategorised'),
+				)
+				router.refresh()
+			} catch (saveError) {
+				setSnippets(previousSnippets)
+				if (!options.silent) {
+					setError(
+						saveError instanceof Error
+							? saveError.message
+							: 'Unable to save snippet.',
+					)
+				}
+			} finally {
+			if (!options.silent) {
+				setSavingSnippetId(null)
+			}
 		}
+	}, [clearMessages, draftCategory, draftNote, draftTags, draftText, router, snippets])
+
+	const saveSnippet = async (
+		event: FormEvent<HTMLFormElement>,
+		snippet: SnippetLibraryEntry,
+	) => {
+		event.preventDefault()
+		await saveSnippetDraft(snippet, { close: true })
 	}
+
+	useEffect(() => {
+		const autosaveActiveSnippet = (keepalive = false) => {
+			if (!activeSnippetId || savingSnippetId === activeSnippetId) {
+				return
+			}
+
+			const snippet = snippets.find((item) => item.id === activeSnippetId)
+			if (!snippet) {
+				return
+			}
+
+			void saveSnippetDraft(snippet, {
+				close: false,
+				keepalive,
+				silent: true,
+			})
+		}
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'hidden') {
+				autosaveActiveSnippet(true)
+			}
+		}
+
+		const handlePageHide = () => autosaveActiveSnippet(true)
+		const handleDocumentClick = (event: MouseEvent) => {
+			const target = event.target
+			if (!(target instanceof Element)) {
+				return
+			}
+
+			const link = target.closest('a[href]')
+			if (link) {
+				autosaveActiveSnippet(true)
+			}
+		}
+
+		document.addEventListener('visibilitychange', handleVisibilityChange)
+		window.addEventListener('pagehide', handlePageHide)
+		document.addEventListener('click', handleDocumentClick, { capture: true })
+
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange)
+			window.removeEventListener('pagehide', handlePageHide)
+			document.removeEventListener('click', handleDocumentClick, { capture: true })
+		}
+	}, [activeSnippetId, savingSnippetId, saveSnippetDraft, snippets])
 
 	const deleteSnippet = async (snippet: SnippetLibraryEntry) => {
 		if (!window.confirm('Delete this snippet? This cannot be undone.')) {
@@ -305,6 +426,7 @@ export function SnippetLibrary({
 				current.filter((id) => id !== snippet.id),
 			)
 			setNotice(payload?.notice ?? 'Snippet deleted.')
+			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setError(
@@ -386,13 +508,14 @@ export function SnippetLibrary({
 
 					return payload
 				}),
-			)
+				)
 
 			setNotice(
 				responses.length === 1
 					? 'Snippet deleted.'
 					: `${responses.length} snippets deleted.`,
 			)
+			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setSelectedSnippetIds(previousSelectedIds)
@@ -422,11 +545,11 @@ export function SnippetLibrary({
 						onChange={(event) => {
 							clearMessages()
 							setSearchQuery(event.target.value)
-						}}
-						className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
-						placeholder="Text, note, tag"
-					/>
-				</div>
+							}}
+							className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							placeholder="Text, note, author, source, tag"
+						/>
+					</div>
 				<div>
 					<label
 						htmlFor="snippet-category"
@@ -441,7 +564,9 @@ export function SnippetLibrary({
 							setCategoryFilter(event.target.value)
 						}}
 						className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
-						<option value="">All snippets ({snippets.length})</option>
+						<option value="">
+							All snippets ({snippets.length} / {teacherSnippetLibraryLimit})
+						</option>
 						<option value="uncategorised">
 							Uncategorised ({categoryCounts.Uncategorised})
 						</option>
@@ -450,14 +575,45 @@ export function SnippetLibrary({
 								{category} ({categoryCounts[category] ?? 0})
 							</option>
 						))}
-					</select>
-				</div>
-				<p className="border-t border-white/10 pt-4 text-xs leading-relaxed text-silver-300">
-					{snippets.length} snippets. {categoryCounts.Uncategorised} uncategorised.
-					{categoryFilter || searchQuery.trim()
-						? ` ${filteredSnippets.length} shown.`
-						: ''}
-				</p>
+						</select>
+					</div>
+					<div>
+						<label
+							htmlFor="snippet-note-filter"
+							className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							Teacher note
+						</label>
+						<select
+							id="snippet-note-filter"
+							value={noteFilter}
+							onChange={(event) => {
+								clearMessages()
+								setNoteFilter(event.target.value)
+							}}
+							className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							<option value="">Any note status</option>
+							<option value="with-note">With note ({noteCounts.withNote})</option>
+							<option value="without-note">
+								No note ({noteCounts.withoutNote})
+							</option>
+						</select>
+					</div>
+					<p className="border-t border-white/10 pt-4 text-xs leading-relaxed text-silver-300">
+						<span
+							title={loadLimitTitle(snippets.length, teacherSnippetLibraryLimit)}
+							className={
+								isNearSnippetLoadLimit
+									? 'text-amber-100 underline decoration-amber-200/50 decoration-dotted underline-offset-4'
+									: 'underline decoration-white/20 decoration-dotted underline-offset-4'
+							}>
+							{snippets.length} / {teacherSnippetLibraryLimit} snippets
+						</span>
+						. {categoryCounts.Uncategorised} uncategorised.
+						{categoryFilter || noteFilter || searchQuery.trim()
+							? ` ${filteredSnippets.length} shown.`
+							: ''}
+						{isNearSnippetLoadLimit ? ' Pagination soon.' : ''}
+					</p>
 				{isUncategorisedFilter ? (
 					<div className="space-y-3 border-t border-white/10 pt-4">
 						<p className="text-xs leading-relaxed text-silver-300">
@@ -494,10 +650,13 @@ export function SnippetLibrary({
 					<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
 						{snippets.length} snippets
 					</p>
-					<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-300">
-						{categoryCounts.Uncategorised} uncategorised
-					</p>
-				</div>
+						<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							{categoryCounts.Uncategorised} uncategorised
+						</p>
+						<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							{noteCounts.withNote} with notes
+						</p>
+					</div>
 				{notice ? (
 					<p className="mb-4 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
 						{notice}

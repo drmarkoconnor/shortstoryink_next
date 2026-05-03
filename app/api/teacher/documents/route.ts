@@ -129,6 +129,27 @@ function normalizeGroupIds(value: unknown) {
 	).slice(0, 40)
 }
 
+async function activeGroupIds(
+	supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+	groupIds: string[],
+) {
+	if (groupIds.length === 0) {
+		return []
+	}
+
+	const { data, error } = await supabase
+		.from('workshops')
+		.select('id')
+		.in('id', groupIds)
+
+	if (error) {
+		return groupIds
+	}
+
+	const activeIds = new Set((data ?? []).map((row) => row.id as string))
+	return groupIds.filter((id) => activeIds.has(id))
+}
+
 function toDocumentResponse(row: {
 	id: string
 	title: string
@@ -154,7 +175,10 @@ export async function POST(request: Request) {
 	const documentId = String(payload.id ?? '').trim()
 	const title = String(payload.title ?? '').trim()
 	const documentType = normalizeDocumentType(payload.documentType)
-	const groupIds = normalizeGroupIds(payload.groupIds)
+	const groupIds = await activeGroupIds(
+		supabase,
+		normalizeGroupIds(payload.groupIds),
+	)
 	const content = normalizeContent(payload.content)
 
 	if (!title) {
@@ -196,6 +220,8 @@ export async function POST(request: Request) {
 	}
 
 	revalidatePath('/app/teacher/documents')
+	revalidatePath('/app/teacher')
+	revalidatePath('/app/teacher-studio')
 
 	return NextResponse.json({
 		notice: 'Document saved.',
@@ -238,6 +264,8 @@ export async function DELETE(request: Request) {
 	}
 
 	revalidatePath('/app/teacher/documents')
+	revalidatePath('/app/teacher')
+	revalidatePath('/app/teacher-studio')
 
 	return NextResponse.json({
 		notice: 'Document deleted.',
