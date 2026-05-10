@@ -1,4 +1,13 @@
-import { buildAbsoluteUrl } from '@/lib/site/urls'
+import { buildAbsoluteUrl, buildSignInUrl } from '@/lib/site/urls'
+
+function escapeHtml(value: string) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+}
 
 function getResendEnv() {
 	const apiKey = process.env.RESEND_API_KEY
@@ -20,11 +29,19 @@ async function sendEmail({
 	html,
 	text,
 }: {
-	to: string
+	to: string | string[]
 	subject: string
 	html: string
 	text: string
 }) {
+	const recipients = (Array.isArray(to) ? to : [to])
+		.map((email) => email.trim())
+		.filter(Boolean)
+
+	if (recipients.length === 0) {
+		return
+	}
+
 	const { apiKey, fromEmail } = getResendEnv()
 
 	const response = await fetch('https://api.resend.com/emails', {
@@ -35,7 +52,7 @@ async function sendEmail({
 		},
 		body: JSON.stringify({
 			from: fromEmail,
-			to: [to],
+			to: recipients,
 			subject,
 			html,
 			text,
@@ -65,5 +82,43 @@ export async function sendFeedbackPublishedNotification({
 		subject: `Feedback is ready for ${title}`,
 		html: `<p>Your feedback is ready in shortstory.ink.</p><p><strong>${title}</strong></p><p><a href="${destination}">View feedback</a></p>`,
 		text: `Your feedback is ready in shortstory.ink.\n\n${title}\n\nView feedback:\n${destination}`,
+	})
+}
+
+export async function sendSubmissionReceivedNotification({
+	emails,
+	title,
+	writerLabel,
+	writerEmail,
+	workshopTitle,
+	wordCount,
+	submissionId,
+}: {
+	emails: string[]
+	title: string
+	writerLabel: string
+	writerEmail?: string | null
+	workshopTitle: string
+	wordCount: number
+	submissionId: string
+}) {
+	const reviewPath = `/app/workshop/${submissionId}`
+	const destination = buildSignInUrl(reviewPath)
+	const writerLine =
+		writerEmail && writerEmail !== writerLabel
+			? `${writerLabel} (${writerEmail})`
+			: writerLabel
+
+	await sendEmail({
+		to: emails,
+		subject: `New submission: ${title}`,
+		html: `<p>A new piece is waiting for review in shortstory.ink.</p><p><strong>${escapeHtml(
+			title,
+		)}</strong></p><p>Writer: ${escapeHtml(
+			writerLine,
+		)}<br />Group: ${escapeHtml(
+			workshopTitle,
+		)}<br />Word count: ${wordCount.toLocaleString()}</p><p><a href="${destination}">Open the submission</a></p>`,
+		text: `A new piece is waiting for review in shortstory.ink.\n\n${title}\n\nWriter: ${writerLine}\nGroup: ${workshopTitle}\nWord count: ${wordCount.toLocaleString()}\n\nOpen the submission:\n${destination}`,
 	})
 }

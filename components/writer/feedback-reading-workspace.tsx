@@ -19,6 +19,7 @@ type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
 type FeedbackAnchor = {
 	blockId: string
+	endBlockId?: string
 	startOffset: number
 	endOffset: number
 	quote: string
@@ -47,6 +48,11 @@ type ActiveInlineComment = {
 }
 
 type PopupPlacement = 'above' | 'below'
+
+type FeedbackSegment = {
+	startOffset: number
+	endOffset: number
+}
 
 function getMarkClass(kind: FeedbackKind) {
 	if (kind === 'typo') {
@@ -104,6 +110,53 @@ function cutMarkClass(active: boolean) {
 	return active
 		? 'bg-transparent text-ink-900/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
 		: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
+}
+
+function feedbackSegmentForParagraph(
+	anchor: FeedbackAnchor,
+	paragraph: { id: string; text: string },
+	paragraphIndexById: Record<string, number>,
+): FeedbackSegment | null {
+	const startIndex = paragraphIndexById[anchor.blockId]
+	const endBlockId = anchor.endBlockId ?? anchor.blockId
+	const endIndex = paragraphIndexById[endBlockId]
+	const paragraphIndex = paragraphIndexById[paragraph.id]
+
+	if (
+		startIndex === undefined ||
+		endIndex === undefined ||
+		paragraphIndex === undefined ||
+		paragraphIndex < startIndex ||
+		paragraphIndex > endIndex
+	) {
+		return null
+	}
+
+	if (anchor.blockId === endBlockId) {
+		return {
+			startOffset: anchor.startOffset,
+			endOffset: anchor.endOffset,
+		}
+	}
+
+	if (paragraph.id === anchor.blockId) {
+		return {
+			startOffset: anchor.startOffset,
+			endOffset: paragraph.text.length,
+		}
+	}
+
+	if (paragraph.id === endBlockId) {
+		return {
+			startOffset: 0,
+			endOffset: anchor.endOffset,
+		}
+	}
+
+	return {
+		startOffset: 0,
+		endOffset: paragraph.text.length,
+	}
 }
 
 function InlineCommentPopup({
@@ -215,6 +268,13 @@ export function WriterFeedbackReadingWorkspace({
 		() => paginateManuscript(paragraphs, readingPageOptions),
 		[paragraphs],
 	)
+	const paragraphIndexById = useMemo(
+		() =>
+			Object.fromEntries(
+				paragraphs.map((paragraph, index) => [paragraph.id, index]),
+			) as Record<string, number>,
+		[paragraphs],
+	)
 	const initialPageIndex = (() => {
 		const firstAnchorBlockId = feedback[0]?.anchor?.blockId
 		if (!firstAnchorBlockId) {
@@ -235,20 +295,41 @@ export function WriterFeedbackReadingWorkspace({
 			if (!item.anchor?.blockId) {
 				continue
 			}
-			if (!map[item.anchor.blockId]) {
-				map[item.anchor.blockId] = []
+			const startIndex = paragraphIndexById[item.anchor.blockId]
+			const endIndex =
+				paragraphIndexById[item.anchor.endBlockId ?? item.anchor.blockId]
+			if (startIndex === undefined || endIndex === undefined) {
+				continue
 			}
-			map[item.anchor.blockId].push(item)
+			for (let index = startIndex; index <= endIndex; index += 1) {
+				const paragraph = paragraphs[index]
+				if (!paragraph) {
+					continue
+				}
+				if (!map[paragraph.id]) {
+					map[paragraph.id] = []
+				}
+				map[paragraph.id].push(item)
+			}
 		}
-		for (const key of Object.keys(map)) {
-			map[key].sort((a, b) => {
-				const aStart = a.anchor?.startOffset ?? 0
-				const bStart = b.anchor?.startOffset ?? 0
+		for (const [blockId, blockItems] of Object.entries(map)) {
+			const paragraph = paragraphs[paragraphIndexById[blockId]]
+			blockItems.sort((a, b) => {
+				const aSegment =
+					a.anchor && paragraph
+						? feedbackSegmentForParagraph(a.anchor, paragraph, paragraphIndexById)
+						: null
+				const bSegment =
+					b.anchor && paragraph
+						? feedbackSegmentForParagraph(b.anchor, paragraph, paragraphIndexById)
+						: null
+				const aStart = aSegment?.startOffset ?? a.anchor?.startOffset ?? 0
+				const bStart = bSegment?.startOffset ?? b.anchor?.startOffset ?? 0
 				return aStart - bStart
 			})
 		}
 		return map
-	}, [feedback])
+	}, [feedback, paragraphIndexById, paragraphs])
 
 	const effectiveCommentId = hoveredCommentId ?? activeCommentId
 
@@ -315,8 +396,9 @@ export function WriterFeedbackReadingWorkspace({
 		setIsCommentsOpen(false)
 	}, [])
 
-	const renderParagraph = (paragraphId: string, text: string) => {
-		const items = feedbackByBlock[paragraphId] ?? []
+	const renderParagraph = (paragraph: { id: string; text: string }) => {
+		const items = feedbackByBlock[paragraph.id] ?? []
+		const { text } = paragraph
 		if (items.length === 0) {
 			return [text]
 		}
@@ -328,11 +410,19 @@ export function WriterFeedbackReadingWorkspace({
 			if (!item.anchor) {
 				continue
 			}
+			const segment = feedbackSegmentForParagraph(
+				item.anchor,
+				paragraph,
+				paragraphIndexById,
+			)
+			if (!segment) {
+				continue
+			}
 			const start = Math.max(
 				cursor,
-				Math.min(item.anchor.startOffset, text.length),
+				Math.min(segment.startOffset, text.length),
 			)
-			const end = Math.max(start, Math.min(item.anchor.endOffset, text.length))
+			const end = Math.max(start, Math.min(segment.endOffset, text.length))
 
 			if (start > cursor) {
 				nodes.push(text.slice(cursor, start))
@@ -441,7 +531,7 @@ export function WriterFeedbackReadingWorkspace({
 									}>
 									{isSceneBreak
 										? '***'
-										: renderParagraph(paragraph.id, paragraph.text)}
+										: renderParagraph(paragraph)}
 								</p>
 							</div>
 						)

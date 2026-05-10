@@ -327,9 +327,9 @@ export default async function WriterDocumentPage({
 		<section className="space-y-5">
 			<div className="print-controls flex flex-wrap items-center justify-between gap-3">
 				<Link
-					href="/app/writer"
+					href="/app/writer/documents"
 					className="rounded-full border border-white/15 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/25 hover:text-parchment-100">
-					Back to write
+					Back to materials
 				</Link>
 				<div className="flex flex-wrap items-center justify-end gap-3">
 					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">

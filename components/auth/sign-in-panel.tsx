@@ -7,8 +7,10 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client'
 
 export function SignInPanel({
 	configError = false,
+	postSignInPath = '/app',
 }: {
 	configError?: boolean
+	postSignInPath?: string
 }) {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
@@ -71,7 +73,7 @@ export function SignInPanel({
 			return
 		}
 
-		window.location.assign('/app')
+		window.location.assign(postSignInPath)
 	}
 
 

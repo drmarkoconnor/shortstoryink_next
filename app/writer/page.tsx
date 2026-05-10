@@ -5,6 +5,7 @@ import { WriterSubmissionComposer } from '@/components/writer/writer-submission-
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
+import { sendSubmissionReceivedNotification } from '@/lib/notifications/email'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { normalizeTeachingDocumentType } from '@/lib/teacher-documents/types'
@@ -42,6 +43,11 @@ type DocumentRow = {
 	title: string
 	body: unknown
 	updated_at: string
+}
+
+type TeacherProfileRow = {
+	id: string
+	role: string | null
 }
 
 function toMessage(value: string | string[] | undefined) {
@@ -103,6 +109,69 @@ async function detectSchemaMode() {
 	return 'modern' as SchemaMode
 }
 
+async function getTeacherNotificationEmails() {
+	const adminSupabase = createAdminSupabaseClient()
+	const { data: profileRows, error } = await adminSupabase
+		.from('profiles')
+		.select('id, role')
+
+	if (error) {
+		throw new Error(error.message)
+	}
+
+	const teacherProfileIds = ((profileRows ?? []) as TeacherProfileRow[])
+		.filter((profile) => profile.role === 'teacher' || profile.role === 'admin')
+		.map((profile) => profile.id)
+
+	const emailResults = await Promise.all(
+		teacherProfileIds.map(async (profileId) => {
+			const { data, error } = await adminSupabase.auth.admin.getUserById(
+				profileId,
+			)
+			if (error) {
+				return ''
+			}
+			return data.user?.email?.trim().toLowerCase() ?? ''
+		}),
+	)
+
+	return [...new Set(emailResults.filter(Boolean))]
+}
+
+async function notifyTeachersOfSubmission({
+	submissionId,
+	title,
+	writerLabel,
+	writerEmail,
+	workshopTitle,
+	wordCount,
+}: {
+	submissionId: string
+	title: string
+	writerLabel: string
+	writerEmail?: string | null
+	workshopTitle: string
+	wordCount: number
+}) {
+	try {
+		const emails = await getTeacherNotificationEmails()
+		await sendSubmissionReceivedNotification({
+			emails,
+			title,
+			writerLabel,
+			writerEmail,
+			workshopTitle,
+			wordCount,
+			submissionId,
+		})
+	} catch (notificationError) {
+		console.error('[createSubmissionAction] Teacher notification failed:', {
+			submissionId,
+			notificationError,
+		})
+	}
+}
+
 async function createSubmissionAction(formData: FormData) {
 	'use server'
 
@@ -115,6 +184,13 @@ async function createSubmissionAction(formData: FormData) {
 	const body = rawBody.trim()
 	const workshopId = String(formData.get('workshopId') ?? '').trim()
 	const wordCount = body.split(/\s+/).filter(Boolean).length
+	const writerLabel =
+		(user.user_metadata?.display_name as string | undefined) ||
+		(user.user_metadata?.name as string | undefined) ||
+		(user.user_metadata?.first_name as string | undefined) ||
+		String(user.email ?? 'Writer').split('@')[0]
+	let createdSubmissionId = ''
+	let submittedWorkshopTitle = 'Default group queue'
 
 	if (!title || !body) {
 		redirect('/app/writer?error=Please+complete+title+and+body.')
@@ -156,6 +232,7 @@ async function createSubmissionAction(formData: FormData) {
 			isAbuWorkshopSlug(workshop?.slug as string | null | undefined) ||
 			String(workshop?.title ?? '').trim().toLowerCase() ===
 				'authorised basic user'
+		submittedWorkshopTitle = String(workshop?.title ?? '').trim() || 'Group'
 
 		if (isAbuSubmission && wordCount > ABU_SUBMISSION_WORD_LIMIT) {
 			redirect(
@@ -163,20 +240,26 @@ async function createSubmissionAction(formData: FormData) {
 			)
 		}
 
-		const { error: insertError } = await supabase.from('submissions').insert({
-			author_id: user.id,
-			workshop_id: workshopId,
-			title,
-			body: rawBody,
-			status: 'submitted',
-			version: 1,
-		})
+		const { data: submissionRow, error: insertError } = await supabase
+			.from('submissions')
+			.insert({
+				author_id: user.id,
+				workshop_id: workshopId,
+				title,
+				body: rawBody,
+				status: 'submitted',
+				version: 1,
+			})
+			.select('id')
+			.single()
 
-		if (insertError) {
+		if (insertError || !submissionRow?.id) {
 			redirect(
 				'/app/writer?error=Unable+to+save+submission.+Check+Layer+1+migration.',
 			)
 		}
+
+		createdSubmissionId = submissionRow.id as string
 	} else {
 		const writerFirstName =
 			(user.user_metadata?.first_name as string | undefined) ||
@@ -204,6 +287,7 @@ async function createSubmissionAction(formData: FormData) {
 		}
 
 		const submissionId = submissionRows.id as string
+		createdSubmissionId = submissionId
 
 		const { data: versionRows, error: versionInsertError } = await supabase
 			.from('submission_versions')
@@ -251,6 +335,17 @@ async function createSubmissionAction(formData: FormData) {
 
 			await supabase.from('submission_paragraphs').insert(paragraphRows)
 		}
+	}
+
+	if (createdSubmissionId) {
+		await notifyTeachersOfSubmission({
+			submissionId: createdSubmissionId,
+			title,
+			writerLabel,
+			writerEmail: user.email,
+			workshopTitle: submittedWorkshopTitle,
+			wordCount,
+		})
 	}
 
 	revalidatePath('/app/writer')

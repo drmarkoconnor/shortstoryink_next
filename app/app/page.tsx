@@ -5,7 +5,7 @@ export default async function AppOverviewPage() {
 	const profile = await getCurrentProfile()
 
 	if (profile.role === 'teacher' || profile.role === 'admin') {
-		redirect('/app/teacher')
+		redirect('/app/teacher/review-desk')
 	}
 
 	redirect('/app/writer')

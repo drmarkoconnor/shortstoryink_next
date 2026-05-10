@@ -15,6 +15,7 @@ type AnnotationPayload = {
 	id?: string
 	sourceFeedbackItemId?: string
 	blockId?: string
+	endBlockId?: string
 	startOffset?: number
 	endOffset?: number
 	quote?: string
@@ -31,6 +32,7 @@ type AnnotationPayload = {
 
 type SelectionAnchor = {
 	blockId?: string
+	endBlockId?: string
 	startOffset?: number
 	endOffset?: number
 	quote?: string
@@ -88,6 +90,7 @@ function toSnippetResponse(row: {
 		snippetCategoryId: row.snippet_category_id ?? null,
 		anchor: row.anchor as {
 			blockId: string
+			endBlockId?: string
 			startOffset: number
 			endOffset: number
 			quote: string
@@ -116,6 +119,7 @@ function toFeedbackResponse(row: {
 		createdAt: row.created_at,
 		anchor: row.anchor as {
 			blockId: string
+			endBlockId?: string
 			startOffset: number
 			endOffset: number
 			quote: string
@@ -169,6 +173,7 @@ export async function POST(
 
 	const type = payload.type
 	const blockId = String(payload.blockId ?? '').trim()
+	const endBlockId = String(payload.endBlockId ?? '').trim()
 	const quote = String(payload.quote ?? '').trim()
 	const prefix = String(payload.prefix ?? '').trim()
 	const suffix = String(payload.suffix ?? '').trim()
@@ -181,6 +186,7 @@ export async function POST(
 	const snippetTags = normalizeTags(payload.tags)
 	const startOffset = Number(payload.startOffset ?? -1)
 	const endOffset = Number(payload.endOffset ?? -1)
+	const isMultiBlockSelection = Boolean(endBlockId && endBlockId !== blockId)
 
 	if (
 		(type !== 'comment' && type !== 'snippet') ||
@@ -189,7 +195,7 @@ export async function POST(
 		!Number.isFinite(startOffset) ||
 		!Number.isFinite(endOffset) ||
 		startOffset < 0 ||
-		endOffset <= startOffset
+		(isMultiBlockSelection ? endOffset < 0 : endOffset <= startOffset)
 	) {
 		return NextResponse.json(
 			{ error: 'Select a valid passage before saving.' },
@@ -210,6 +216,7 @@ export async function POST(
 
 	const anchor = {
 		blockId,
+		...(isMultiBlockSelection ? { endBlockId } : {}),
 		startOffset,
 		endOffset,
 		quote,

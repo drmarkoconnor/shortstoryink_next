@@ -38,3 +38,7 @@ export function buildAuthCallbackUrl(nextPath: string) {
 		`/auth/callback?next=${encodeURIComponent(nextPath)}`,
 	)
 }
+
+export function buildSignInUrl(nextPath: string) {
+	return buildAbsoluteUrl(`/auth/sign-in?next=${encodeURIComponent(nextPath)}`)
+}

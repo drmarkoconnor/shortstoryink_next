@@ -9,6 +9,7 @@ type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
 type FeedbackAnchor = {
 	blockId: string
+	endBlockId?: string
 	startOffset: number
 	endOffset: number
 	quote: string
@@ -88,6 +89,10 @@ export default async function WriterFeedbackDetailPage({
 		anchor: isFeedbackAnchor(item.anchor)
 			? {
 					blockId: String(item.anchor.blockId),
+					endBlockId:
+						typeof item.anchor.endBlockId === 'string'
+							? item.anchor.endBlockId
+							: undefined,
 					startOffset: Number(item.anchor.startOffset),
 					endOffset: Number(item.anchor.endOffset),
 					quote: String(item.anchor.quote ?? ''),

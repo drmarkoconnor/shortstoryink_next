@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
 import { SubmissionHistorySelect } from '@/components/writer/submission-history-select'
@@ -73,6 +73,8 @@ export function WriterSubmissionComposer({
 	const [draftBody, setDraftBody] = useState('')
 	const [selectedWorkshopId, setSelectedWorkshopId] =
 		useState(defaultWorkshopId)
+	const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(Boolean(notice))
+	const titleInputRef = useRef<HTMLInputElement | null>(null)
 
 	const wordCount = useMemo(() => countWords(draftBody), [draftBody])
 	const selectedWorkshop = workshops.find(
@@ -83,8 +85,57 @@ export function WriterSubmissionComposer({
 		isWorkshopRequired && isAbuSelected && wordCount > abuSubmissionWordLimit
 	const remainingWords = abuSubmissionWordLimit - wordCount
 
+	useEffect(() => {
+		setIsSuccessModalOpen(Boolean(notice))
+	}, [notice])
+
 	return (
 		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+			{notice && isSuccessModalOpen ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/65 px-4 backdrop-blur-sm">
+					<div className="w-full max-w-md rounded-3xl border border-emerald-300/25 bg-ink-950 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+						<p className="text-xs uppercase tracking-[0.12em] text-emerald-200">
+							Submission saved
+						</p>
+						<h2 className="literary-title mt-2 text-3xl text-parchment-100">
+							Well done.
+						</h2>
+						<p className="mt-3 text-sm leading-relaxed text-silver-100">
+							Your piece is now waiting for a close read. You can submit
+							another piece while you wait, or spend a little time with the
+							teaching materials.
+						</p>
+						<div className="mt-5 flex flex-wrap gap-2">
+							<button
+								type="button"
+								onClick={() => {
+									setIsSuccessModalOpen(false)
+									window.requestAnimationFrame(() => {
+										titleInputRef.current?.focus()
+									})
+								}}
+								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+								Submit another
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									router.push('/app/writer/documents')
+								}}
+								className="rounded-full border border-white/20 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:bg-white/10">
+								Browse teaching materials
+							</button>
+							<button
+								type="button"
+								onClick={() => setIsSuccessModalOpen(false)}
+								className="rounded-full border border-white/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								Close
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+
 			<div className="space-y-4">
 				<label className="block">
 					<span className="mb-2 block text-sm text-silver-100">
@@ -169,6 +220,7 @@ export function WriterSubmissionComposer({
 					<label className="block">
 						<span className="mb-1.5 block text-sm text-silver-100">Title</span>
 						<input
+							ref={titleInputRef}
 							name="title"
 							required
 							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
@@ -278,6 +330,12 @@ export function WriterSubmissionComposer({
 								{documentsError}
 							</p>
 						) : null}
+						<button
+							type="button"
+							onClick={() => router.push('/app/writer/documents')}
+							className="mt-3 text-left text-xs uppercase tracking-[0.1em] text-accent-200 transition hover:text-accent-100">
+							Browse all teaching materials
+						</button>
 					</div>
 				) : null}
 

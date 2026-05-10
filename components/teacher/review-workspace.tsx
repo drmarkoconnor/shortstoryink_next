@@ -2,6 +2,7 @@
 
 import { Children } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
 	useCallback,
 	useEffect,
@@ -28,6 +29,7 @@ type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
 type FeedbackAnchor = {
 	blockId: string
+	endBlockId?: string
 	startOffset: number
 	endOffset: number
 	quote: string
@@ -72,6 +74,7 @@ type SnippetLibraryItem = {
 
 type SelectedAnchor = {
 	blockId: string
+	endBlockId?: string
 	startOffset: number
 	endOffset: number
 	quote: string
@@ -89,6 +92,11 @@ type AnnotationItem = {
 	anchor: FeedbackAnchor
 	label: string
 	tags?: string[]
+}
+
+type AnnotationSegment = {
+	startOffset: number
+	endOffset: number
 }
 
 const CUT_SUGGESTION_COMMENT =
@@ -119,6 +127,64 @@ function compactPreview(value: string, limit = 120) {
 		return normalized
 	}
 	return `${normalized.slice(0, limit - 1).trimEnd()}...`
+}
+
+function elementForSelectionNode(node: Node) {
+	return node instanceof Element ? node : node.parentElement
+}
+
+function selectionPopupRect(range: Range) {
+	const rects = Array.from(range.getClientRects()).filter(
+		(rect) => rect.width > 0 || rect.height > 0,
+	)
+	return rects.at(-1) ?? range.getBoundingClientRect()
+}
+
+function annotationSegmentForParagraph(
+	anchor: FeedbackAnchor,
+	paragraph: { id: string; text: string },
+	paragraphIndexById: Record<string, number>,
+): AnnotationSegment | null {
+	const startIndex = paragraphIndexById[anchor.blockId]
+	const endBlockId = anchor.endBlockId ?? anchor.blockId
+	const endIndex = paragraphIndexById[endBlockId]
+	const paragraphIndex = paragraphIndexById[paragraph.id]
+
+	if (
+		startIndex === undefined ||
+		endIndex === undefined ||
+		paragraphIndex === undefined ||
+		paragraphIndex < startIndex ||
+		paragraphIndex > endIndex
+	) {
+		return null
+	}
+
+	if (anchor.blockId === endBlockId) {
+		return {
+			startOffset: anchor.startOffset,
+			endOffset: anchor.endOffset,
+		}
+	}
+
+	if (paragraph.id === anchor.blockId) {
+		return {
+			startOffset: anchor.startOffset,
+			endOffset: paragraph.text.length,
+		}
+	}
+
+	if (paragraph.id === endBlockId) {
+		return {
+			startOffset: 0,
+			endOffset: anchor.endOffset,
+		}
+	}
+
+	return {
+		startOffset: 0,
+		endOffset: paragraph.text.length,
+	}
 }
 
 function formatQuote(quote: string | undefined) {
@@ -260,6 +326,7 @@ export function TeacherReviewWorkspace({
 	initialSummary: string
 	initialSummaryPublishedAt: string | null
 }) {
+	const router = useRouter()
 	const initialActiveId = useMemo(
 		() => parseInitialActiveId(initialActiveAnnotationId),
 		[initialActiveAnnotationId],
@@ -380,6 +447,13 @@ export function TeacherReviewWorkspace({
 		() => paginateManuscript(paragraphs, readingPageOptions),
 		[paragraphs],
 	)
+	const paragraphIndexById = useMemo(
+		() =>
+			Object.fromEntries(
+				paragraphs.map((paragraph, index) => [paragraph.id, index]),
+			) as Record<string, number>,
+		[paragraphs],
+	)
 	const [pageIndex, setPageIndex] = useState(0)
 
 	const annotations = useMemo<AnnotationItem[]>(() => {
@@ -419,13 +493,42 @@ export function TeacherReviewWorkspace({
 	const annotationsByBlock = useMemo(() => {
 		const map: Record<string, AnnotationItem[]> = {}
 		for (const item of annotations) {
-			if (!map[item.anchor.blockId]) {
-				map[item.anchor.blockId] = []
+			const startIndex = paragraphIndexById[item.anchor.blockId]
+			const endIndex =
+				paragraphIndexById[item.anchor.endBlockId ?? item.anchor.blockId]
+			if (startIndex === undefined || endIndex === undefined) {
+				continue
 			}
-			map[item.anchor.blockId].push(item)
+
+			for (let index = startIndex; index <= endIndex; index += 1) {
+				const paragraph = paragraphs[index]
+				if (!paragraph) {
+					continue
+				}
+				if (!map[paragraph.id]) {
+					map[paragraph.id] = []
+				}
+				map[paragraph.id].push(item)
+			}
 		}
+
+		for (const [blockId, blockItems] of Object.entries(map)) {
+			const paragraph = paragraphs[paragraphIndexById[blockId]]
+			blockItems.sort((a, b) => {
+				const aSegment = paragraph
+					? annotationSegmentForParagraph(a.anchor, paragraph, paragraphIndexById)
+					: null
+				const bSegment = paragraph
+					? annotationSegmentForParagraph(b.anchor, paragraph, paragraphIndexById)
+					: null
+				const aStart = aSegment?.startOffset ?? a.anchor.startOffset
+				const bStart = bSegment?.startOffset ?? b.anchor.startOffset
+				return aStart - bStart || a.createdAt.localeCompare(b.createdAt)
+			})
+		}
+
 		return map
-	}, [annotations])
+	}, [annotations, paragraphIndexById, paragraphs])
 
 	const activeAnnotation = useMemo(() => {
 		if (!activeAnnotationId) {
@@ -531,18 +634,10 @@ export function TeacherReviewWorkspace({
 		}
 
 		const range = selection.getRangeAt(0)
-		const startEl =
-			range.startContainer instanceof Element
-				? range.startContainer
-				: range.startContainer.parentElement
-		const endEl =
-			range.endContainer instanceof Element
-				? range.endContainer
-				: range.endContainer.parentElement
-		const startParagraph = startEl?.closest(
+		const startParagraph = elementForSelectionNode(range.startContainer)?.closest(
 			'p[id^="p-"]',
 		) as HTMLParagraphElement | null
-		const endParagraph = endEl?.closest(
+		const endParagraph = elementForSelectionNode(range.endContainer)?.closest(
 			'p[id^="p-"]',
 		) as HTMLParagraphElement | null
 		const containerRect = mainRef.current?.getBoundingClientRect()
@@ -550,14 +645,14 @@ export function TeacherReviewWorkspace({
 		if (
 			!startParagraph ||
 			!endParagraph ||
-			startParagraph.id !== endParagraph.id ||
 			!containerRect
 		) {
 			return
 		}
 
-		const paragraphText = startParagraph.textContent ?? ''
-		if (!paragraphText) {
+		const startParagraphText = startParagraph.textContent ?? ''
+		const endParagraphText = endParagraph.textContent ?? ''
+		if (!startParagraphText || !endParagraphText) {
 			return
 		}
 
@@ -567,20 +662,26 @@ export function TeacherReviewWorkspace({
 		const startOffset = startRange.toString().length
 
 		const endRange = range.cloneRange()
-		endRange.selectNodeContents(startParagraph)
+		endRange.selectNodeContents(endParagraph)
 		endRange.setEnd(range.endContainer, range.endOffset)
 		const endOffset = endRange.toString().length
+		const isMultiBlockSelection = startParagraph.id !== endParagraph.id
 
-		if (endOffset <= startOffset) {
+		if (
+			(!isMultiBlockSelection && endOffset <= startOffset) ||
+			(isMultiBlockSelection && endOffset < 0)
+		) {
 			return
 		}
 
-		const quote = paragraphText.slice(startOffset, endOffset)
+		const quote = isMultiBlockSelection
+			? selection.toString().trim()
+			: startParagraphText.slice(startOffset, endOffset)
 		if (!quote.trim()) {
 			return
 		}
 
-		const selectionRect = range.getBoundingClientRect()
+		const selectionRect = selectionPopupRect(range)
 		const composerTop = selectionRect.bottom - containerRect.top + 10
 		const composerLeft = Math.min(
 			Math.max(16, selectionRect.left - containerRect.left),
@@ -590,13 +691,14 @@ export function TeacherReviewWorkspace({
 		setComposerText('')
 		setSelectedAnchor({
 			blockId: startParagraph.id,
+			...(isMultiBlockSelection ? { endBlockId: endParagraph.id } : {}),
 			startOffset,
 			endOffset,
 			quote,
-			prefix: paragraphText.slice(Math.max(0, startOffset - 24), startOffset),
-			suffix: paragraphText.slice(
+			prefix: startParagraphText.slice(Math.max(0, startOffset - 24), startOffset),
+			suffix: endParagraphText.slice(
 				endOffset,
-				Math.min(paragraphText.length, endOffset + 24),
+				Math.min(endParagraphText.length, endOffset + 24),
 			),
 			composerTop,
 			composerLeft,
@@ -708,6 +810,7 @@ export function TeacherReviewWorkspace({
 		const optimisticCreatedAt = new Date().toISOString()
 		const optimisticAnchor: FeedbackAnchor = {
 			blockId: anchorSelection.blockId,
+			endBlockId: anchorSelection.endBlockId,
 			startOffset: anchorSelection.startOffset,
 			endOffset: anchorSelection.endOffset,
 			quote: anchorSelection.quote,
@@ -777,6 +880,7 @@ export function TeacherReviewWorkspace({
 					body: JSON.stringify({
 						type: annotationType,
 						blockId: anchorSelection.blockId,
+						endBlockId: anchorSelection.endBlockId,
 						startOffset: anchorSelection.startOffset,
 						endOffset: anchorSelection.endOffset,
 						quote: anchorSelection.quote,
@@ -1304,6 +1408,7 @@ export function TeacherReviewWorkspace({
 		const optimisticCreatedAt = new Date().toISOString()
 		const optimisticAnchor: FeedbackAnchor = {
 			blockId: anchorSelection.blockId,
+			endBlockId: anchorSelection.endBlockId,
 			startOffset: anchorSelection.startOffset,
 			endOffset: anchorSelection.endOffset,
 			quote: anchorSelection.quote,
@@ -1340,6 +1445,7 @@ export function TeacherReviewWorkspace({
 				body: JSON.stringify({
 					type: 'comment',
 					blockId: anchorSelection.blockId,
+					endBlockId: anchorSelection.endBlockId,
 					startOffset: anchorSelection.startOffset,
 					endOffset: anchorSelection.endOffset,
 					quote: anchorSelection.quote,
@@ -1574,6 +1680,7 @@ export function TeacherReviewWorkspace({
 			setShowQueueReturnCue(true)
 			setIsPublishModalOpen(false)
 			setFlashNotice(payload?.notice ?? 'Feedback published to writer.')
+			router.push('/app/teacher/review-desk')
 		} catch (error) {
 			setPublishError(
 				error instanceof Error ? error.message : 'Unable to publish feedback.',
@@ -1584,9 +1691,10 @@ export function TeacherReviewWorkspace({
 	}
 
 	const renderParagraphWithAnnotations = (
-		text: string,
+		paragraph: { id: string; text: string },
 		items: AnnotationItem[],
 	): ReactNode[] => {
+		const { text } = paragraph
 		if (items.length === 0) {
 			return [text]
 		}
@@ -1595,8 +1703,16 @@ export function TeacherReviewWorkspace({
 		let cursor = 0
 
 		for (const item of items) {
-			const start = Math.max(cursor, Math.min(item.anchor.startOffset, text.length))
-			const end = Math.max(start, Math.min(item.anchor.endOffset, text.length))
+			const segment = annotationSegmentForParagraph(
+				item.anchor,
+				paragraph,
+				paragraphIndexById,
+			)
+			if (!segment) {
+				continue
+			}
+			const start = Math.max(cursor, Math.min(segment.startOffset, text.length))
+			const end = Math.max(start, Math.min(segment.endOffset, text.length))
 
 			if (start > cursor) {
 				nodes.push(text.slice(cursor, start))
@@ -1753,7 +1869,7 @@ export function TeacherReviewWorkspace({
 									}>
 									{isSceneBreak
 										? '***'
-										: renderParagraphWithAnnotations(paragraph.text, blockItems)}
+										: renderParagraphWithAnnotations(paragraph, blockItems)}
 								</p>
 								{activeBlockItem ? (
 									<div

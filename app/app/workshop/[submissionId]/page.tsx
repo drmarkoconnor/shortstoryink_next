@@ -10,6 +10,7 @@ type SchemaMode = 'modern' | 'legacy'
 
 type SelectionAnchor = {
 	blockId?: string
+	endBlockId?: string
 	startOffset?: number
 	endOffset?: number
 	quote?: string
@@ -121,10 +122,11 @@ export default async function WorkshopSubmissionPage({
 	let feedback: Array<{
 		id: string
 		comment: string
-		createdAt: string
-		anchor: {
-			blockId: string
-			startOffset: number
+			createdAt: string
+			anchor: {
+				blockId: string
+				endBlockId?: string
+				startOffset: number
 			endOffset: number
 			quote: string
 			prefix?: string
@@ -141,10 +143,11 @@ export default async function WorkshopSubmissionPage({
 		text?: string
 		note: string
 		createdAt: string
-		snippetCategoryId: string | null
-		anchor: {
-			blockId: string
-			startOffset: number
+			snippetCategoryId: string | null
+			anchor: {
+				blockId: string
+				endBlockId?: string
+				startOffset: number
 			endOffset: number
 			quote: string
 			prefix?: string
@@ -160,10 +163,11 @@ export default async function WorkshopSubmissionPage({
 		createdAt: string
 		categoryLabel: string
 		categorySlug: string
-		tags: string[]
-		anchor: {
-			blockId: string
-			startOffset: number
+			tags: string[]
+			anchor: {
+				blockId: string
+				endBlockId?: string
+				startOffset: number
 			endOffset: number
 			quote: string
 			prefix?: string
@@ -247,6 +251,10 @@ export default async function WorkshopSubmissionPage({
 			anchor: isSelectionAnchor(item.anchor)
 				? {
 						blockId: item.anchor.blockId ?? '',
+						endBlockId:
+							typeof item.anchor.endBlockId === 'string'
+								? item.anchor.endBlockId
+								: undefined,
 						startOffset: Number(item.anchor.startOffset ?? -1),
 						endOffset: Number(item.anchor.endOffset ?? -1),
 						quote: item.anchor.quote ?? '',
@@ -315,6 +323,10 @@ export default async function WorkshopSubmissionPage({
 				anchor: isSelectionAnchor(item.anchor)
 					? {
 							blockId: item.anchor.blockId ?? '',
+							endBlockId:
+								typeof item.anchor.endBlockId === 'string'
+									? item.anchor.endBlockId
+									: undefined,
 							startOffset: Number(item.anchor.startOffset ?? -1),
 							endOffset: Number(item.anchor.endOffset ?? -1),
 							quote: item.anchor.quote ?? '',
@@ -358,6 +370,10 @@ export default async function WorkshopSubmissionPage({
 				const anchor = isSelectionAnchor(item.anchor)
 					? {
 							blockId: item.anchor.blockId ?? '',
+							endBlockId:
+								typeof item.anchor.endBlockId === 'string'
+									? item.anchor.endBlockId
+									: undefined,
 							startOffset: Number(item.anchor.startOffset ?? -1),
 							endOffset: Number(item.anchor.endOffset ?? -1),
 							quote: item.anchor.quote ?? '',
