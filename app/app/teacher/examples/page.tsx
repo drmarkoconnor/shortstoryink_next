@@ -2,11 +2,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { buildTemplateAnnotations } from '@/lib/teaching-examples/anchors'
-import {
-	stoneColdMemoriesAnnotations,
-	stoneColdMemoriesTemplate,
-} from '@/lib/teaching-examples/stone-cold-memories'
 import type {
 	ExampleCopyrightStatus,
 	ExampleStatus,
@@ -30,13 +25,6 @@ type CountRow = {
 	example_id: string
 }
 
-type StarterExampleRow = {
-	id: string
-	status: ExampleStatus | null
-}
-
-type AdminSupabaseClient = ReturnType<typeof createAdminSupabaseClient>
-
 function toMessage(value: string | string[] | undefined) {
 	return typeof value === 'string' && value.trim() ? value : null
 }
@@ -54,20 +42,6 @@ function isSchemaCacheMissing(message: string | null | undefined) {
 	)
 }
 
-function isMissingTemplateKey(message: string | null | undefined) {
-	if (!message) {
-		return false
-	}
-
-	const normalized = message.toLowerCase()
-	return (
-		normalized.includes('template_key') &&
-		(normalized.includes('schema cache') ||
-			normalized.includes('could not find') ||
-			normalized.includes('does not exist'))
-	)
-}
-
 function parseTags(value: string) {
 	return [
 		...new Set(
@@ -77,36 +51,6 @@ function parseTags(value: string) {
 				.filter(Boolean),
 		),
 	].slice(0, 12)
-}
-
-async function findStoneColdMemoriesExample(
-	adminSupabase: AdminSupabaseClient,
-	ownerId: string,
-) {
-	const keyedResult = await adminSupabase
-		.from('teaching_examples')
-		.select('id, status')
-		.eq('owner_id', ownerId)
-		.eq('template_key', stoneColdMemoriesTemplate.templateKey)
-		.maybeSingle()
-
-	if (keyedResult.data?.id) {
-		return keyedResult.data as StarterExampleRow
-	}
-
-	if (keyedResult.error && !isMissingTemplateKey(keyedResult.error.message)) {
-		return null
-	}
-
-	const fallbackResult = await adminSupabase
-		.from('teaching_examples')
-		.select('id, status')
-		.eq('owner_id', ownerId)
-		.eq('title', stoneColdMemoriesTemplate.title)
-		.eq('author_name', stoneColdMemoriesTemplate.authorName)
-		.maybeSingle()
-
-	return (fallbackResult.data as StarterExampleRow | null) ?? null
 }
 
 async function createExampleAction(formData: FormData) {
@@ -153,105 +97,12 @@ async function createExampleAction(formData: FormData) {
 	redirect(`/app/teacher/examples/${insertResult.data.id}?notice=Draft+created.`)
 }
 
-async function importStoneColdMemoriesAction() {
-	'use server'
-
-	const profile = await requireTeacher()
-	const adminSupabase = createAdminSupabaseClient()
-
-	const existingExample = await findStoneColdMemoriesExample(
-		adminSupabase,
-		profile.user.id,
-	)
-
-	if (existingExample?.id) {
-		redirect(
-			`/app/teacher/examples/${existingExample.id}?notice=Existing+Stone+Cold+Memories+opened.`,
-		)
-	}
-
-	const insertPayload = {
-		owner_id: profile.user.id,
-		template_key: stoneColdMemoriesTemplate.templateKey,
-		title: stoneColdMemoriesTemplate.title,
-		author_name: stoneColdMemoriesTemplate.authorName,
-		body: stoneColdMemoriesTemplate.body,
-		editorial_note: stoneColdMemoriesTemplate.editorialNote,
-		content_note: stoneColdMemoriesTemplate.contentNote,
-		source_label: stoneColdMemoriesTemplate.sourceLabel,
-		copyright_status: stoneColdMemoriesTemplate.copyrightStatus,
-		craft_tags: stoneColdMemoriesTemplate.craftTags,
-		status: 'draft',
-		visible_to_all_groups: true,
-	}
-	let insertResult = await adminSupabase
-		.from('teaching_examples')
-		.insert(insertPayload)
-		.select('id')
-		.single()
-
-	if (insertResult.error && isMissingTemplateKey(insertResult.error.message)) {
-		const legacyInsertPayload = {
-			owner_id: insertPayload.owner_id,
-			title: insertPayload.title,
-			author_name: insertPayload.author_name,
-			body: insertPayload.body,
-			editorial_note: insertPayload.editorial_note,
-			content_note: insertPayload.content_note,
-			source_label: insertPayload.source_label,
-			copyright_status: insertPayload.copyright_status,
-			craft_tags: insertPayload.craft_tags,
-			status: insertPayload.status,
-			visible_to_all_groups: insertPayload.visible_to_all_groups,
-		}
-		insertResult = await adminSupabase
-			.from('teaching_examples')
-			.insert(legacyInsertPayload)
-			.select('id')
-			.single()
-	}
-
-	if (insertResult.error || !insertResult.data) {
-		redirect('/app/teacher/examples?error=Unable+to+import+Stone+Cold+Memories.')
-	}
-
-	const exampleId = insertResult.data.id as string
-	const annotationRows = buildTemplateAnnotations(
-		stoneColdMemoriesTemplate.body,
-		stoneColdMemoriesAnnotations,
-	).map((annotation) => ({
-		example_id: exampleId,
-		author_id: profile.user.id,
-		comment: annotation.comment,
-		category_label: annotation.categoryLabel,
-		category_slug: annotation.categorySlug,
-		tags: annotation.tags,
-		anchor: annotation.anchor,
-	}))
-
-	if (annotationRows.length > 0) {
-		const annotationsResult = await adminSupabase
-			.from('teaching_example_annotations')
-			.insert(annotationRows)
-
-		if (annotationsResult.error) {
-			redirect(
-				`/app/teacher/examples/${exampleId}?error=Example+created,+but+annotations+could+not+be+seeded.`,
-			)
-		}
-	}
-
-	redirect(
-		`/app/teacher/examples/${exampleId}?notice=Stone+Cold+Memories+draft+created+with+craft+notes.`,
-	)
-}
-
 export default async function TeacherExamplesPage({
 	searchParams,
 }: {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-	const profile = await requireTeacher()
+	await requireTeacher()
 	const params = searchParams ? await searchParams : {}
 	const notice = toMessage(params.notice)
 	const errorNotice = toMessage(params.error)
@@ -259,7 +110,6 @@ export default async function TeacherExamplesPage({
 	let examples: ExampleRow[] = []
 	let annotationCounts: Record<string, number> = {}
 	let loadError: string | null = null
-	let stoneColdExample: StarterExampleRow | null = null
 
 	const examplesResult = await adminSupabase
 		.from('teaching_examples')
@@ -292,36 +142,21 @@ export default async function TeacherExamplesPage({
 		}
 	}
 
-	if (!loadError) {
-		stoneColdExample = await findStoneColdMemoriesExample(
-			adminSupabase,
-			profile.user.id,
-		)
-	}
-
 	return (
 		<section className="space-y-5">
 			<div className="surface p-5 lg:p-6">
-				<div className="flex flex-wrap items-start justify-between gap-4">
-					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-							Annotated examples
-						</p>
-						<h1 className="literary-title mt-2 text-3xl text-parchment-100">
-							Close-reading library
-						</h1>
-						<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-							Create model readings, annotate them in place, and publish them to
-							writer groups as craft exemplars.
-						</p>
-					</div>
-					<form action={importStoneColdMemoriesAction}>
-						<button
-							type="submit"
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
-							{stoneColdExample ? 'Open Stone Cold Memories' : 'Import Stone Cold Memories'}
-						</button>
-					</form>
+				<div>
+					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						Annotated examples
+					</p>
+					<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+						Close-reading library
+					</h1>
+					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
+						Create model readings, annotate them in place, and publish them to
+						writer groups as craft exemplars. Open any story from the library
+						below, or paste a new one to begin.
+					</p>
 				</div>
 			</div>
 
@@ -344,7 +179,8 @@ export default async function TeacherExamplesPage({
 								No examples yet
 							</h2>
 							<p className="muted mt-3 text-sm leading-relaxed">
-								Import the starter story or paste a public-domain text to begin.
+								Paste a teacher-owned, licensed, or public-domain text to begin
+								building the close-reading library.
 							</p>
 						</div>
 					) : null}
