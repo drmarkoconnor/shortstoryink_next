@@ -76,14 +76,14 @@ export function FeedbackSubmissionSelector({
 	}
 
 	if (submissions.length === 0) {
-		return <p className="text-sm text-silver-300">No published feedback yet.</p>
+		return <p className="text-sm text-silver-300">No finished pieces yet.</p>
 	}
 
 	return (
 		<div className="space-y-4">
 			<label className="block">
 				<span className="mb-1.5 block text-sm text-silver-100">
-					Choose feedback
+					Choose a finished piece
 				</span>
 				<select
 					value={selectedSubmissionId}
@@ -94,7 +94,7 @@ export function FeedbackSubmissionSelector({
 						}
 					}}
 					className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring">
-					<option value="">Select a published response</option>
+					<option value="">Select a finished piece</option>
 					{submissions.map((submission) => (
 						<option key={submission.id} value={submission.id}>
 							{versionLabel(submission.version)} - {submission.title} -{' '}
@@ -111,7 +111,7 @@ export function FeedbackSubmissionSelector({
 					<div className="flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
-								Published response
+								Finished piece
 							</p>
 							<h2 className="literary-title mt-2 line-clamp-2 text-2xl text-parchment-100">
 								{versionLabel(selectedSubmission.version)} -{' '}
@@ -126,7 +126,7 @@ export function FeedbackSubmissionSelector({
 						<Link
 							href={`/app/writer/feedback/${selectedSubmission.id}`}
 							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
-							Read feedback in context
+							Read finished piece
 						</Link>
 					</div>
 
@@ -181,12 +181,11 @@ export function FeedbackSubmissionSelector({
 						Choose a piece
 					</p>
 					<h2 className="literary-title mt-2 text-2xl text-parchment-100">
-						Select published feedback to preview it here.
+						Select a finished piece to preview it here.
 					</h2>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
 						You can read the overview and individual comments on this page, or
-						open the full contextual feedback view to see each comment beside
-						the whole piece.
+						open the book view to see each comment beside the whole piece.
 					</p>
 				</section>
 			)}

@@ -15,15 +15,58 @@ export const readingPageOptions = {
 	maxParagraphs: 7,
 }
 
+export const bookReadingPageOptions = {
+	targetLines: 14,
+	charactersPerLine: 58,
+	paragraphGapLines: 0.55,
+	sceneBreakLines: 1,
+	maxParagraphs: 8,
+}
+
+type PagingOptions = {
+	targetCharacters?: number
+	maxParagraphs?: number
+	targetLines?: number
+	charactersPerLine?: number
+	paragraphGapLines?: number
+	sceneBreakLines?: number
+}
+
+function estimateParagraphLines(
+	paragraph: ManuscriptParagraph,
+	options: Required<
+		Pick<
+			PagingOptions,
+			'charactersPerLine' | 'paragraphGapLines' | 'sceneBreakLines'
+		>
+	>,
+) {
+	const text = paragraph.text.trim()
+	if (!text) {
+		return 1
+	}
+
+	if (text === '**') {
+		return options.sceneBreakLines
+	}
+
+	return paragraph.text.split(/\r?\n/).reduce((total, line) => {
+		return total + Math.max(1, Math.ceil(line.length / options.charactersPerLine))
+	}, 0)
+}
+
 export function paginateManuscript(
 	paragraphs: ManuscriptParagraph[],
-	options?: {
-		targetCharacters?: number
-		maxParagraphs?: number
-	},
+	options?: PagingOptions,
 ): PagedManuscript {
 	const targetCharacters = options?.targetCharacters ?? 1400
 	const maxParagraphs = options?.maxParagraphs ?? 4
+	const targetLines = options?.targetLines
+	const lineOptions = {
+		charactersPerLine: options?.charactersPerLine ?? 58,
+		paragraphGapLines: options?.paragraphGapLines ?? 0.55,
+		sceneBreakLines: options?.sceneBreakLines ?? 1,
+	}
 
 	if (paragraphs.length === 0) {
 		return {
@@ -36,6 +79,7 @@ export function paginateManuscript(
 	const paragraphIdToPageIndex: Record<string, number> = {}
 	let currentPage: ManuscriptParagraph[] = []
 	let currentCharacters = 0
+	let currentLines = 0
 
 	const pushPage = () => {
 		const pageIndex = pages.length
@@ -51,14 +95,21 @@ export function paginateManuscript(
 
 		currentPage = []
 		currentCharacters = 0
+		currentLines = 0
 	}
 
 	for (const paragraph of paragraphs) {
 		const paragraphLength = paragraph.text.length
+		const paragraphLines =
+			estimateParagraphLines(paragraph, lineOptions) +
+			(currentPage.length > 0 ? lineOptions.paragraphGapLines : 0)
 		const shouldBreak =
 			currentPage.length > 0 &&
-			(currentPage.length >= maxParagraphs ||
-				currentCharacters + paragraphLength > targetCharacters)
+			(targetLines
+				? currentPage.length >= maxParagraphs ||
+					currentLines + paragraphLines > targetLines
+				: currentPage.length >= maxParagraphs ||
+					currentCharacters + paragraphLength > targetCharacters)
 
 		if (shouldBreak) {
 			pushPage()
@@ -66,6 +117,9 @@ export function paginateManuscript(
 
 		currentPage.push(paragraph)
 		currentCharacters += paragraphLength
+		currentLines +=
+			estimateParagraphLines(paragraph, lineOptions) +
+			(currentPage.length > 1 ? lineOptions.paragraphGapLines : 0)
 	}
 
 	if (currentPage.length > 0) {

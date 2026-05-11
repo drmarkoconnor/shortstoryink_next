@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { DeleteQueuedSubmissionButton } from '@/components/teacher/delete-queued-submission-button'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
 import { ProtoCard } from '@/components/prototype/card'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 
@@ -64,6 +67,10 @@ function isMissingSubmissionSource(message: string | null | undefined) {
 	return normalized.includes('source') && normalized.includes('does not exist')
 }
 
+function toMessage(value: string | string[] | undefined) {
+	return typeof value === 'string' && value.trim() ? value : null
+}
+
 function statusLabel(status: string) {
 	if (status === 'submitted') {
 		return 'Waiting'
@@ -103,8 +110,15 @@ function formatQueueDate(value: string) {
 	})
 }
 
-export default async function TeacherReviewDeskPage() {
+export default async function TeacherReviewDeskPage({
+	searchParams,
+}: {
+	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
 	await requireTeacher()
+	const params = searchParams ? await searchParams : {}
+	const notice = toMessage(params.notice)
+	const errorNotice = toMessage(params.error)
 	const supabase = await createServerSupabaseClient()
 
 	let queue: QueueSubmission[] = []
@@ -259,6 +273,12 @@ export default async function TeacherReviewDeskPage() {
 	const inReviewCount = queue.filter((item) => item.status === 'in_review').length
 	const waitingQueue = queue.filter((item) => item.status === 'submitted')
 	const inReviewQueue = queue.filter((item) => item.status === 'in_review')
+	const removableQueue = queue.filter(
+		(item) =>
+			(item.status === 'submitted' || item.status === 'in_review') &&
+			(item.feedbackDraftCount ?? 0) === 0 &&
+			!item.newerRevisionId,
+	)
 	const oldestWaitingSubmission = waitingQueue[0] ?? null
 	const hasNewerRevisionFlags = queue.some((item) => item.newerRevisionId)
 
@@ -271,6 +291,77 @@ export default async function TeacherReviewDeskPage() {
 		}
 
 		redirect(`/app/workshop/${submissionId}`)
+	}
+
+	async function deleteQueuedSubmissionAction(formData: FormData) {
+		'use server'
+
+		await requireTeacher()
+		const submissionId = String(formData.get('submissionId') ?? '').trim()
+		if (!submissionId) {
+			redirect('/app/teacher/review-desk?error=Choose+a+submission+to+remove.')
+		}
+
+		const adminSupabase = createAdminSupabaseClient()
+		const { data: submission, error: submissionError } = await adminSupabase
+			.from('submissions')
+			.select('id, status')
+			.eq('id', submissionId)
+			.maybeSingle()
+
+		if (submissionError || !submission) {
+			redirect('/app/teacher/review-desk?error=Submission+not+found.')
+		}
+
+		const status = String(submission.status ?? '')
+		if (status !== 'submitted' && status !== 'in_review') {
+			redirect(
+				'/app/teacher/review-desk?error=Only+unpublished+queued+submissions+can+be+removed.',
+			)
+		}
+
+		const [feedbackResult, childRevisionResult] = await Promise.all([
+			adminSupabase
+				.from('feedback_items')
+				.select('id', { count: 'exact', head: true })
+				.eq('submission_id', submissionId),
+			adminSupabase
+				.from('submissions')
+				.select('id', { count: 'exact', head: true })
+				.eq('parent_submission_id', submissionId),
+		])
+
+		if (feedbackResult.error || childRevisionResult.error) {
+			redirect(
+				'/app/teacher/review-desk?error=Unable+to+check+whether+the+submission+can+be+removed.',
+			)
+		}
+
+		if ((feedbackResult.count ?? 0) > 0) {
+			redirect(
+				'/app/teacher/review-desk?error=Cannot+remove+a+submission+once+feedback+comments+exist.',
+			)
+		}
+
+		if ((childRevisionResult.count ?? 0) > 0) {
+			redirect(
+				'/app/teacher/review-desk?error=Cannot+remove+a+submission+that+already+has+later+versions.',
+			)
+		}
+
+		const { error: deleteError } = await adminSupabase
+			.from('submissions')
+			.delete()
+			.eq('id', submissionId)
+			.in('status', ['submitted', 'in_review'])
+
+		if (deleteError) {
+			redirect('/app/teacher/review-desk?error=Unable+to+remove+submission.')
+		}
+
+		revalidatePath('/app/teacher/review-desk')
+		revalidatePath('/app/writer')
+		redirect('/app/teacher/review-desk?notice=Submission+removed+from+queue.')
 	}
 
 	function renderQueueItem(item: QueueSubmission, options?: { oldest?: boolean }) {
@@ -328,6 +419,17 @@ export default async function TeacherReviewDeskPage() {
 	return (
 		<section className="space-y-5">
 			<MenuTabs tabs={teacherTabs} active="/app/teacher/review-desk" />
+
+			{notice ? (
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+					{notice}
+				</p>
+			) : null}
+			{errorNotice ? (
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					{errorNotice}
+				</p>
+			) : null}
 
 			<div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
 				<aside className="space-y-3">
@@ -418,6 +520,32 @@ export default async function TeacherReviewDeskPage() {
 								) : null}
 							</div>
 						)}
+						{removableQueue.length > 0 ? (
+							<section className="mt-4 rounded-xl border border-rose-300/20 bg-rose-300/8 p-3">
+								<p className="text-[11px] uppercase tracking-[0.12em] text-rose-100">
+									Queue cleanup
+								</p>
+								<p className="mt-1 text-xs leading-relaxed text-silver-300">
+									Remove accidental duplicates before feedback has been added.
+								</p>
+								<form
+									action={deleteQueuedSubmissionAction}
+									className="mt-3 space-y-2">
+									<select
+										name="submissionId"
+										defaultValue={removableQueue[0]?.id ?? ''}
+										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-rose-300 transition focus:ring">
+										{removableQueue.map((item) => (
+											<option key={item.id} value={item.id}>
+												{statusLabel(item.status)} - v{item.version ?? 1} -{' '}
+												{item.title} - {item.writerLabel}
+											</option>
+										))}
+									</select>
+									<DeleteQueuedSubmissionButton />
+								</form>
+							</section>
+						) : null}
 					</ProtoCard>
 
 					<ProtoCard title="Desk guide" meta="Operational note">

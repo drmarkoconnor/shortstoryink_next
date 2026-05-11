@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
 	normalizeTeachingDocumentType,
 	type TeachingDocumentType,
@@ -136,13 +135,13 @@ function isLegacySchemaError(message: string | null | undefined) {
 export default async function WriterDocumentsPage() {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
+	const adminSupabase = createAdminSupabaseClient()
 
 	let groups: WriterGroup[] = []
 	let documents: WriterTeachingDocument[] = []
 	let loadError: string | null = null
 
-	const { data: memberRows, error: membershipError } = await supabase
+	const { data: memberRows, error: membershipError } = await adminSupabase
 		.from('workshop_members')
 		.select('workshop_id')
 		.eq('profile_id', user.id)
@@ -156,7 +155,7 @@ export default async function WriterDocumentsPage() {
 	]
 
 	if (!loadError && writerWorkshopIds.length > 0) {
-		const { data: groupRows, error: groupError } = await supabase
+		const { data: groupRows, error: groupError } = await adminSupabase
 			.from('workshops')
 			.select('id, title')
 			.in('id', writerWorkshopIds)
@@ -170,7 +169,6 @@ export default async function WriterDocumentsPage() {
 	}
 
 	if (!loadError && groups.length > 0) {
-		const adminSupabase = createAdminSupabaseClient()
 		const { data: documentRows, error } = await adminSupabase
 			.from('teacher_documents')
 			.select('id, title, body, updated_at')

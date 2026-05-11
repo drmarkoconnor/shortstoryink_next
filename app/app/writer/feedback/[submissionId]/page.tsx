@@ -3,7 +3,7 @@ import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-rea
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
@@ -28,6 +28,13 @@ type FeedbackItem = {
 	created_at: string
 }
 
+type RevisionHistoryItem = {
+	id: string
+	version: number
+	status: string
+	created_at: string
+}
+
 function isFeedbackAnchor(value: unknown): value is FeedbackAnchor {
 	if (!value || typeof value !== 'object') {
 		return false
@@ -44,11 +51,13 @@ export default async function WriterFeedbackDetailPage({
 	await requireWriter()
 	const user = await getCurrentUser()
 	const { submissionId } = await params
-	const supabase = await createServerSupabaseClient()
+	const adminSupabase = createAdminSupabaseClient()
 
-	const submissionResult = await supabase
+	const submissionResult = await adminSupabase
 		.from('submissions')
-		.select('id, title, body, status, created_at, author_id, version')
+		.select(
+			'id, title, body, status, created_at, author_id, version, parent_submission_id',
+		)
 		.eq('id', submissionId)
 		.eq('author_id', user.id)
 		.eq('status', 'feedback_published')
@@ -65,11 +74,25 @@ export default async function WriterFeedbackDetailPage({
 		status: string
 		created_at: string
 		version: number
+		parent_submission_id: string | null
 	}
+	const rootSubmissionId = submission.parent_submission_id ?? submission.id
+	const versionHistoryResult = await adminSupabase
+		.from('submissions')
+		.select('id, version, status, created_at')
+		.eq('author_id', user.id)
+		.or(`id.eq.${rootSubmissionId},parent_submission_id.eq.${rootSubmissionId}`)
+		.order('version', { ascending: true })
+	const versionHistory =
+		(versionHistoryResult.data ?? []) as RevisionHistoryItem[]
+	const laterVersion =
+		versionHistory
+			.filter((item) => item.version > submission.version)
+			.sort((a, b) => b.version - a.version)[0] ?? null
 
 	const paragraphs = toManuscriptParagraphs(submission.body)
 
-	const feedbackRowsResult = await supabase
+	const feedbackRowsResult = await adminSupabase
 		.from('feedback_items')
 		.select('id, comment, anchor, created_at')
 		.eq('submission_id', submission.id)
@@ -127,7 +150,7 @@ export default async function WriterFeedbackDetailPage({
 			: null,
 	}))
 
-	const summaryResult = await supabase
+	const summaryResult = await adminSupabase
 		.from('feedback_summaries')
 		.select('summary, published_at')
 		.eq('submission_id', submission.id)
@@ -144,6 +167,7 @@ export default async function WriterFeedbackDetailPage({
 				summary={summaryResult.data?.summary ?? null}
 				publishedAt={summaryResult.data?.published_at ?? null}
 				paragraphs={paragraphs}
+				laterVersion={laterVersion}
 				feedback={feedback.map((item) => ({
 					id: item.id,
 					comment: item.comment,

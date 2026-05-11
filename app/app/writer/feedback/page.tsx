@@ -2,7 +2,7 @@ import { FeedbackSubmissionSelector } from '@/components/writer/feedback-submiss
 import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 
 type FeedbackSubmission = {
 	id: string
@@ -24,12 +24,12 @@ function getAnchorField(anchor: unknown, field: 'quote' | 'categoryLabel') {
 export default async function WriterFeedbackPage() {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
+	const adminSupabase = createAdminSupabaseClient()
 
 	let submissions: FeedbackSubmission[] = []
 	let loadError: string | null = null
 
-	const submissionsResult = await supabase
+	const submissionsResult = await adminSupabase
 		.from('submissions')
 		.select('id, title, status, created_at, version')
 		.eq('author_id', user.id)
@@ -56,7 +56,7 @@ export default async function WriterFeedbackPage() {
 	> = {}
 
 	if (!loadError && submissionIds.length > 0) {
-		const summariesResult = await supabase
+		const summariesResult = await adminSupabase
 			.from('feedback_summaries')
 			.select('submission_id, summary')
 			.in('submission_id', submissionIds)
@@ -68,7 +68,7 @@ export default async function WriterFeedbackPage() {
 			]),
 		)
 
-		const feedbackItemsResult = await supabase
+		const feedbackItemsResult = await adminSupabase
 			.from('feedback_items')
 			.select('id, submission_id, comment, anchor')
 			.in('submission_id', submissionIds)
@@ -124,13 +124,14 @@ export default async function WriterFeedbackPage() {
 		<section className="space-y-5">
 			<div className="surface p-5 lg:p-6">
 				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-					Feedback
+					Finished pieces
 				</p>
 				<h1 className="literary-title mt-2 text-3xl text-parchment-100">
-					Published feedback
+					Finished pieces
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-					Feedback appears here after a teacher publishes review notes.
+					Returned work appears here after a teacher publishes feedback, ready
+					to reread with notes in place.
 				</p>
 			</div>
 
@@ -145,7 +146,7 @@ export default async function WriterFeedbackPage() {
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div>
 									<p className="text-xs uppercase tracking-[0.12em] text-accent-200">
-										Latest feedback
+										Latest finished piece
 									</p>
 									<h2 className="literary-title mt-2 line-clamp-2 text-2xl text-parchment-100">
 										{latestSubmission.title}
@@ -159,7 +160,7 @@ export default async function WriterFeedbackPage() {
 								<Link
 									href={`/app/writer/feedback/${latestSubmission.id}`}
 									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
-									Open latest feedback
+									Open finished piece
 								</Link>
 							</div>
 						</div>

@@ -396,6 +396,19 @@ export default async function TeacherStudioPage() {
 							</p>
 						</Link>
 						<Link
+							href="/app/teacher/examples"
+							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
+							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+								New
+							</p>
+							<h2 className="mt-2 text-lg font-semibold text-parchment-100">
+								Annotated Examples
+							</h2>
+							<p className="mt-2 text-sm leading-relaxed text-silver-300">
+								Publish close readings with anchored craft commentary for groups.
+							</p>
+						</Link>
+						<Link
 							href="/app/teacher/sources/new"
 							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
 							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">

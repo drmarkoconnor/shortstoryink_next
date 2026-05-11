@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { RevisionDraftForm } from '@/components/writer/revision-draft-form'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
 
 const ABU_SUBMISSION_WORD_LIMIT = 2000
@@ -92,13 +92,13 @@ export default async function WriterRevisionPage({
 }) {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
+	const adminSupabase = createAdminSupabaseClient()
 	const { submissionId } = await params
 	const query = searchParams ? await searchParams : {}
 	const notice = toMessage(query.notice)
 	const errorNotice = toMessage(query.error)
 
-	const submissionResult = await supabase
+	const submissionResult = await adminSupabase
 		.from('submissions')
 		.select(
 			'id, title, body, status, created_at, author_id, workshop_id, version, parent_submission_id',
@@ -118,7 +118,7 @@ export default async function WriterRevisionPage({
 	}
 
 	const rootSubmissionId = submission.parent_submission_id ?? submission.id
-	const historyResult = await supabase
+	const historyResult = await adminSupabase
 		.from('submissions')
 		.select('id, version, status, created_at')
 		.eq('author_id', user.id)
@@ -133,7 +133,7 @@ export default async function WriterRevisionPage({
 		) + 1
 	const blockedReason = getRevisionBlockReason(submission, revisionHistory)
 
-	const workshopResult = await supabase
+	const workshopResult = await adminSupabase
 		.from('workshops')
 		.select('title, slug')
 		.eq('id', submission.workshop_id)
@@ -149,7 +149,7 @@ export default async function WriterRevisionPage({
 
 		await requireWriter()
 		const revisionUser = await getCurrentUser()
-		const serverSupabase = await createServerSupabaseClient()
+		const serverSupabase = createAdminSupabaseClient()
 		const title = String(formData.get('title') ?? '').trim()
 		const rawBody = String(formData.get('body') ?? '')
 		const body = rawBody.trim()

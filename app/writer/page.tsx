@@ -99,8 +99,11 @@ function encodeErrorMessage(message: string | null | undefined) {
 }
 
 async function detectSchemaMode() {
-	const supabase = await createServerSupabaseClient()
-	const result = await supabase.from('submissions').select('author_id').limit(1)
+	const adminSupabase = createAdminSupabaseClient()
+	const result = await adminSupabase
+		.from('submissions')
+		.select('author_id')
+		.limit(1)
 
 	if (result.error && isLegacySchemaError(result.error.message)) {
 		return 'legacy' as SchemaMode
@@ -176,7 +179,6 @@ async function createSubmissionAction(formData: FormData) {
 	'use server'
 
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
 	const mode = await detectSchemaMode()
 
 	const title = String(formData.get('title') ?? '').trim()
@@ -197,11 +199,13 @@ async function createSubmissionAction(formData: FormData) {
 	}
 
 	if (mode === 'modern') {
+		const adminSupabase = createAdminSupabaseClient()
+
 		if (!workshopId) {
 			redirect('/app/writer?error=Please+select+a+group.')
 		}
 
-		const { data: membership, error: membershipError } = await supabase
+		const { data: membership, error: membershipError } = await adminSupabase
 			.from('workshop_members')
 			.select('workshop_id')
 			.eq('profile_id', user.id)
@@ -218,7 +222,7 @@ async function createSubmissionAction(formData: FormData) {
 			)
 		}
 
-		const { data: workshop, error: workshopReadError } = await supabase
+		const { data: workshop, error: workshopReadError } = await adminSupabase
 			.from('workshops')
 			.select('slug, title')
 			.eq('id', workshopId)
@@ -240,7 +244,7 @@ async function createSubmissionAction(formData: FormData) {
 			)
 		}
 
-		const { data: submissionRow, error: insertError } = await supabase
+		const { data: submissionRow, error: insertError } = await adminSupabase
 			.from('submissions')
 			.insert({
 				author_id: user.id,
@@ -261,6 +265,7 @@ async function createSubmissionAction(formData: FormData) {
 
 		createdSubmissionId = submissionRow.id as string
 	} else {
+		const supabase = await createServerSupabaseClient()
 		const writerFirstName =
 			(user.user_metadata?.first_name as string | undefined) ||
 			(user.user_metadata?.name as string | undefined) ||
@@ -357,7 +362,6 @@ async function deleteSubmissionAction(formData: FormData) {
 	'use server'
 
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
 	const mode = await detectSchemaMode()
 	const submissionId = String(formData.get('submissionId') ?? '').trim()
 
@@ -366,7 +370,8 @@ async function deleteSubmissionAction(formData: FormData) {
 	}
 
 	if (mode === 'modern') {
-		const { data: row, error: readError } = await supabase
+		const adminSupabase = createAdminSupabaseClient()
+		const { data: row, error: readError } = await adminSupabase
 			.from('submissions')
 			.select('id, status')
 			.eq('id', submissionId)
@@ -381,7 +386,7 @@ async function deleteSubmissionAction(formData: FormData) {
 			redirect('/app/writer?error=Only+submitted+drafts+can+be+deleted.')
 		}
 
-		const { error: deleteError } = await supabase
+		const { error: deleteError } = await adminSupabase
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)
@@ -393,6 +398,7 @@ async function deleteSubmissionAction(formData: FormData) {
 			)
 		}
 	} else {
+		const supabase = await createServerSupabaseClient()
 		const { data: row, error: readError } = await supabase
 			.from('submissions')
 			.select('id, status')
@@ -433,7 +439,6 @@ export default async function WriterPage({
 }) {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const supabase = await createServerSupabaseClient()
 	const mode = await detectSchemaMode()
 	const params = searchParams ? await searchParams : {}
 
@@ -449,7 +454,8 @@ export default async function WriterPage({
 	let writerWorkshopIds: string[] = []
 
 	if (mode === 'modern') {
-		const { data: memberRows, error: membershipError } = await supabase
+		const adminSupabase = createAdminSupabaseClient()
+		const { data: memberRows, error: membershipError } = await adminSupabase
 			.from('workshop_members')
 			.select('workshop_id')
 			.eq('profile_id', user.id)
@@ -460,7 +466,7 @@ export default async function WriterPage({
 		if (membershipError) {
 			workshopError = `Unable to load your workshops: ${membershipError.message}`
 		} else if (writerWorkshopIds.length > 0) {
-			const { data: workshopRows, error } = await supabase
+			const { data: workshopRows, error } = await adminSupabase
 				.from('workshops')
 				.select('id, title, slug')
 				.in('id', writerWorkshopIds)
@@ -473,7 +479,7 @@ export default async function WriterPage({
 			}
 		}
 
-		const { data: submissionRows, error } = await supabase
+		const { data: submissionRows, error } = await adminSupabase
 			.from('submissions')
 			.select('id, title, status, created_at, workshop_id, version')
 			.eq('author_id', user.id)
@@ -509,7 +515,7 @@ export default async function WriterPage({
 			const submissionIds = submissions.map((submission) => submission.id)
 
 			if (submissionIds.length > 0) {
-				const { data: feedbackRows } = await supabase
+				const { data: feedbackRows } = await adminSupabase
 					.from('feedback_items')
 					.select('submission_id')
 					.in('submission_id', submissionIds)
@@ -530,6 +536,7 @@ export default async function WriterPage({
 			}
 		}
 	} else {
+		const supabase = await createServerSupabaseClient()
 		const { data: submissionRows, error } = await supabase
 			.from('submissions')
 			.select('id, title, status, submitted_at, created_at')
