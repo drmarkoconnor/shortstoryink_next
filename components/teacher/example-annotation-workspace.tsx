@@ -8,9 +8,15 @@ import {
 	useState,
 	type FormEvent,
 	type KeyboardEvent,
+	type MouseEvent,
 	type ReactNode,
 } from 'react'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
+import {
+	captureManuscriptSelection,
+	clearBrowserSelection,
+	shouldIgnoreSelectionTarget,
+} from '@/lib/manuscript/dom-selection'
 import {
 	bookReadingPageOptions,
 	paginateManuscript,
@@ -47,17 +53,6 @@ type TurningPage = {
 	key: string
 	direction: 'next' | 'previous'
 	page: ExamplePage | undefined
-}
-
-function elementForSelectionNode(node: Node) {
-	return node instanceof Element ? node : node.parentElement
-}
-
-function selectionPopupRect(range: Range) {
-	const rects = Array.from(range.getClientRects()).filter(
-		(rect) => rect.width > 0 || rect.height > 0,
-	)
-	return rects.at(-1) ?? range.getBoundingClientRect()
 }
 
 function annotationSegmentForParagraph(
@@ -329,79 +324,45 @@ export function TeacherExampleAnnotationWorkspace({
 		}
 	}, [selectedAnchor])
 
-	const captureSelection = () => {
-		const selection = window.getSelection()
-		if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+	const closeInlineComposer = () => {
+		setSelectedAnchor(null)
+		clearBrowserSelection()
+	}
+
+	const captureSelection = (
+		event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
+	) => {
+		if (shouldIgnoreSelectionTarget(event?.target ?? null)) {
 			return
 		}
 
-		const range = selection.getRangeAt(0)
-		const startParagraph = elementForSelectionNode(range.startContainer)?.closest(
-			'p[id^="p-"]',
-		) as HTMLParagraphElement | null
-		const endParagraph = elementForSelectionNode(range.endContainer)?.closest(
-			'p[id^="p-"]',
-		) as HTMLParagraphElement | null
+		const capturedSelection = captureManuscriptSelection(paragraphs)
 		const containerRect = mainRef.current?.getBoundingClientRect()
-
-		if (!startParagraph || !endParagraph || !containerRect) {
+		if (!capturedSelection || !containerRect) {
 			return
 		}
 
-		const startParagraphText = startParagraph.textContent ?? ''
-		const endParagraphText = endParagraph.textContent ?? ''
-		if (!startParagraphText || !endParagraphText) {
-			return
-		}
-
-		const startRange = range.cloneRange()
-		startRange.selectNodeContents(startParagraph)
-		startRange.setEnd(range.startContainer, range.startOffset)
-		const startOffset = startRange.toString().length
-
-		const endRange = range.cloneRange()
-		endRange.selectNodeContents(endParagraph)
-		endRange.setEnd(range.endContainer, range.endOffset)
-		const endOffset = endRange.toString().length
-		const isMultiBlockSelection = startParagraph.id !== endParagraph.id
-
-		if (
-			(!isMultiBlockSelection && endOffset <= startOffset) ||
-			(isMultiBlockSelection && endOffset < 0)
-		) {
-			return
-		}
-
-		const quote = isMultiBlockSelection
-			? selection.toString().trim()
-			: startParagraphText.slice(startOffset, endOffset)
-		if (!quote.trim()) {
-			return
-		}
-
-		const selectionRect = selectionPopupRect(range)
-		const composerTop = selectionRect.bottom - containerRect.top + 10
+		const composerTop =
+			capturedSelection.selectionRect.bottom - containerRect.top + 10
 		const composerLeft = Math.min(
-			Math.max(16, selectionRect.left - containerRect.left),
+			Math.max(16, capturedSelection.selectionRect.left - containerRect.left),
 			Math.max(16, containerRect.width - 320),
 		)
 
 		setActiveAnnotationId(null)
 		setComposerText('')
 		setSelectedAnchor({
-			blockId: startParagraph.id,
-			...(isMultiBlockSelection ? { endBlockId: endParagraph.id } : {}),
-			startOffset,
-			endOffset,
-			quote,
-			prefix: startParagraphText.slice(Math.max(0, startOffset - 24), startOffset),
-			suffix: endParagraphText.slice(
-				endOffset,
-				Math.min(endParagraphText.length, endOffset + 24),
-			),
+			blockId: capturedSelection.blockId,
+			endBlockId: capturedSelection.endBlockId,
+			startOffset: capturedSelection.startOffset,
+			endOffset: capturedSelection.endOffset,
+			quote: capturedSelection.quote,
+			prefix: capturedSelection.prefix,
+			suffix: capturedSelection.suffix,
 			composerTop,
 			composerLeft,
 		})
+		clearBrowserSelection()
 	}
 
 	const renderParagraphWithAnnotations = (
@@ -438,13 +399,13 @@ export function TeacherExampleAnnotationWorkspace({
 				nodes.push(
 					<span key={item.id} className="inline">
 						<mark className={markClass(isActive)}>{markedText}</mark>
-						<button
-							type="button"
-							onClick={() => {
-								setSelectedAnchor(null)
-								setActiveAnnotationId((current) =>
-									current === item.id ? null : item.id,
-								)
+							<button
+								type="button"
+								onClick={() => {
+									closeInlineComposer()
+									setActiveAnnotationId((current) =>
+										current === item.id ? null : item.id,
+									)
 							}}
 							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-medium transition ${markerClass(
 								isActive,
@@ -505,7 +466,7 @@ export function TeacherExampleAnnotationWorkspace({
 		setComposerError(null)
 		setIsComposerSaving(true)
 		setItems((current) => [...current, optimistic])
-		setSelectedAnchor(null)
+		closeInlineComposer()
 		setComposerText('')
 
 		try {
@@ -692,6 +653,8 @@ export function TeacherExampleAnnotationWorkspace({
 							const activeBlockItem =
 								blockItems.find((item) => item.id === activeAnnotationId) ??
 								null
+							const shouldShowActiveBlockItem =
+								activeBlockItem?.anchor.blockId === paragraph.id
 							const isSceneBreak = paragraph.text.trim() === '**'
 
 							return (
@@ -707,7 +670,7 @@ export function TeacherExampleAnnotationWorkspace({
 											? '***'
 											: renderParagraphWithAnnotations(paragraph, blockItems)}
 									</p>
-									{activeBlockItem ? (
+									{shouldShowActiveBlockItem ? (
 										<div className="rounded-2xl border border-burgundy-300/35 bg-ink-950 px-4 py-3 text-sm text-parchment-100 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
 											<div className="flex flex-wrap items-center justify-between gap-2">
 												<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
@@ -750,10 +713,11 @@ export function TeacherExampleAnnotationWorkspace({
 				) : null}
 
 				{selectedAnchor ? (
-					<form
-						ref={composerFormRef}
-						onSubmit={saveNewAnnotation}
-						style={{
+						<form
+							ref={composerFormRef}
+							onSubmit={saveNewAnnotation}
+							data-selection-ignore="true"
+							style={{
 							top: `${selectedAnchor.composerTop}px`,
 							left: `${selectedAnchor.composerLeft}px`,
 						}}
@@ -806,10 +770,10 @@ export function TeacherExampleAnnotationWorkspace({
 							<p className="text-[11px] text-silver-300">
 								{isComposerSaving ? 'Saving...' : 'Shift+Enter adds a line.'}
 							</p>
-							<button
-								type="button"
-								onClick={() => setSelectedAnchor(null)}
-								className="text-[11px] text-silver-200 transition hover:text-parchment-100">
+								<button
+									type="button"
+									onClick={closeInlineComposer}
+									className="text-[11px] text-silver-200 transition hover:text-parchment-100">
 								Close
 							</button>
 						</div>
@@ -923,12 +887,12 @@ export function TeacherExampleAnnotationWorkspace({
 						<ul className="mt-3 max-h-[42vh] space-y-2 overflow-y-auto pr-1">
 							{sortedItems.map((item) => (
 								<li key={item.id}>
-									<button
-										type="button"
-										onClick={() => {
-											setSelectedAnchor(null)
-											setActiveAnnotationId(item.id)
-										}}
+										<button
+											type="button"
+											onClick={() => {
+												closeInlineComposer()
+												setActiveAnnotationId(item.id)
+											}}
 										className={`block w-full rounded-xl border px-3 py-3 text-left transition ${
 											activeAnnotationId === item.id
 												? 'border-burgundy-300/45 bg-burgundy-500/18 text-parchment-100'

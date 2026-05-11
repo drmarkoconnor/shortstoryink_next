@@ -11,6 +11,7 @@ import {
 	useState,
 	type KeyboardEvent,
 	type FormEvent,
+	type MouseEvent,
 	type ReactNode,
 } from 'react'
 import { StoryFolio } from '@/components/prototype/story-folio'
@@ -23,6 +24,11 @@ import {
 	normalizeFeedbackLabel,
 	normalizeSnippetLabel,
 } from '@/lib/feedback/categories'
+import {
+	captureManuscriptSelection,
+	clearBrowserSelection,
+	shouldIgnoreSelectionTarget,
+} from '@/lib/manuscript/dom-selection'
 import { paginateManuscript, readingPageOptions } from '@/lib/manuscript/paging'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
@@ -127,17 +133,6 @@ function compactPreview(value: string, limit = 120) {
 		return normalized
 	}
 	return `${normalized.slice(0, limit - 1).trimEnd()}...`
-}
-
-function elementForSelectionNode(node: Node) {
-	return node instanceof Element ? node : node.parentElement
-}
-
-function selectionPopupRect(range: Range) {
-	const rects = Array.from(range.getClientRects()).filter(
-		(rect) => rect.width > 0 || rect.height > 0,
-	)
-	return rects.at(-1) ?? range.getBoundingClientRect()
 }
 
 function annotationSegmentForParagraph(
@@ -622,91 +617,53 @@ export function TeacherReviewWorkspace({
 		}
 	}, [activeAnnotation, pagedManuscript.paragraphIdToPageIndex])
 
-	const captureSelection = () => {
+	const closeInlineComposer = () => {
+		setSelectedAnchor(null)
+		clearBrowserSelection()
+	}
+
+	const captureSelection = (
+		event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
+	) => {
+		if (shouldIgnoreSelectionTarget(event?.target ?? null)) {
+			return
+		}
+
 		if (isPublishedReadOnly) {
-			setSelectedAnchor(null)
+			closeInlineComposer()
 			return
 		}
 
-		const selection = window.getSelection()
-		if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-			return
-		}
-
-		const range = selection.getRangeAt(0)
-		const startParagraph = elementForSelectionNode(range.startContainer)?.closest(
-			'p[id^="p-"]',
-		) as HTMLParagraphElement | null
-		const endParagraph = elementForSelectionNode(range.endContainer)?.closest(
-			'p[id^="p-"]',
-		) as HTMLParagraphElement | null
+		const capturedSelection = captureManuscriptSelection(paragraphs)
 		const containerRect = mainRef.current?.getBoundingClientRect()
-
-		if (
-			!startParagraph ||
-			!endParagraph ||
-			!containerRect
-		) {
+		if (!capturedSelection || !containerRect) {
 			return
 		}
 
-		const startParagraphText = startParagraph.textContent ?? ''
-		const endParagraphText = endParagraph.textContent ?? ''
-		if (!startParagraphText || !endParagraphText) {
-			return
-		}
-
-		const startRange = range.cloneRange()
-		startRange.selectNodeContents(startParagraph)
-		startRange.setEnd(range.startContainer, range.startOffset)
-		const startOffset = startRange.toString().length
-
-		const endRange = range.cloneRange()
-		endRange.selectNodeContents(endParagraph)
-		endRange.setEnd(range.endContainer, range.endOffset)
-		const endOffset = endRange.toString().length
-		const isMultiBlockSelection = startParagraph.id !== endParagraph.id
-
-		if (
-			(!isMultiBlockSelection && endOffset <= startOffset) ||
-			(isMultiBlockSelection && endOffset < 0)
-		) {
-			return
-		}
-
-		const quote = isMultiBlockSelection
-			? selection.toString().trim()
-			: startParagraphText.slice(startOffset, endOffset)
-		if (!quote.trim()) {
-			return
-		}
-
-		const selectionRect = selectionPopupRect(range)
-		const composerTop = selectionRect.bottom - containerRect.top + 10
+		const composerTop =
+			capturedSelection.selectionRect.bottom - containerRect.top + 10
 		const composerLeft = Math.min(
-			Math.max(16, selectionRect.left - containerRect.left),
+			Math.max(16, capturedSelection.selectionRect.left - containerRect.left),
 			Math.max(16, containerRect.width - 320),
 		)
 
 		setComposerText('')
 		setSelectedAnchor({
-			blockId: startParagraph.id,
-			...(isMultiBlockSelection ? { endBlockId: endParagraph.id } : {}),
-			startOffset,
-			endOffset,
-			quote,
-			prefix: startParagraphText.slice(Math.max(0, startOffset - 24), startOffset),
-			suffix: endParagraphText.slice(
-				endOffset,
-				Math.min(endParagraphText.length, endOffset + 24),
-			),
+			blockId: capturedSelection.blockId,
+			endBlockId: capturedSelection.endBlockId,
+			startOffset: capturedSelection.startOffset,
+			endOffset: capturedSelection.endOffset,
+			quote: capturedSelection.quote,
+			prefix: capturedSelection.prefix,
+			suffix: capturedSelection.suffix,
 			composerTop,
 			composerLeft,
 		})
+		clearBrowserSelection()
 	}
 
 	const toggleAnnotation = (annotationId: string) => {
-		setSelectedAnchor(null)
+		closeInlineComposer()
 		setIsInlineEditingComment(false)
 		setActiveAnnotationId((current) =>
 			current === annotationId ? null : annotationId,
@@ -714,7 +671,7 @@ export function TeacherReviewWorkspace({
 	}
 
 	const focusAnnotation = (annotationId: string) => {
-		setSelectedAnchor(null)
+		closeInlineComposer()
 		setIsInlineEditingComment(false)
 		setActiveAnnotationId(annotationId)
 	}
@@ -867,7 +824,7 @@ export function TeacherReviewWorkspace({
 		}
 
 		setComposerText('')
-		setSelectedAnchor(null)
+		closeInlineComposer()
 
 		try {
 			const response = await fetch(
@@ -913,9 +870,7 @@ export function TeacherReviewWorkspace({
 						item.id === tempId ? payload.feedback! : item,
 					),
 				)
-				setActiveAnnotationId(
-					trimmedText.length > 120 ? `feedback:${payload.feedback.id}` : null,
-				)
+				setActiveAnnotationId(null)
 			}
 
 			if (annotationType === 'snippet' && payload?.snippet) {
@@ -1425,7 +1380,7 @@ export function TeacherReviewWorkspace({
 		setSidePanelError(null)
 		setSidePanelNotice(null)
 		setIsPanelSaving(true)
-		setSelectedAnchor(null)
+		closeInlineComposer()
 		setFeedbackItems((current) => [
 			...current,
 			{
@@ -1756,10 +1711,11 @@ export function TeacherReviewWorkspace({
 					</div>
 				) : null}
 				{selectedAnchor && !isPublishedReadOnly ? (
-					<form
-						ref={composerFormRef}
-						onSubmit={submitInlineAnnotation}
-						style={{
+						<form
+							ref={composerFormRef}
+							onSubmit={submitInlineAnnotation}
+							data-selection-ignore="true"
+							style={{
 							top: `${selectedAnchor.composerTop}px`,
 							left: `${selectedAnchor.composerLeft}px`,
 						}}
@@ -1816,11 +1772,11 @@ export function TeacherReviewWorkspace({
 										: 'Enter saves. Shift+Enter adds a new line.'}
 								</p>
 							</div>
-							<button
-								type="button"
-								disabled={isComposerSaving}
-								onClick={() => setSelectedAnchor(null)}
-								className="text-[11px] text-silver-200 transition hover:text-parchment-100">
+								<button
+									type="button"
+									disabled={isComposerSaving}
+									onClick={closeInlineComposer}
+									className="text-[11px] text-silver-200 transition hover:text-parchment-100">
 								Close
 							</button>
 						</div>
@@ -1852,11 +1808,13 @@ export function TeacherReviewWorkspace({
 							</button>
 						</div>
 					}>
-					{(currentPage?.paragraphs ?? []).map((paragraph) => {
-						const blockItems = annotationsByBlock[paragraph.id] ?? []
-						const activeBlockItem =
-							blockItems.find((item) => item.id === activeAnnotationId) ?? null
-						const isSceneBreak = paragraph.text.trim() === '**'
+						{(currentPage?.paragraphs ?? []).map((paragraph) => {
+							const blockItems = annotationsByBlock[paragraph.id] ?? []
+							const activeBlockItem =
+								blockItems.find((item) => item.id === activeAnnotationId) ?? null
+							const shouldShowActiveBlockItem =
+								activeBlockItem?.anchor.blockId === paragraph.id
+							const isSceneBreak = paragraph.text.trim() === '**'
 
 						return (
 							<div key={paragraph.id} className="space-y-3">
@@ -1871,7 +1829,7 @@ export function TeacherReviewWorkspace({
 										? '***'
 										: renderParagraphWithAnnotations(paragraph, blockItems)}
 								</p>
-								{activeBlockItem ? (
+								{shouldShowActiveBlockItem ? (
 									<div
 										className={`max-w-[44rem] rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.08)] ${annotationBorderClass(activeBlockItem.type)}`}>
 										<div className="flex flex-wrap items-center justify-between gap-2">
