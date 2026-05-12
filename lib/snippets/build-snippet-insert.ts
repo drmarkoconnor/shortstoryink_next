@@ -39,6 +39,8 @@ function normalizeAnchor(anchor: SelectionRangeAnchor): SelectionRangeAnchor {
 		sourceLicenceNote: anchor.sourceLicenceNote,
 		sourceTypeLabel: anchor.sourceTypeLabel,
 		snippetType: anchor.snippetType,
+		snippetStatus: anchor.snippetStatus,
+		snippetUseFlags: anchor.snippetUseFlags ?? [],
 	}
 }
 
