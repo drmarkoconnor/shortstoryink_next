@@ -6,6 +6,10 @@ import {
 	normalizeSnippetCategoryLabel,
 } from '@/lib/feedback/categories'
 import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
+import {
+	normalizeSnippetStatus,
+	normalizeSnippetUseFlags,
+} from '@/lib/snippets/workbench'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type SnippetPayload = {
@@ -13,6 +17,8 @@ type SnippetPayload = {
 	note?: string
 	categoryLabel?: string
 	tags?: string[]
+	status?: string
+	useFlags?: string[]
 }
 
 type SelectionAnchor = {
@@ -25,6 +31,8 @@ type SelectionAnchor = {
 	categoryLabel?: string
 	categorySlug?: string
 	tags?: string[]
+	snippetStatus?: string
+	snippetUseFlags?: string[]
 }
 
 function isSelectionAnchor(value: unknown): value is SelectionAnchor {
@@ -65,6 +73,7 @@ function toSnippetResponse(row: {
 	snippet_text: string
 	note: string | null
 	created_at: string
+	updated_at?: string | null
 	anchor: unknown
 }) {
 	const anchor = isSelectionAnchor(row.anchor) ? row.anchor : {}
@@ -81,6 +90,7 @@ function toSnippetResponse(row: {
 		text: row.snippet_text,
 		note: row.note ?? '',
 		createdAt: row.created_at,
+		updatedAt: row.updated_at ?? row.created_at,
 		categoryLabel,
 		categorySlug:
 			typeof anchor.categorySlug === 'string' && anchor.categorySlug.trim()
@@ -89,6 +99,8 @@ function toSnippetResponse(row: {
 					? 'uncategorised'
 					: feedbackSlug(categoryLabel),
 		tags,
+		status: normalizeSnippetStatus(anchor.snippetStatus),
+		useFlags: normalizeSnippetUseFlags(anchor.snippetUseFlags),
 	}
 }
 
@@ -104,6 +116,14 @@ export async function PATCH(
 	const note = String(payload.note ?? '').trim()
 	const categoryLabel = normalizeSnippetCategoryLabel(payload.categoryLabel)
 	const tags = normalizeTags(payload.tags)
+	const nextStatus =
+		payload.status === undefined
+			? null
+			: normalizeSnippetStatus(payload.status)
+	const nextUseFlags =
+		payload.useFlags === undefined
+			? null
+			: normalizeSnippetUseFlags(payload.useFlags)
 
 	if (!snippetId) {
 		return NextResponse.json({ error: 'Choose a snippet to update.' }, { status: 400 })
@@ -135,6 +155,9 @@ export async function PATCH(
 				? 'uncategorised'
 				: feedbackSlug(categoryLabel),
 		tags,
+		snippetStatus: nextStatus ?? normalizeSnippetStatus(existingAnchor.snippetStatus),
+		snippetUseFlags:
+			nextUseFlags ?? normalizeSnippetUseFlags(existingAnchor.snippetUseFlags),
 	}
 
 	const updatePayload = {
@@ -152,7 +175,7 @@ export async function PATCH(
 			})
 			.eq('id', snippetId)
 			.eq('saved_by', profile.user.id)
-			.select('id, snippet_text, note, created_at, anchor')
+			.select('id, snippet_text, note, created_at, updated_at, anchor')
 			.single()
 
 	let updateResult = await updateSnippet(true)
@@ -182,6 +205,7 @@ export async function PATCH(
 				snippet_text: string
 				note: string | null
 				created_at: string
+				updated_at?: string | null
 				anchor: unknown
 			},
 		),

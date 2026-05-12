@@ -28,4 +28,6 @@ export type SelectionRangeAnchor = {
 	sourceLicenceNote?: string
 	sourceTypeLabel?: string
 	snippetType?: string
+	snippetStatus?: string
+	snippetUseFlags?: string[]
 }

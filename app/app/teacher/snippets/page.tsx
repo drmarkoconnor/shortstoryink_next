@@ -7,6 +7,10 @@ import {
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { feedbackSlug, normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
+import {
+	normalizeSnippetStatus,
+	normalizeSnippetUseFlags,
+} from '@/lib/snippets/workbench'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
@@ -15,6 +19,7 @@ type SnippetRow = {
 	snippet_text: string
 	note: string | null
 	created_at: string
+	updated_at: string | null
 	anchor: unknown
 	source_submission_id: string | null
 	source_type: string | null
@@ -32,6 +37,8 @@ type SelectionAnchor = {
 	sourceName?: string
 	sourceUrl?: string
 	sourceSection?: string
+	snippetStatus?: unknown
+	snippetUseFlags?: unknown
 }
 
 function isSelectionAnchor(value: unknown): value is SelectionAnchor {
@@ -58,7 +65,7 @@ export default async function TeacherSnippetLibraryPage() {
 
 	const snippetsResult = await supabase
 		.from('snippets')
-		.select('id, snippet_text, note, created_at, anchor, source_submission_id, source_type')
+		.select('id, snippet_text, note, created_at, updated_at, anchor, source_submission_id, source_type')
 		.eq('saved_by', profile.user.id)
 		.order('created_at', { ascending: false })
 		.limit(teacherSnippetLibraryLimit)
@@ -75,6 +82,7 @@ export default async function TeacherSnippetLibraryPage() {
 				text: row.snippet_text,
 				note: row.note ?? '',
 				createdAt: row.created_at,
+				updatedAt: row.updated_at ?? row.created_at,
 				categoryLabel,
 				categorySlug:
 					typeof anchor?.categorySlug === 'string' && anchor.categorySlug.trim()
@@ -90,6 +98,8 @@ export default async function TeacherSnippetLibraryPage() {
 				sourceName: anchor?.sourceName ?? anchor?.originalSource ?? '',
 				sourceUrl: anchor?.sourceUrl ?? '',
 				sourceSection: anchor?.sourceSection ?? '',
+				status: normalizeSnippetStatus(anchor?.snippetStatus),
+				useFlags: normalizeSnippetUseFlags(anchor?.snippetUseFlags),
 			}
 		})
 	}
@@ -108,18 +118,17 @@ export default async function TeacherSnippetLibraryPage() {
 				}
 			/>
 
-			<div className="surface p-5 lg:p-6">
+			<div className="surface px-4 py-3">
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-							Snippet Library
+							Snippet Workbench
 						</p>
-						<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+						<h1 className="literary-title mt-1 text-2xl text-parchment-100">
 							Snippets
 						</h1>
-						<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-							Browse, tidy, and reuse saved teaching snippets without leaving the
-							review workflow behind.
+						<p className="muted mt-1 max-w-prose text-sm leading-relaxed">
+							Find, rank, tag, and prepare saved extracts for documents and classes.
 						</p>
 					</div>
 				</div>
