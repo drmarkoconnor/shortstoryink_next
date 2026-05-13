@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { ensureAbuMembership } from '@/lib/workshop/access-groups'
 
 export type AppRole = 'writer' | 'teacher' | 'admin'
 
-export async function getCurrentProfile() {
+export const getCurrentProfile = cache(async function getCurrentProfile() {
 	const user = await getCurrentUser()
 	const adminSupabase = createAdminSupabaseClient()
 
@@ -44,17 +45,19 @@ export async function getCurrentProfile() {
 		role = 'writer'
 	}
 
-	try {
-		await ensureAbuMembership(user.id)
-	} catch (membershipError) {
-		console.error('[getCurrentProfile] Failed to ensure ABU membership:', {
-			userId: user.id,
-			membershipError,
-		})
+	if (role === 'writer') {
+		try {
+			await ensureAbuMembership(user.id)
+		} catch (membershipError) {
+			console.error('[getCurrentProfile] Failed to ensure ABU membership:', {
+				userId: user.id,
+				membershipError,
+			})
+		}
 	}
 
 	return { user, role, profileFound }
-}
+})
 
 export async function requireTeacher() {
 	const profile = await getCurrentProfile()

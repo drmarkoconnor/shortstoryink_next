@@ -13,6 +13,7 @@ import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
+import { isCuratedSnippet } from '@/lib/snippets/curation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
 	teacherLibraryItemLimit,
@@ -77,6 +78,8 @@ type SelectionAnchor = {
 	sourceUrl?: string
 	sourceSection?: string
 	sourceTypeLabel?: string
+	snippetStatus?: unknown
+	snippetUseFlags?: unknown
 }
 
 function isSchemaCacheMissing(message: string | null | undefined) {
@@ -261,8 +264,19 @@ export default async function TeacherDocumentsPage() {
 	if (snippetsResult.error) {
 		snippetsError = snippetsResult.error.message
 	} else {
-		snippets = ((snippetsResult.data ?? []) as SnippetRow[]).map((row) => {
+		snippets = ((snippetsResult.data ?? []) as SnippetRow[]).flatMap((row) => {
 			const anchor = isSelectionAnchor(row.anchor) ? row.anchor : null
+			const categoryLabel = categoryFromAnchor(anchor)
+			const tags = tagsFromAnchor(anchor)
+			if (
+				!isCuratedSnippet({
+					categoryLabel,
+					status: anchor?.snippetStatus,
+					useFlags: anchor?.snippetUseFlags,
+				})
+			) {
+				return []
+			}
 			const sourceMetadata: SnippetSourceMetadata = {
 				sourceType: row.source_type ?? undefined,
 				sourceSubmissionId: row.source_submission_id,
@@ -288,8 +302,8 @@ export default async function TeacherDocumentsPage() {
 				id: row.id,
 				text: row.snippet_text,
 				note: row.note ?? '',
-				categoryLabel: categoryFromAnchor(anchor),
-				tags: tagsFromAnchor(anchor),
+				categoryLabel,
+				tags,
 				sourceMetadata,
 			}
 		})

@@ -191,13 +191,38 @@ export default async function TeacherStudioPage() {
 	let snippets: SnippetMetricRow[] = []
 	let documents: DocumentMetricRow[] = []
 	let recentSourceSnippets: SnippetMetricRow[] = []
+	let feedbackMemoryCount = 0
 	let loadError: string | null = null
 
-	const snippetsResult = await supabase
-		.from('snippets')
-		.select('id, anchor, note, source_type, created_at, snippet_text')
-		.eq('saved_by', profile.user.id)
-		.limit(teacherSnippetLibraryLimit)
+	const [
+		snippetsResult,
+		documentsResult,
+		recentSourcesResult,
+		feedbackMemoryCountResult,
+	] = await Promise.all([
+		supabase
+			.from('snippets')
+			.select('id, anchor, note, source_type, created_at, snippet_text')
+			.eq('saved_by', profile.user.id)
+			.limit(teacherSnippetLibraryLimit),
+		supabase
+			.from('teacher_documents')
+			.select('id, title, updated_at')
+			.eq('owner_id', profile.user.id)
+			.order('updated_at', { ascending: false })
+			.limit(5),
+		supabase
+			.from('snippets')
+			.select('id, anchor, source_type, created_at, snippet_text')
+			.eq('saved_by', profile.user.id)
+			.eq('source_type', 'external')
+			.order('created_at', { ascending: false })
+			.limit(5),
+		supabase
+			.from('feedback_items')
+			.select('id', { count: 'exact', head: true })
+			.eq('author_id', profile.user.id),
+	])
 
 	if (snippetsResult.error) {
 		loadError = snippetsResult.error.message
@@ -205,27 +230,15 @@ export default async function TeacherStudioPage() {
 		snippets = (snippetsResult.data ?? []) as SnippetMetricRow[]
 	}
 
-	const documentsResult = await supabase
-		.from('teacher_documents')
-		.select('id, title, updated_at')
-		.eq('owner_id', profile.user.id)
-		.order('updated_at', { ascending: false })
-		.limit(5)
-
 	if (!documentsResult.error) {
 		documents = (documentsResult.data ?? []) as DocumentMetricRow[]
 	}
 
-	const recentSourcesResult = await supabase
-		.from('snippets')
-		.select('id, anchor, source_type, created_at, snippet_text')
-		.eq('saved_by', profile.user.id)
-		.eq('source_type', 'external')
-		.order('created_at', { ascending: false })
-		.limit(5)
-
 	if (!recentSourcesResult.error) {
 		recentSourceSnippets = (recentSourcesResult.data ?? []) as SnippetMetricRow[]
+	}
+	if (!feedbackMemoryCountResult.error) {
+		feedbackMemoryCount = feedbackMemoryCountResult.count ?? 0
 	}
 
 	const totalSnippets = snippets.length
@@ -380,6 +393,27 @@ export default async function TeacherStudioPage() {
 							</h2>
 							<p className="mt-2 text-sm leading-relaxed text-silver-300">
 								Search notes, examples, and lightweight references for fast reuse.
+							</p>
+						</Link>
+						<Link
+							href="/app/teacher/feedback-memory"
+							className="surface block p-5 transition hover:border-white/20 hover:bg-white/[0.04]">
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+										New
+									</p>
+									<h2 className="mt-2 text-lg font-semibold text-parchment-100">
+										Feedback Memory
+									</h2>
+								</div>
+								<p className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100">
+									{feedbackMemoryCount}
+								</p>
+							</div>
+							<p className="mt-2 text-sm leading-relaxed text-silver-300">
+								Search previous comments and anchored writer quotes by writer,
+								story, category, or craft pattern.
 							</p>
 						</Link>
 						<Link

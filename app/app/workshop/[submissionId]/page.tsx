@@ -2,7 +2,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { TeacherReviewWorkspace } from '@/components/teacher/review-workspace'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
+import {
+	feedbackSlug,
+	fixedFeedbackCategories,
+	normalizeFeedbackLabel,
+} from '@/lib/feedback/categories'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
+import { isCuratedSnippet } from '@/lib/snippets/curation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
@@ -21,6 +27,8 @@ type SelectionAnchor = {
 	categorySlug?: string
 	tags?: unknown[]
 	suggestedAction?: 'cut'
+	snippetStatus?: unknown
+	snippetUseFlags?: unknown
 }
 
 function isSelectionAnchor(value: unknown): value is SelectionAnchor {
@@ -55,6 +63,20 @@ function reviewStatusLabel(status: string) {
 		return 'Published'
 	}
 	return status.replaceAll('_', ' ')
+}
+
+function feedbackCategoryFromAnchor(anchor: SelectionAnchor | null) {
+	const label =
+		typeof anchor?.categoryLabel === 'string' ? anchor.categoryLabel.trim() : ''
+	return fixedFeedbackCategories.includes(label)
+		? label
+		: normalizeFeedbackLabel(label, anchor?.suggestedAction)
+}
+
+function feedbackTagsFromAnchor(anchor: SelectionAnchor | null) {
+	return Array.isArray(anchor?.tags)
+		? anchor.tags.map((tag) => String(tag).trim()).filter(Boolean)
+		: []
 }
 
 function unpackLegacyCommentBody(body: string) {
@@ -175,7 +197,20 @@ export default async function WorkshopSubmissionPage({
 			categoryLabel?: string
 			categorySlug?: string
 			tags?: string[]
-		} | null
+			} | null
+	}> = []
+	let feedbackMemory: Array<{
+		id: string
+		submissionId: string
+		submissionTitle: string
+		writerLabel: string
+		version: number | null
+		comment: string
+		quote: string
+		categoryLabel: string
+		categorySlug: string
+		tags: string[]
+		createdAt: string
 	}> = []
 
 	let modernSubmissionResult = await supabase
@@ -365,55 +400,69 @@ export default async function WorkshopSubmissionPage({
 				created_at: string
 				anchor: unknown
 			}>
-		)
-			.map((item) => {
-				const anchor = isSelectionAnchor(item.anchor)
-					? {
-							blockId: item.anchor.blockId ?? '',
-							endBlockId:
-								typeof item.anchor.endBlockId === 'string'
-									? item.anchor.endBlockId
-									: undefined,
-							startOffset: Number(item.anchor.startOffset ?? -1),
-							endOffset: Number(item.anchor.endOffset ?? -1),
-							quote: item.anchor.quote ?? '',
-							prefix: item.anchor.prefix,
-							suffix: item.anchor.suffix,
-							categoryLabel:
-								typeof item.anchor.categoryLabel === 'string'
-									? item.anchor.categoryLabel
-									: undefined,
-							categorySlug:
-								typeof item.anchor.categorySlug === 'string'
-									? item.anchor.categorySlug
-									: undefined,
-							tags: Array.isArray(item.anchor.tags)
-								? item.anchor.tags
-										.map((tag: unknown) => String(tag).trim())
-										.filter(Boolean)
-								: [],
-						}
-					: null
-				const categoryLabel =
-					anchor?.categoryLabel && anchor.categoryLabel.trim()
-						? anchor.categoryLabel
-						: 'Uncategorised'
+			)
+				.flatMap((item) => {
+					const sourceAnchor = isSelectionAnchor(item.anchor) ? item.anchor : null
+					const anchor = sourceAnchor
+						? {
+								blockId: sourceAnchor.blockId ?? '',
+								endBlockId:
+									typeof sourceAnchor.endBlockId === 'string'
+										? sourceAnchor.endBlockId
+										: undefined,
+								startOffset: Number(sourceAnchor.startOffset ?? -1),
+								endOffset: Number(sourceAnchor.endOffset ?? -1),
+								quote: sourceAnchor.quote ?? '',
+								prefix: sourceAnchor.prefix,
+								suffix: sourceAnchor.suffix,
+								categoryLabel:
+									typeof sourceAnchor.categoryLabel === 'string'
+										? sourceAnchor.categoryLabel
+										: undefined,
+								categorySlug:
+									typeof sourceAnchor.categorySlug === 'string'
+										? sourceAnchor.categorySlug
+										: undefined,
+								tags: Array.isArray(sourceAnchor.tags)
+									? sourceAnchor.tags
+											.map((tag: unknown) => String(tag).trim())
+											.filter(Boolean)
+									: [],
+							}
+						: null
+					const categoryLabel =
+						anchor?.categoryLabel && anchor.categoryLabel.trim()
+							? anchor.categoryLabel
+							: 'Uncategorised'
+					const text = String(item.note ?? '').trim() || item.snippet_text
 
-				return {
-					id: item.id,
-					text: String(item.note ?? '').trim() || item.snippet_text,
-					createdAt: item.created_at,
-					categoryLabel,
-					categorySlug:
-						anchor?.categorySlug && anchor.categorySlug.trim()
-							? anchor.categorySlug
-							: categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') ||
-								'uncategorised',
-					tags: anchor?.tags ?? [],
-					anchor,
-				}
-			})
-			.filter((item) => item.text.trim() || item.anchor?.quote.trim())
+					if (
+						(!text.trim() && !anchor?.quote.trim()) ||
+						!isCuratedSnippet({
+							categoryLabel,
+							status: sourceAnchor?.snippetStatus,
+							useFlags: sourceAnchor?.snippetUseFlags,
+						})
+					) {
+						return []
+					}
+
+					return {
+						id: item.id,
+						text,
+						createdAt: item.created_at,
+						categoryLabel,
+						categorySlug:
+							anchor?.categorySlug && anchor.categorySlug.trim()
+								? anchor.categorySlug
+								: categoryLabel
+										.toLowerCase()
+										.replace(/[^a-z0-9]+/g, '-')
+										.replace(/^-+|-+$/g, '') || 'uncategorised',
+						tags: anchor?.tags ?? [],
+						anchor,
+					}
+				})
 	} else {
 		schemaMode = 'legacy'
 
@@ -526,6 +575,70 @@ export default async function WorkshopSubmissionPage({
 		}))
 	}
 
+	if (schemaMode === 'modern' && currentAuthorId) {
+		const writerSubmissionsResult = await supabase
+			.from('submissions')
+			.select('id, title, status, version, created_at')
+			.eq('author_id', currentAuthorId)
+			.order('created_at', { ascending: false })
+			.limit(60)
+
+		const writerSubmissions = ((writerSubmissionsResult.data ?? []) as Array<{
+			id: string
+			title: string
+			status: string
+			version: number | null
+			created_at: string
+		}>).filter((item) => item.id !== submissionId)
+		const writerSubmissionIds = writerSubmissions.map((item) => item.id)
+		const submissionById = Object.fromEntries(
+			writerSubmissions.map((item) => [item.id, item]),
+		)
+
+		if (writerSubmissionIds.length > 0) {
+			const memoryResult = await supabase
+				.from('feedback_items')
+				.select('id, submission_id, comment, anchor, created_at')
+				.eq('author_id', profile.user.id)
+				.in('submission_id', writerSubmissionIds)
+				.order('created_at', { ascending: false })
+				.limit(80)
+
+			feedbackMemory = ((memoryResult.data ?? []) as Array<{
+				id: string
+				submission_id: string
+				comment: string
+				anchor: unknown
+				created_at: string
+			}>)
+				.map((item) => {
+					const submission = submissionById[item.submission_id]
+					if (!submission) {
+						return null
+					}
+					const anchor = isSelectionAnchor(item.anchor) ? item.anchor : null
+					const categoryLabel = feedbackCategoryFromAnchor(anchor)
+					return {
+						id: item.id,
+						submissionId: item.submission_id,
+						submissionTitle: submission.title || 'Untitled',
+						writerLabel: writerName,
+						version: submission.version,
+						comment: item.comment,
+						quote: typeof anchor?.quote === 'string' ? anchor.quote : '',
+						categoryLabel,
+						categorySlug:
+							categoryLabel === 'Uncategorised'
+								? 'uncategorised'
+								: feedbackSlug(categoryLabel),
+						tags: feedbackTagsFromAnchor(anchor),
+						createdAt: item.created_at,
+					}
+				})
+				.filter((item): item is NonNullable<typeof item> => Boolean(item))
+		}
+	}
+
 	const latestVersionEntry =
 		versionHistory.length > 0 ? versionHistory[versionHistory.length - 1] : null
 
@@ -539,6 +652,7 @@ export default async function WorkshopSubmissionPage({
 				feedback={feedback}
 				snippets={snippets}
 				snippetLibrary={snippetLibrary}
+				feedbackMemory={feedbackMemory}
 				notice={notice}
 				errorNotice={errorNotice}
 				initialActiveAnnotationId={toMessage(query.focus)}

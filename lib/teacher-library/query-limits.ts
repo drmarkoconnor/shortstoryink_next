@@ -1,5 +1,6 @@
 export const teacherSnippetLibraryLimit = 2000
 export const teacherLibraryItemLimit = 2000
+export const teacherFeedbackMemoryLimit = 600
 
 export const teacherLibraryLimitWarningRatio = 0.9
 

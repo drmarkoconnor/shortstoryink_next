@@ -4,7 +4,7 @@ import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCurrentProfile } from '@/lib/auth/get-current-profile'
+import type { User } from '@supabase/supabase-js'
 
 const writerNavItems = [
 	{ href: '/app/writer', label: 'Write' },
@@ -19,6 +19,7 @@ const teacherNavItems = [
 	{ href: '/app/teacher/review-desk', label: 'Review' },
 	{ href: '/app/teacher/groups', label: 'Groups' },
 	{ href: '/app/teacher-studio', label: 'Studio' },
+	{ href: '/app/teacher/feedback-memory', label: 'Memory' },
 	{ href: '/app/teacher/examples', label: 'Examples' },
 	{ href: '/app/teacher/archive', label: 'Archive' },
 ]
@@ -26,13 +27,14 @@ const teacherNavItems = [
 export async function AppFrame({
 	children,
 	role,
+	user,
 }: {
 	children: ReactNode
 	role: AppRole
+	user: User
 }) {
-	const profile = await getCurrentProfile()
-	const userEmail = profile.user?.email || ''
-	const displayName = profile.user?.user_metadata?.display_name || userEmail
+	const userEmail = user.email || ''
+	const displayName = user.user_metadata?.display_name || user.user_metadata?.name || userEmail
 
 	async function signOutAction() {
 		'use server'

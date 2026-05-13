@@ -8,6 +8,7 @@ import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
+import { isCuratedSnippet } from '@/lib/snippets/curation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
 	teacherLibraryItemLimit,
@@ -51,6 +52,8 @@ type SelectionAnchor = {
 	sourceAuthor?: string
 	sourceTitle?: string
 	sourceName?: string
+	snippetStatus?: unknown
+	snippetUseFlags?: unknown
 }
 
 function isSchemaCacheMissing(message: string | null | undefined) {
@@ -166,20 +169,32 @@ export default async function TeacherLibraryPage() {
 	if (snippetsResult.error) {
 		loadError = snippetsResult.error.message
 	} else {
-		const examples = ((snippetsResult.data ?? []) as SnippetRow[]).map((row) => {
-			const anchor = isSelectionAnchor(row.anchor) ? row.anchor : null
-			return {
-				id: row.id,
-				itemType: 'example' as const,
-				title: row.note?.trim() ? row.note.trim() : 'Teaching example',
-				body: row.snippet_text,
-				note: row.note ?? '',
-				categoryLabel: categoryFromAnchor(anchor),
-				tags: tagsFromAnchor(anchor),
-				updatedAt: row.updated_at ?? row.created_at,
-				sourceLabel: sourceLabelFromAnchor(anchor, teacherName),
-			}
-		})
+		const examples = ((snippetsResult.data ?? []) as SnippetRow[])
+			.flatMap((row) => {
+				const anchor = isSelectionAnchor(row.anchor) ? row.anchor : null
+				const categoryLabel = categoryFromAnchor(anchor)
+				const tags = tagsFromAnchor(anchor)
+				if (
+					!isCuratedSnippet({
+						categoryLabel,
+						status: anchor?.snippetStatus,
+						useFlags: anchor?.snippetUseFlags,
+					})
+				) {
+					return []
+				}
+				return {
+					id: row.id,
+					itemType: 'example' as const,
+					title: row.note?.trim() ? row.note.trim() : 'Teaching example',
+					body: row.snippet_text,
+					note: row.note ?? '',
+					categoryLabel,
+					tags,
+					updatedAt: row.updated_at ?? row.created_at,
+					sourceLabel: sourceLabelFromAnchor(anchor, teacherName),
+				}
+			})
 		entries = [...entries, ...examples].sort((a, b) =>
 			b.updatedAt.localeCompare(a.updatedAt),
 		)
@@ -207,7 +222,7 @@ export default async function TeacherLibraryPage() {
 					Library
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-					Reusable teaching notes, saved examples, and lightweight references
+					Reusable teaching notes, curated examples, and lightweight references
 					for quick recall and document insertion.
 				</p>
 			</div>

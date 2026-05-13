@@ -1,8 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type FormEvent,
+} from 'react'
 import {
 	fixedSnippetCategories,
 	normalizeSnippetLabel,
@@ -249,13 +255,15 @@ export function SnippetLibrary({
 	const [bulkTags, setBulkTags] = useState('')
 	const [aiSuggestions, setAiSuggestions] = useState<Record<string, TriageSuggestion>>({})
 	const [selectedAiSuggestionIds, setSelectedAiSuggestionIds] = useState<string[]>([])
+	const [focusedTableSnippetIds, setFocusedTableSnippetIds] = useState<string[]>([])
+	const [lastFailedTriageIds, setLastFailedTriageIds] = useState<string[]>([])
 	const [isTriaging, setIsTriaging] = useState(false)
 	const [savingSnippetId, setSavingSnippetId] = useState<string | null>(null)
 	const [deletingSnippetId, setDeletingSnippetId] = useState<string | null>(null)
 	const [selectedSnippetIds, setSelectedSnippetIds] = useState<string[]>([])
 	const [notice, setNotice] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
-	const router = useRouter()
+	const tableSectionRef = useRef<HTMLDivElement | null>(null)
 
 	const clearMessages = useCallback(() => {
 		setNotice(null)
@@ -345,8 +353,13 @@ export function SnippetLibrary({
 	const filteredSnippets = useMemo(() => {
 		const query = searchQuery.trim().toLowerCase()
 		const tagQuery = tagFilter.trim().toLowerCase()
+		const focusedSet = new Set(focusedTableSnippetIds)
+		const source =
+			focusedTableSnippetIds.length > 0
+				? snippets.filter((snippet) => focusedSet.has(snippet.id))
+				: snippets
 
-		const filtered = snippets.filter((snippet) => {
+		const filtered = source.filter((snippet) => {
 			if (categoryFilter === 'uncategorised' && snippet.categoryLabel !== 'Uncategorised') {
 				return false
 			}
@@ -437,6 +450,7 @@ export function SnippetLibrary({
 		statusFilter,
 		tagFilter,
 		useFilter,
+		focusedTableSnippetIds,
 	])
 
 	const visibleSnippetIds = useMemo(
@@ -533,6 +547,12 @@ export function SnippetLibrary({
 		setSelectedAiSuggestionIds((current) =>
 			current.filter((id) => snippets.some((snippet) => snippet.id === id)),
 		)
+		setFocusedTableSnippetIds((current) =>
+			current.filter((id) => snippets.some((snippet) => snippet.id === id)),
+		)
+		setLastFailedTriageIds((current) =>
+			current.filter((id) => snippets.some((snippet) => snippet.id === id)),
+		)
 		setAiSuggestions((current) => {
 			const validIds = new Set(snippets.map((snippet) => snippet.id))
 			return Object.fromEntries(
@@ -594,73 +614,73 @@ export function SnippetLibrary({
 		clearMessages()
 	}
 
-	const saveActiveSnippet = useCallback(async (
-		options: { keepalive?: boolean; silent?: boolean } = {},
-	) => {
-		if (!activeSnippet) {
-			return
-		}
-
-		const next = currentDraft()
-		if (!next) {
-			setError('Snippet text cannot be empty.')
-			return
-		}
-
-		if (!hasSnippetChanges(activeSnippet, next)) {
-			if (!options.silent) {
-				setNotice('No changes to save.')
-			}
-			return
-		}
-
-		if (!options.silent) {
-			setSavingSnippetId(activeSnippet.id)
-			clearMessages()
-		}
-
-		try {
-			const response = await fetch(`/api/teacher/snippets/${activeSnippet.id}`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				keepalive: options.keepalive,
-				body: JSON.stringify(next),
-			})
-			const payload = (await response.json()) as
-				| { error?: string; notice?: string; snippet?: SavedSnippet }
-				| undefined
-
-			if (!response.ok || payload?.error || !payload?.snippet) {
-				throw new Error(payload?.error ?? 'Unable to save snippet.')
+	const saveActiveSnippet = useCallback(
+		async (options: { keepalive?: boolean; silent?: boolean } = {}) => {
+			if (!activeSnippet) {
+				return
 			}
 
-			setSnippets((current) =>
-				current.map((item) =>
-					item.id === activeSnippet.id
-						? responseToSnippet(item, payload.snippet as SavedSnippet)
-						: item,
-				),
-			)
-			if (!options.silent) {
-				setNotice(payload.notice ?? 'Snippet updated.')
+			const next = currentDraft()
+			if (!next) {
+				setError('Snippet text cannot be empty.')
+				return
 			}
-			router.refresh()
-		} catch (saveError) {
+
+			if (!hasSnippetChanges(activeSnippet, next)) {
+				if (!options.silent) {
+					setNotice('No changes to save.')
+				}
+				return
+			}
+
 			if (!options.silent) {
-				setError(
-					saveError instanceof Error
-						? saveError.message
-						: 'Unable to save snippet.',
+				setSavingSnippetId(activeSnippet.id)
+				clearMessages()
+			}
+
+			try {
+				const response = await fetch(`/api/teacher/snippets/${activeSnippet.id}`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					keepalive: options.keepalive,
+					body: JSON.stringify(next),
+				})
+				const payload = (await response.json()) as
+					| { error?: string; notice?: string; snippet?: SavedSnippet }
+					| undefined
+
+				if (!response.ok || payload?.error || !payload?.snippet) {
+					throw new Error(payload?.error ?? 'Unable to save snippet.')
+				}
+
+				setSnippets((current) =>
+					current.map((item) =>
+						item.id === activeSnippet.id
+							? responseToSnippet(item, payload.snippet as SavedSnippet)
+							: item,
+					),
 				)
+				if (!options.silent) {
+					setNotice(payload.notice ?? 'Snippet updated.')
+				}
+			} catch (saveError) {
+				if (!options.silent) {
+					setError(
+						saveError instanceof Error
+							? saveError.message
+							: 'Unable to save snippet.',
+					)
+				}
+			} finally {
+				if (!options.silent) {
+					setSavingSnippetId(null)
+				}
 			}
-		} finally {
-			if (!options.silent) {
-				setSavingSnippetId(null)
-			}
-		}
-	}, [activeSnippet, clearMessages, currentDraft, router])
+		},
+		[activeSnippet, clearMessages, currentDraft],
+	)
 
 	const saveSnippet = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -745,7 +765,6 @@ export function SnippetLibrary({
 				current.filter((id) => id !== snippet.id),
 			)
 			setNotice(payload?.notice ?? 'Snippet deleted.')
-			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setError(
@@ -855,7 +874,6 @@ export function SnippetLibrary({
 					? 'Snippet updated.'
 					: `${responses.length} snippets updated.`,
 			)
-			router.refresh()
 		} catch (bulkError) {
 			setError(
 				bulkError instanceof Error
@@ -867,8 +885,14 @@ export function SnippetLibrary({
 		}
 	}
 
-	const runAiTriage = async () => {
-		if (aiTargetSnippets.length === 0) {
+	const runAiTriage = async (retrySnippetIds: string[] = []) => {
+		const retrySet = new Set(retrySnippetIds)
+		const targetSnippets =
+			retrySnippetIds.length > 0
+				? snippets.filter((snippet) => retrySet.has(snippet.id))
+				: aiTargetSnippets
+
+		if (targetSnippets.length === 0) {
 			setError('No uncategorised snippets are visible for AI triage.')
 			return
 		}
@@ -883,7 +907,7 @@ export function SnippetLibrary({
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({
-					snippetIds: aiTargetSnippets.map((snippet) => snippet.id),
+					snippetIds: targetSnippets.map((snippet) => snippet.id),
 				}),
 			})
 			const payload = (await response.json()) as
@@ -913,8 +937,10 @@ export function SnippetLibrary({
 					.filter((suggestion) => suggestion.confidence === 'high')
 					.map((suggestion) => suggestion.id),
 			])
+			setLastFailedTriageIds([])
 			setNotice(payload.notice ?? 'AI triage suggestions ready.')
 		} catch (triageError) {
+			setLastFailedTriageIds(targetSnippets.map((snippet) => snippet.id))
 			setError(
 				triageError instanceof Error
 					? triageError.message
@@ -952,21 +978,21 @@ export function SnippetLibrary({
 					}
 
 					const suggestedCategory = normalizeSnippetLabel(suggestion.categoryLabel)
-						const next: SnippetUpdate = {
-							text: cleanSnippetText(snippet.text),
-							note: snippet.note.trim(),
-							categoryLabel:
-								suggestedCategory === 'Uncategorised'
-									? snippet.categoryLabel
-									: suggestedCategory,
-							tags: mergeTags(snippet.tags, suggestion.tags),
-							status:
-								suggestion.recommendFavourite ||
-								suggestion.recommendedStatus === 'favourite'
-									? 'favourite'
-									: suggestion.recommendedStatus,
-							useFlags: [
-								...new Set([...snippet.useFlags, ...suggestion.useFlags]),
+					const next: SnippetUpdate = {
+						text: cleanSnippetText(snippet.text),
+						note: snippet.note.trim(),
+						categoryLabel:
+							suggestedCategory === 'Uncategorised'
+								? snippet.categoryLabel
+								: suggestedCategory,
+						tags: mergeTags(snippet.tags, suggestion.tags),
+						status:
+							suggestion.recommendFavourite ||
+							suggestion.recommendedStatus === 'favourite'
+								? 'favourite'
+								: suggestion.recommendedStatus,
+						useFlags: [
+							...new Set([...snippet.useFlags, ...suggestion.useFlags]),
 						],
 					}
 
@@ -997,7 +1023,6 @@ export function SnippetLibrary({
 					? 'AI suggestion applied.'
 					: `${responses.length} AI suggestions applied.`,
 			)
-			router.refresh()
 		} catch (applyError) {
 			setError(
 				applyError instanceof Error
@@ -1045,7 +1070,6 @@ export function SnippetLibrary({
 				current.filter((id) => id !== snippet.id),
 			)
 			setNotice(payload?.notice ?? 'Snippet deleted.')
-			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setAiSuggestions(previousAiSuggestions)
@@ -1128,7 +1152,6 @@ export function SnippetLibrary({
 					? 'Snippet deleted.'
 					: `${responses.length} snippets deleted.`,
 			)
-			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setAiSuggestions(previousAiSuggestions)
@@ -1196,7 +1219,6 @@ export function SnippetLibrary({
 					? 'Snippet deleted.'
 					: `${responses.length} snippets deleted.`,
 			)
-			router.refresh()
 		} catch (deleteError) {
 			setSnippets(previousSnippets)
 			setSelectedSnippetIds(previousSelectedIds)
@@ -1241,8 +1263,29 @@ export function SnippetLibrary({
 			...current,
 			...aiSuggestionEntries
 				.map((entry) => entry.suggestion.id)
-				.filter((id) => !current.includes(id)),
+			.filter((id) => !current.includes(id)),
 		])
+	}
+
+	const showAiSuggestionsInTable = () => {
+		const suggestionIds = aiSuggestionEntries.map((entry) => entry.suggestion.id)
+		if (suggestionIds.length === 0) {
+			return
+		}
+
+		setSearchQuery('')
+		setCategoryFilter('')
+		setStatusFilter('')
+		setUseFilter('')
+		setSourceFilter('')
+		setNoteFilter('')
+		setTagFilter('')
+		setFocusedTableSnippetIds(suggestionIds)
+		setNotice(`${suggestionIds.length} AI reviewed rows shown in the table.`)
+		setError(null)
+		window.requestAnimationFrame(() => {
+			tableSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+		})
 	}
 
 	return (
@@ -1428,19 +1471,30 @@ export function SnippetLibrary({
 							}}
 							disabled={isTriaging || aiTargetSnippets.length === 0}
 							className="rounded-full border border-accent-300/50 bg-accent-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-300/20 disabled:cursor-not-allowed disabled:opacity-50">
-								{isTriaging
-									? 'AI triaging...'
-									: `AI triage (${aiTargetSnippets.length})`}
+							{isTriaging
+								? 'AI triaging...'
+								: `AI triage (${aiTargetSnippets.length})`}
+						</button>
+						{lastFailedTriageIds.length > 0 ? (
+							<button
+								type="button"
+								onClick={() => {
+									void runAiTriage(lastFailedTriageIds)
+								}}
+								disabled={isTriaging}
+								className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-amber-100 transition hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:opacity-50">
+								Try again
 							</button>
-							{Object.keys(aiSuggestions).length > 0 ? (
-								<button
-									type="button"
-									onClick={() => {
-										setAiSuggestions({})
-										setSelectedAiSuggestionIds([])
-									}}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-									Clear AI
+						) : null}
+						{Object.keys(aiSuggestions).length > 0 ? (
+							<button
+								type="button"
+								onClick={() => {
+									setAiSuggestions({})
+									setSelectedAiSuggestionIds([])
+								}}
+								className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								Clear AI
 							</button>
 						) : null}
 						<button
@@ -1460,6 +1514,7 @@ export function SnippetLibrary({
 								setSourceFilter('')
 								setNoteFilter('')
 								setTagFilter('')
+								setFocusedTableSnippetIds([])
 								clearMessages()
 							}}
 							className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
@@ -1577,16 +1632,7 @@ export function SnippetLibrary({
 							</button>
 							<button
 								type="button"
-								onClick={() => {
-									setCategoryFilter('')
-									setStatusFilter('')
-									setUseFilter('')
-									setSourceFilter('')
-									setNoteFilter('')
-									setTagFilter('')
-									setSearchQuery('')
-									clearMessages()
-								}}
+								onClick={showAiSuggestionsInTable}
 								className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
 								Show in table
 							</button>
@@ -1719,16 +1765,28 @@ export function SnippetLibrary({
 						? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]'
 						: ''
 				}>
-				<main className="surface overflow-hidden">
-					<div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-						<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
-							Library rows
-						</p>
-						<p className="text-xs text-silver-300">
-							Click a text cell to edit. Best first uses favourite, ready, then
-							reviewed.
-						</p>
-					</div>
+					<main ref={tableSectionRef} className="surface overflow-hidden">
+						<div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								{focusedTableSnippetIds.length > 0
+									? 'AI reviewed rows'
+									: 'Library rows'}
+							</p>
+							<div className="flex flex-wrap items-center gap-2">
+								<p className="text-xs text-silver-300">
+									Click a text cell to edit. Best first uses favourite, ready, then
+									reviewed.
+								</p>
+								{focusedTableSnippetIds.length > 0 ? (
+									<button
+										type="button"
+										onClick={() => setFocusedTableSnippetIds([])}
+										className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+										Show all
+									</button>
+								) : null}
+							</div>
+						</div>
 
 					{filteredSnippets.length === 0 ? (
 						<p className="px-3 py-6 text-sm text-silver-300">

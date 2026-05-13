@@ -7,6 +7,7 @@ export const teacherTabs = [
 	{ href: '/app/teacher/review-desk', label: 'Review' },
 	{ href: '/app/teacher/groups', label: 'Groups' },
 	{ href: '/app/teacher-studio', label: 'Studio' },
+	{ href: '/app/teacher/feedback-memory', label: 'Memory' },
 	{ href: '/app/teacher/archive', label: 'Archive' },
 ]
 

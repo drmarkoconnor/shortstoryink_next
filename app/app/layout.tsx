@@ -8,5 +8,9 @@ export default async function AppLayout({
 	children: ReactNode
 }) {
 	const profile = await getCurrentProfile()
-	return <AppFrame role={profile.role}>{children}</AppFrame>
+	return (
+		<AppFrame role={profile.role} user={profile.user}>
+			{children}
+		</AppFrame>
+	)
 }

@@ -78,6 +78,20 @@ type SnippetLibraryItem = {
 	anchor: FeedbackAnchor | null
 }
 
+type FeedbackMemoryItem = {
+	id: string
+	submissionId: string
+	submissionTitle: string
+	writerLabel: string
+	version: number | null
+	comment: string
+	quote: string
+	categoryLabel: string
+	categorySlug: string
+	tags: string[]
+	createdAt: string
+}
+
 type SelectedAnchor = {
 	blockId: string
 	endBlockId?: string
@@ -293,6 +307,7 @@ export function TeacherReviewWorkspace({
 	feedback,
 	snippets,
 	snippetLibrary,
+	feedbackMemory,
 	notice,
 	errorNotice,
 	initialActiveAnnotationId,
@@ -310,6 +325,7 @@ export function TeacherReviewWorkspace({
 	feedback: FeedbackItem[]
 	snippets: SnippetItem[]
 	snippetLibrary: SnippetLibraryItem[]
+	feedbackMemory: FeedbackMemoryItem[]
 	notice: string | null
 	errorNotice: string | null
 	initialActiveAnnotationId?: string | null
@@ -340,6 +356,7 @@ export function TeacherReviewWorkspace({
 	const [feedbackItems, setFeedbackItems] = useState(feedback)
 	const [snippetItems, setSnippetItems] = useState(snippets)
 	const [snippetLibraryItems, setSnippetLibraryItems] = useState(snippetLibrary)
+	const [feedbackMemoryItems, setFeedbackMemoryItems] = useState(feedbackMemory)
 	const [liveSubmissionStatus, setLiveSubmissionStatus] = useState(submissionStatus)
 	const [publishSummary, setPublishSummary] = useState(initialSummary)
 	const [summaryPublishedAt, setSummaryPublishedAt] = useState(
@@ -360,6 +377,8 @@ export function TeacherReviewWorkspace({
 	const [snippetCategoryIdDraft, setSnippetCategoryIdDraft] = useState('')
 	const [snippetSearchQuery, setSnippetSearchQuery] = useState('')
 	const [snippetSearchCategory, setSnippetSearchCategory] = useState('')
+	const [memorySearchQuery, setMemorySearchQuery] = useState('')
+	const [memorySearchCategory, setMemorySearchCategory] = useState('')
 	const [isPanelSaving, setIsPanelSaving] = useState(false)
 	const [savingCommentId, setSavingCommentId] = useState<string | null>(null)
 	const [promotingCommentId, setPromotingCommentId] = useState<string | null>(null)
@@ -385,6 +404,10 @@ export function TeacherReviewWorkspace({
 	useEffect(() => {
 		setSnippetLibraryItems(snippetLibrary)
 	}, [snippetLibrary])
+
+	useEffect(() => {
+		setFeedbackMemoryItems(feedbackMemory)
+	}, [feedbackMemory])
 
 	useEffect(() => {
 		setLiveSubmissionStatus(submissionStatus)
@@ -583,9 +606,37 @@ export function TeacherReviewWorkspace({
 
 			return haystack.includes(query)
 		})
-	}, [snippetLibraryItems, snippetSearchCategory, snippetSearchQuery])
+		}, [snippetLibraryItems, snippetSearchCategory, snippetSearchQuery])
+		const filteredFeedbackMemory = useMemo(() => {
+			const query = memorySearchQuery.trim().toLowerCase()
+			return feedbackMemoryItems.filter((item) => {
+				if (
+					memorySearchCategory &&
+					item.categoryLabel !== memorySearchCategory
+				) {
+					return false
+				}
 
-	const totalPages = pagedManuscript.pages.length
+				if (!query) {
+					return true
+				}
+
+				const haystack = [
+					item.comment,
+					item.quote,
+					item.submissionTitle,
+					item.writerLabel,
+					item.categoryLabel,
+					...item.tags,
+				]
+					.join(' ')
+					.toLowerCase()
+
+				return haystack.includes(query)
+			})
+		}, [feedbackMemoryItems, memorySearchCategory, memorySearchQuery])
+
+		const totalPages = pagedManuscript.pages.length
 	const currentPage =
 		pagedManuscript.pages[Math.min(pageIndex, totalPages - 1)] ??
 		pagedManuscript.pages[0]
@@ -1353,6 +1404,8 @@ export function TeacherReviewWorkspace({
 		snippet: SnippetLibraryItem,
 		anchorSelection: SelectedAnchor,
 		text: string,
+		successNotice = 'Snippet inserted as comment.',
+		errorNotice = 'Unable to insert snippet.',
 	) => {
 		if (isPanelSaving || isPublishedReadOnly) {
 			return
@@ -1416,7 +1469,7 @@ export function TeacherReviewWorkspace({
 
 			const savedFeedback = payload?.feedback
 			if (!response.ok || payload?.error || !savedFeedback) {
-				throw new Error(payload?.error ?? 'Unable to insert snippet.')
+				throw new Error(payload?.error ?? errorNotice)
 			}
 
 			setFeedbackItems((current) =>
@@ -1425,11 +1478,11 @@ export function TeacherReviewWorkspace({
 				),
 			)
 			setActiveAnnotationId(`feedback:${savedFeedback.id}`)
-			setSidePanelNotice(payload.notice ?? 'Snippet inserted as comment.')
+			setSidePanelNotice(payload.notice ?? successNotice)
 		} catch (error) {
 			setFeedbackItems((current) => current.filter((item) => item.id !== tempId))
 			setSidePanelError(
-				error instanceof Error ? error.message : 'Unable to insert snippet.',
+				error instanceof Error ? error.message : errorNotice,
 			)
 		} finally {
 			setIsPanelSaving(false)
@@ -1439,6 +1492,8 @@ export function TeacherReviewWorkspace({
 	const saveSnippetIntoExistingComment = async (
 		annotation: AnnotationItem,
 		nextText: string,
+		successNotice = 'Snippet inserted into active comment.',
+		errorNotice = 'Unable to insert snippet.',
 	) => {
 		const feedbackItemId = annotation.id.replace('feedback:', '')
 		const feedbackItem = feedbackItems.find((item) => item.id === feedbackItemId)
@@ -1499,7 +1554,7 @@ export function TeacherReviewWorkspace({
 
 			const savedFeedback = payload?.feedback
 			if (!response.ok || payload?.error || !savedFeedback) {
-				throw new Error(payload?.error ?? 'Unable to insert snippet.')
+				throw new Error(payload?.error ?? errorNotice)
 			}
 
 			setFeedbackItems((current) =>
@@ -1509,11 +1564,11 @@ export function TeacherReviewWorkspace({
 			)
 			setCommentDraft(savedFeedback.comment)
 			setIsInlineEditingComment(false)
-			setSidePanelNotice('Snippet inserted into active comment.')
+			setSidePanelNotice(successNotice)
 		} catch (error) {
 			setFeedbackItems(previousItems)
 			setSidePanelError(
-				error instanceof Error ? error.message : 'Unable to insert snippet.',
+				error instanceof Error ? error.message : errorNotice,
 			)
 		} finally {
 			setSavingCommentId(null)
@@ -1549,6 +1604,75 @@ export function TeacherReviewWorkspace({
 		}
 
 		setSidePanelError('Select a passage or open a comment before inserting a snippet.')
+	}
+
+	const insertFeedbackMemoryIntoComment = async (memory: FeedbackMemoryItem) => {
+		if (isPublishedReadOnly) {
+			setSidePanelError('Published feedback is read-only for this version.')
+			return
+		}
+
+		const text = memory.comment.trim()
+		if (!text) {
+			setSidePanelError('That saved comment has no reusable text yet.')
+			return
+		}
+
+		if (activeAnnotation?.type === 'comment') {
+			const nextText = joinCommentText(
+				isInlineEditingComment ? commentDraft : activeAnnotation.text,
+				text,
+			)
+
+			setCommentDraft(nextText)
+			await saveSnippetIntoExistingComment(
+				activeAnnotation,
+				nextText,
+				'Memory inserted into active comment.',
+				'Unable to insert memory.',
+			)
+			return
+		}
+
+		if (selectedAnchor) {
+			await createCommentFromSnippet(
+				{
+					id: `memory:${memory.id}`,
+					text,
+					createdAt: memory.createdAt,
+					categoryLabel: memory.categoryLabel,
+					categorySlug:
+						memory.categorySlug ||
+						(memory.categoryLabel === 'Uncategorised'
+							? 'uncategorised'
+							: feedbackSlug(memory.categoryLabel)),
+					tags: memory.tags,
+					anchor: {
+						blockId: selectedAnchor.blockId,
+						endBlockId: selectedAnchor.endBlockId,
+						startOffset: selectedAnchor.startOffset,
+						endOffset: selectedAnchor.endOffset,
+						quote: memory.quote || selectedAnchor.quote,
+						prefix: selectedAnchor.prefix,
+						suffix: selectedAnchor.suffix,
+						categoryLabel: memory.categoryLabel,
+						categorySlug:
+							memory.categorySlug ||
+							(memory.categoryLabel === 'Uncategorised'
+								? 'uncategorised'
+								: feedbackSlug(memory.categoryLabel)),
+						tags: memory.tags,
+					},
+				},
+				selectedAnchor,
+				text,
+				'Memory inserted as comment.',
+				'Unable to insert memory.',
+			)
+			return
+		}
+
+		setSidePanelError('Select a passage or open a comment before inserting memory.')
 	}
 
 	const deleteActiveComment = async () => {
@@ -2151,9 +2275,85 @@ export function TeacherReviewWorkspace({
 							)}
 						</div>
 					</div>
-				</ProtoCard>
+					</ProtoCard>
 
-				<ProtoCard title="Marginalia" meta="Comments and snippets">
+					<ProtoCard title="Writer memory" meta="Previous comments">
+						<div className="space-y-3">
+							<div className="grid gap-2">
+								<input
+									type="search"
+									value={memorySearchQuery}
+									onChange={(event) => setMemorySearchQuery(event.target.value)}
+									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+									placeholder="Search previous feedback"
+								/>
+								<select
+									value={memorySearchCategory}
+									onChange={(event) => setMemorySearchCategory(event.target.value)}
+									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									<option value="">All categories</option>
+									{fixedFeedbackCategories.map((category) => (
+										<option key={category} value={category}>
+											{category}
+										</option>
+									))}
+								</select>
+							</div>
+							<div className="max-h-[28vh] overflow-y-auto pr-1">
+								{filteredFeedbackMemory.length === 0 ? (
+									<p className="text-sm text-silver-300">
+										No previous comments found.
+									</p>
+								) : (
+									<ul className="space-y-2">
+										{filteredFeedbackMemory.map((memory) => (
+											<li key={memory.id}>
+												<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-3 text-silver-100">
+													<div className="flex flex-wrap items-center gap-2">
+														<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+															{memory.categoryLabel}
+														</p>
+														<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+															v{memory.version ?? '?'}
+														</p>
+													</div>
+													<p className="mt-2 text-xs text-silver-300">
+														{memory.submissionTitle}
+													</p>
+													{memory.quote ? (
+														<p className="mt-2 border-l border-accent-300/35 pl-3 text-sm italic leading-relaxed text-parchment-100/90">
+															{compactPreview(memory.quote, 130)}
+														</p>
+													) : null}
+													<p className="mt-2 text-sm leading-relaxed text-parchment-100">
+														{compactPreview(memory.comment, 150)}
+													</p>
+													<div className="mt-3 flex flex-wrap gap-2">
+														<button
+															type="button"
+															disabled={isPanelSaving || isPublishedReadOnly}
+															onClick={() => {
+																void insertFeedbackMemoryIntoComment(memory)
+															}}
+															className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+															Insert memory
+														</button>
+														<Link
+															href={`/app/workshop/${memory.submissionId}?focus=feedback:${memory.id}`}
+															className="rounded-full border border-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															Open
+														</Link>
+													</div>
+												</div>
+											</li>
+										))}
+									</ul>
+								)}
+							</div>
+						</div>
+					</ProtoCard>
+
+					<ProtoCard title="Marginalia" meta="Comments and snippets">
 					<p
 						className={`mb-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
 							liveSubmissionStatus === 'feedback_published'
