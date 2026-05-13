@@ -5,7 +5,6 @@ import { NodeSelection } from '@tiptap/pm/state'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import {
 	fixedSnippetCategories,
 	normalizeSnippetLabel,
@@ -650,7 +649,6 @@ export function DocumentBuilder({
 	const availabilityAutosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(
 		null,
 	)
-	const router = useRouter()
 	const [snippets, setSnippets] = useState(initialSnippets)
 	const [libraryItems, setLibraryItems] = useState(initialLibraryItems)
 	const [groups, setGroups] = useState(initialGroups)
@@ -1255,11 +1253,10 @@ export function DocumentBuilder({
 				}
 				return [savedDocument, ...current]
 			})
-			if (!options.silent) {
-				setNotice(payload.notice ?? 'Document saved.')
-			}
-			router.refresh()
-		} catch (saveError) {
+				if (!options.silent) {
+					setNotice(payload.notice ?? 'Document saved.')
+				}
+			} catch (saveError) {
 			if (!options.silent) {
 				setError(
 					saveError instanceof Error
@@ -1272,7 +1269,7 @@ export function DocumentBuilder({
 				setIsSaving(false)
 			}
 		}
-	}, [clearMessages, documentId, documentType, editor, router, selectedGroupIds, title])
+		}, [clearMessages, documentId, documentType, editor, selectedGroupIds, title])
 
 	useEffect(() => {
 		const autosaveDocument = (keepalive = false) => {
@@ -1385,10 +1382,9 @@ export function DocumentBuilder({
 				documentType: defaultDocumentType,
 				groupIds: [],
 				content: initialContent,
-			})
-			setNotice(payload?.notice ?? 'Document deleted.')
-			router.refresh()
-		} catch (deleteError) {
+				})
+				setNotice(payload?.notice ?? 'Document deleted.')
+			} catch (deleteError) {
 			setError(
 				deleteError instanceof Error
 					? deleteError.message

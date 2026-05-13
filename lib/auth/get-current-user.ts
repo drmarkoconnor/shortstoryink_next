@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
 	let supabase
 
 	try {
@@ -20,5 +21,4 @@ export async function getCurrentUser() {
 	}
 
 	return user
-}
-
+})
