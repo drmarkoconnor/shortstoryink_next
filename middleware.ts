@@ -2,9 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { needsSessionRefresh } from '@/lib/auth/session-expiry'
 
 export async function middleware(request: NextRequest) {
-	if (process.env.STUDIO_CUTOVER_ENABLED === '1' && request.nextUrl.pathname !== '/api/studio-import') {
-		return new NextResponse('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>shortstory.ink</title><body style="margin:0;background:#111927;color:#eee5d5;font:20px Georgia,serif;display:grid;min-height:100vh;place-items:center"><main style="max-width:32em;padding:2rem"><h1>shortstory.ink</h1><p>We’re moving the writing studio to its new home.</p><p>Your writing is safe. Please return shortly.</p></main></body></html>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '300' } })
-	}
 	// Renew before SSR so a returning writer is not redirected before the browser
 	// has a chance to hydrate its session. Identity still verifies every user.
 	const refresh = request.cookies.get('nf_refresh')?.value
@@ -47,7 +44,5 @@ export const config = {
 		'/account/:path*',
 		'/auth/callback',
 		'/api/:path*',
-		'/',
-		'/auth/:path*',
 	],
 }

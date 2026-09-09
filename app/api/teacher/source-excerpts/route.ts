@@ -62,7 +62,7 @@ function sourceExcerptSaveError(error: { code?: string; message?: string } | nul
 		message.includes('snippets_source_type_check') ||
 		(message.includes('check constraint') && message.includes('source_type'))
 	) {
-		return 'Source excerpts need the external-source snippet migration to be applied in Supabase before saving.'
+		return 'Source excerpts are temporarily unavailable. Please try again shortly.'
 	}
 
 	return 'Unable to save source excerpt.'

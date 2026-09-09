@@ -186,7 +186,7 @@ export async function PATCH(
 
 	if (updateResult.error || !updateResult.data) {
 		const message = isSchemaCacheMissing(updateResult.error?.message)
-			? 'Snippet categories need the latest snippet migration to be applied in Supabase before saving.'
+			? 'Snippet categories are temporarily unavailable. Please try again shortly.'
 			: 'Unable to update snippet.'
 		return NextResponse.json({ error: message }, { status: 500 })
 	}

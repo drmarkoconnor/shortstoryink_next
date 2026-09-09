@@ -82,7 +82,7 @@ export default async function TeacherPage({
 			'use server'
 
 		const profile = await requireTeacher()
-		const serverSupabase = await createServerDataClient()
+		const serverData = await createServerDataClient()
 		const title = String(formData.get('title') ?? '').trim()
 
 		if (!title) {
@@ -90,7 +90,7 @@ export default async function TeacherPage({
 		}
 
 		const slug = `${slugify(title)}-${Date.now().toString().slice(-5)}`
-		const { error } = await serverSupabase.from('workshops').insert({
+		const { error } = await serverData.from('workshops').insert({
 			title,
 			slug,
 			created_by: profile.user.id,
@@ -108,7 +108,7 @@ export default async function TeacherPage({
 			'use server'
 
 			await requireTeacher()
-			const serverSupabase = await createServerDataClient()
+			const serverData = await createServerDataClient()
 			const workshopId = String(formData.get('workshopId') ?? '').trim()
 			const workshopSlug = String(formData.get('workshopSlug') ?? '').trim()
 			const currentTitle = String(formData.get('currentTitle') ?? '').trim()
@@ -122,7 +122,7 @@ export default async function TeacherPage({
 				redirect('/app/teacher/groups?error=ABU+is+the+protected+baseline+group.')
 			}
 
-			const { error } = await serverSupabase
+			const { error } = await serverData
 				.from('workshops')
 				.update({ title })
 				.eq('id', workshopId)
@@ -190,7 +190,7 @@ export default async function TeacherPage({
 		'use server'
 
 		await requireTeacher()
-		const serverSupabase = await createServerDataClient()
+		const serverData = await createServerDataClient()
 		const writerId = String(formData.get('writerId') ?? '').trim()
 		const workshopId = String(formData.get('workshopId') ?? '').trim()
 
@@ -198,7 +198,7 @@ export default async function TeacherPage({
 			redirect('/app/teacher/groups?error=Select+writer+and+group.')
 		}
 
-		const { error } = await serverSupabase
+		const { error } = await serverData
 			.from('workshop_members')
 			.insert({ workshop_id: workshopId, profile_id: writerId })
 
@@ -215,7 +215,7 @@ export default async function TeacherPage({
 		'use server'
 
 		await requireTeacher()
-		const serverSupabase = await createServerDataClient()
+		const serverData = await createServerDataClient()
 		const writerId = String(formData.get('writerId') ?? '').trim()
 		const workshopId = String(formData.get('workshopId') ?? '').trim()
 		const workshopSlug = String(formData.get('workshopSlug') ?? '').trim()
@@ -228,7 +228,7 @@ export default async function TeacherPage({
 			redirect('/app/teacher/groups?error=ABU+membership+is+the+required+baseline+group.')
 		}
 
-		const { error } = await serverSupabase
+		const { error } = await serverData
 			.from('workshop_members')
 			.delete()
 			.eq('profile_id', writerId)
