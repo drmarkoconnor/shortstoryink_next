@@ -12,7 +12,8 @@ process.loadEnvFile('.env.local')
 const base = process.argv[3] ?? 'https://shortstory.ink'
 if (!/^https:\/\/([a-z0-9-]+--storyink\.netlify\.app|shortstory\.ink)$/.test(base)) throw new Error('Unexpected deployment target')
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-assert.equal(new URL(url).hostname, 'gvzvyckrcnvnnelsrlub.supabase.co')
+assert.ok(process.env.SUPABASE_PROJECT_ID, 'Set SUPABASE_PROJECT_ID to the confirmed project ref')
+assert.equal(new URL(url).hostname, `${process.env.SUPABASE_PROJECT_ID}.supabase.co`)
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
 const run = randomUUID()

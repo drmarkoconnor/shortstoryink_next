@@ -75,7 +75,7 @@ Remaining advisor context:
 
 - Next.js 15 / React 19 / Supabase, hosted through Netlify.
 - Initial typecheck, lint and production build passed in the preceding review.
-- Supabase connector reports the `shortstoryink` project (`gvzvyckrcnvnnelsrlub`) INACTIVE on September 8. No live policy verification or mutations have been performed.
+- Supabase connector reported the `shortstoryink` project INACTIVE on September 8. Its confirmed project ref is retained in the private snapshot and configured `SUPABASE_PROJECT_ID`; avoid hard-coding it in repository files because Netlify scans that configured value. No live policy verification or mutations had been performed at that point.
 - No available Browser connection in the preceding review. Do not describe browser flows as visually verified.
 - Existing migration history contains destructive resets, seeded content and hotfixes outside migrations. Never replay everything into a populated production database.
 - The review document was already untracked at the start of this implementation; preserve it.
@@ -155,4 +155,8 @@ The source release is identified by the main-branch commit titled **“Stabilise
 
 ### Clean-checkout CI follow-up
 
-The first pushed release commit (`0e33f66`) exposed two missing explicit result types in PostgreSQL test queries when GitHub ran a fresh typecheck. The follow-up adds `{ status: string }` result types and stops tracking the generated `tsconfig.tsbuildinfo` cache. Application runtime code is unchanged. Verify the follow-up CI run before treating repository validation as complete; local cached build success alone was insufficient evidence here.
+The first pushed release commit (`0e33f66`) exposed two missing explicit result types in PostgreSQL test queries when GitHub ran a fresh typecheck. Follow-up commit `89ca33e` adds `{ status: string }` result types and stops tracking the generated `tsconfig.tsbuildinfo` cache. Application runtime code is unchanged. [GitHub CI run 34321493909](https://github.com/drmarkoconnor/shortstoryink_next/actions/runs/34321493909) passed installation, typecheck, all 16 tests, lint and build from a fresh checkout.
+
+### Netlify automatic-build follow-up
+
+Netlify built the application successfully for `89ca33e`, but its subsequent secret scan blocked publication because this handoff and two verification scripts contained the configured `SUPABASE_PROJECT_ID`. The verified manual production release stayed live. The follow-up removes those hard-coded identifiers; both verification scripts now require the confirmed `SUPABASE_PROJECT_ID` in their environment and retain their project-mismatch checks. Set it from the linked project's configuration before running either script. Secret scanning remains fully enabled; no keys or paths have been exempted. Verify the subsequent Git-triggered deployment before considering automatic publishing repaired.

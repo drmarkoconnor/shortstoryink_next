@@ -1,5 +1,6 @@
 // Read-only with respect to Supabase: restores a private snapshot into local PGlite.
-// Run: node scripts/rehearse-workshop-snapshot.mjs <snapshot-directory>
+// Set SUPABASE_PROJECT_ID to the confirmed project ref, then run:
+// node scripts/rehearse-workshop-snapshot.mjs <snapshot-directory>
 import { readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { resolve, join } from 'node:path'
@@ -19,7 +20,8 @@ const migrationPath = 'supabase/migrations/20260909064353_workshop_stabilisation
 const migration = await readFile(migrationPath, 'utf8')
 
 try {
-	assert.equal(snapshot.project, 'gvzvyckrcnvnnelsrlub')
+	assert.ok(process.env.SUPABASE_PROJECT_ID, 'Set SUPABASE_PROJECT_ID to the confirmed project ref')
+	assert.equal(snapshot.project, process.env.SUPABASE_PROJECT_ID, 'Snapshot belongs to a different project')
 	assert.equal(snapshot.sequences.length, 0, 'Extend restoration for sequences before using a different snapshot')
 	assert.equal(snapshot.views.length, 0, 'Extend restoration for views before using a different snapshot')
 	await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
