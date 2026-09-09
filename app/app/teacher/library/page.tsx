@@ -9,7 +9,7 @@ import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { isCuratedSnippet } from '@/lib/snippets/curation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import {
 	teacherLibraryItemLimit,
 	teacherSnippetLibraryLimit,
@@ -109,12 +109,12 @@ function sourceLabelFromAnchor(anchor: SelectionAnchor | null, fallback: string)
 
 export default async function TeacherLibraryPage() {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	let entries: TeachingLibraryEntry[] = []
 	let persistenceNotice: string | null = null
 	let loadError: string | null = null
 
-	const teacherProfileResult = await supabase
+	const teacherProfileResult = await dataClient
 		.from('profiles')
 		.select('display_name')
 		.eq('id', profile.user.id)
@@ -126,7 +126,7 @@ export default async function TeacherLibraryPage() {
 			profile.user.email,
 	)
 
-	const libraryResult = await supabase
+	const libraryResult = await dataClient
 		.from('teaching_library_items')
 		.select(
 			'id, item_type, title, body, reference_type, url, category_label, tags, created_at, updated_at',
@@ -159,7 +159,7 @@ export default async function TeacherLibraryPage() {
 		})
 	}
 
-	const snippetsResult = await supabase
+	const snippetsResult = await dataClient
 		.from('snippets')
 		.select('id, snippet_text, note, created_at, updated_at, anchor, source_type')
 		.eq('saved_by', profile.user.id)

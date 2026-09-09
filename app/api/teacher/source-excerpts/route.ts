@@ -8,7 +8,7 @@ import {
 } from '@/lib/feedback/categories'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
 import { cleanSnippetText } from '@/lib/snippets/text-cleanup'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 type SourceExcerptPayload = {
 	author?: string
@@ -62,7 +62,7 @@ function sourceExcerptSaveError(error: { code?: string; message?: string } | nul
 		message.includes('snippets_source_type_check') ||
 		(message.includes('check constraint') && message.includes('source_type'))
 	) {
-		return 'Source excerpts need the external-source snippet migration to be applied in Supabase before saving.'
+		return 'Source excerpts are temporarily unavailable. Please try again shortly.'
 	}
 
 	return 'Unable to save source excerpt.'
@@ -70,7 +70,7 @@ function sourceExcerptSaveError(error: { code?: string; message?: string } | nul
 
 export async function POST(request: Request) {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const payload = (await request.json()) as SourceExcerptPayload
 
 	const author = normalizeText(payload.author)
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 		)
 	}
 
-	const teacherProfileResult = await supabase
+	const teacherProfileResult = await dataClient
 		.from('profiles')
 		.select('display_name')
 		.eq('id', profile.user.id)
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
 		snippetType: 'source',
 	}
 
-	const insertResult = await supabase
+	const insertResult = await dataClient
 		.from('snippets')
 		.insert(
 			buildSnippetInsert({

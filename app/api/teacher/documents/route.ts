@@ -6,7 +6,7 @@ import {
 	normalizeTeachingDocumentType,
 	type TeachingDocumentType,
 } from '@/lib/teacher-documents/types'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 type DocumentPayload = {
 	id?: string | null
@@ -130,14 +130,14 @@ function normalizeGroupIds(value: unknown) {
 }
 
 async function activeGroupIds(
-	supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+	dataClient: Awaited<ReturnType<typeof createServerDataClient>>,
 	groupIds: string[],
 ) {
 	if (groupIds.length === 0) {
 		return []
 	}
 
-	const { data, error } = await supabase
+	const { data, error } = await dataClient
 		.from('workshops')
 		.select('id')
 		.in('id', groupIds)
@@ -170,13 +170,13 @@ function toDocumentResponse(row: {
 
 export async function POST(request: Request) {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const payload = (await request.json()) as DocumentPayload
 	const documentId = String(payload.id ?? '').trim()
 	const title = String(payload.title ?? '').trim()
 	const documentType = normalizeDocumentType(payload.documentType)
 	const groupIds = await activeGroupIds(
-		supabase,
+		dataClient,
 		normalizeGroupIds(payload.groupIds),
 	)
 	const content = normalizeContent(payload.content)
@@ -195,14 +195,14 @@ export async function POST(request: Request) {
 	}
 
 	const result = documentId
-		? await supabase
+		? await dataClient
 				.from('teacher_documents')
 				.update({ title, body })
 				.eq('id', documentId)
 				.eq('owner_id', profile.user.id)
 				.select('id, title, body, created_at, updated_at')
 				.single()
-		: await supabase
+		: await dataClient
 				.from('teacher_documents')
 				.insert({
 					owner_id: profile.user.id,
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const requestUrl = new URL(request.url)
 	const documentId = String(requestUrl.searchParams.get('id') ?? '').trim()
 
@@ -250,7 +250,7 @@ export async function DELETE(request: Request) {
 		)
 	}
 
-	const result = await supabase
+	const result = await dataClient
 		.from('teacher_documents')
 		.delete()
 		.eq('id', documentId)

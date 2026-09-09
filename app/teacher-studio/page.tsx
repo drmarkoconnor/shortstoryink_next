@@ -3,7 +3,7 @@ import { MenuTabs } from '@/components/prototype/menu-tabs'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { fixedFeedbackCategories } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
 type SnippetMetricRow = {
@@ -187,7 +187,7 @@ function RecentList({
 
 export default async function TeacherStudioPage() {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	let snippets: SnippetMetricRow[] = []
 	let documents: DocumentMetricRow[] = []
 	let recentSourceSnippets: SnippetMetricRow[] = []
@@ -200,25 +200,25 @@ export default async function TeacherStudioPage() {
 		recentSourcesResult,
 		feedbackMemoryCountResult,
 	] = await Promise.all([
-		supabase
+		dataClient
 			.from('snippets')
 			.select('id, anchor, note, source_type, created_at, snippet_text')
 			.eq('saved_by', profile.user.id)
 			.limit(teacherSnippetLibraryLimit),
-		supabase
+		dataClient
 			.from('teacher_documents')
 			.select('id, title, updated_at')
 			.eq('owner_id', profile.user.id)
 			.order('updated_at', { ascending: false })
 			.limit(5),
-		supabase
+		dataClient
 			.from('snippets')
 			.select('id, anchor, source_type, created_at, snippet_text')
 			.eq('saved_by', profile.user.id)
 			.eq('source_type', 'external')
 			.order('created_at', { ascending: false })
 			.limit(5),
-		supabase
+		dataClient
 			.from('feedback_items')
 			.select('id', { count: 'exact', head: true })
 			.eq('author_id', profile.user.id),

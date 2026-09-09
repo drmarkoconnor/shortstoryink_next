@@ -34,6 +34,8 @@ async function sendEmail({
 	html: string
 	text: string
 }) {
+	// Preview rehearsals must never notify real students or teachers.
+	if (process.env.CONTEXT && process.env.CONTEXT !== 'production') return
 	const recipients = (Array.isArray(to) ? to : [to])
 		.map((email) => email.trim())
 		.filter(Boolean)

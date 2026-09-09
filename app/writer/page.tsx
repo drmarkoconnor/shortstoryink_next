@@ -6,8 +6,8 @@ import { WriterSubmissionComposer } from '@/components/writer/writer-submission-
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { sendSubmissionReceivedNotification } from '@/lib/notifications/email'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminDataClient } from '@/lib/data/client'
+import { createServerDataClient } from '@/lib/data/client'
 import { normalizeTeachingDocumentType } from '@/lib/teacher-documents/types'
 import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
 
@@ -99,8 +99,8 @@ function encodeErrorMessage(message: string | null | undefined) {
 }
 
 async function detectSchemaMode() {
-	const adminSupabase = createAdminSupabaseClient()
-	const result = await adminSupabase
+	const adminData = createAdminDataClient()
+	const result = await adminData
 		.from('submissions')
 		.select('author_id')
 		.limit(1)
@@ -113,8 +113,8 @@ async function detectSchemaMode() {
 }
 
 async function getTeacherNotificationEmails() {
-	const adminSupabase = createAdminSupabaseClient()
-	const { data: profileRows, error } = await adminSupabase
+	const adminData = createAdminDataClient()
+	const { data: profileRows, error } = await adminData
 		.from('profiles')
 		.select('id, role')
 
@@ -128,7 +128,7 @@ async function getTeacherNotificationEmails() {
 
 	const emailResults = await Promise.all(
 		teacherProfileIds.map(async (profileId) => {
-			const { data, error } = await adminSupabase.auth.admin.getUserById(
+			const { data, error } = await adminData.auth.admin.getUserById(
 				profileId,
 			)
 			if (error) {
@@ -181,7 +181,7 @@ async function createSubmissionAction(formData: FormData): Promise<DraftSubmissi
 	const result = await saveWorkshopDraft(user.id, formData)
 	if ('error' in result) return result
 	if (result.created) {
-		const workshop = await createAdminSupabaseClient().from('workshops').select('title').eq('id', String(formData.get('workshopId'))).maybeSingle()
+		const workshop = await createAdminDataClient().from('workshops').select('title').eq('id', String(formData.get('workshopId'))).maybeSingle()
 		await notifyTeachersOfSubmission({
 			submissionId: result.id,
 			title: String(formData.get('title') ?? '').trim(),
@@ -208,8 +208,8 @@ async function deleteSubmissionAction(formData: FormData) {
 	}
 
 	if (mode === 'modern') {
-		const adminSupabase = createAdminSupabaseClient()
-		const { data: row, error: readError } = await adminSupabase
+		const adminData = createAdminDataClient()
+		const { data: row, error: readError } = await adminData
 			.from('submissions')
 			.select('id, status')
 			.eq('id', submissionId)
@@ -224,7 +224,7 @@ async function deleteSubmissionAction(formData: FormData) {
 			redirect('/app/writer?error=Only+submitted+drafts+can+be+deleted.')
 		}
 
-		const { data: deleted, error: deleteError } = await adminSupabase
+		const { data: deleted, error: deleteError } = await adminData
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)
@@ -239,8 +239,8 @@ async function deleteSubmissionAction(formData: FormData) {
 		}
 		if (!deleted?.length) redirect('/app/writer?error=This+draft+has+changed+and+can+no+longer+be+deleted.')
 	} else {
-		const supabase = await createServerSupabaseClient()
-		const { data: row, error: readError } = await supabase
+		const dataClient = await createServerDataClient()
+		const { data: row, error: readError } = await dataClient
 			.from('submissions')
 			.select('id, status')
 			.eq('id', submissionId)
@@ -255,7 +255,7 @@ async function deleteSubmissionAction(formData: FormData) {
 			redirect('/app/writer?error=Only+submitted+drafts+can+be+deleted.')
 		}
 
-		const { data: deleted, error: deleteError } = await supabase
+		const { data: deleted, error: deleteError } = await dataClient
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)
@@ -298,8 +298,8 @@ export default async function WriterPage({
 	let writerWorkshopIds: string[] = []
 
 	if (mode === 'modern') {
-		const adminSupabase = createAdminSupabaseClient()
-		const { data: memberRows, error: membershipError } = await adminSupabase
+		const adminData = createAdminDataClient()
+		const { data: memberRows, error: membershipError } = await adminData
 			.from('workshop_members')
 			.select('workshop_id')
 			.eq('profile_id', user.id)
@@ -310,7 +310,7 @@ export default async function WriterPage({
 		if (membershipError) {
 			workshopError = `Unable to load your workshops: ${membershipError.message}`
 		} else if (writerWorkshopIds.length > 0) {
-			const { data: workshopRows, error } = await adminSupabase
+			const { data: workshopRows, error } = await adminData
 				.from('workshops')
 				.select('id, title, slug')
 				.in('id', writerWorkshopIds)
@@ -323,7 +323,7 @@ export default async function WriterPage({
 			}
 		}
 
-		const { data: submissionRows, error } = await adminSupabase
+		const { data: submissionRows, error } = await adminData
 			.from('submissions')
 			.select('id, title, status, created_at, workshop_id, version')
 			.eq('author_id', user.id)
@@ -359,7 +359,7 @@ export default async function WriterPage({
 			const submissionIds = submissions.filter((submission) => submission.status === 'feedback_published').map((submission) => submission.id)
 
 			if (submissionIds.length > 0) {
-				const { data: feedbackRows } = await adminSupabase
+				const { data: feedbackRows } = await adminData
 					.from('feedback_items')
 					.select('submission_id')
 					.in('submission_id', submissionIds)
@@ -380,8 +380,8 @@ export default async function WriterPage({
 			}
 		}
 	} else {
-		const supabase = await createServerSupabaseClient()
-		const { data: submissionRows, error } = await supabase
+		const dataClient = await createServerDataClient()
+		const { data: submissionRows, error } = await dataClient
 			.from('submissions')
 			.select('id, title, status, submitted_at, created_at')
 			.eq('writer_id', user.id)
@@ -415,8 +415,8 @@ export default async function WriterPage({
 	}
 
 	if (mode === 'modern' && writerWorkshopIds.length > 0) {
-		const adminSupabase = createAdminSupabaseClient()
-		const { data: documentRows, error } = await adminSupabase
+		const adminData = createAdminDataClient()
+		const { data: documentRows, error } = await adminData
 			.from('teacher_documents')
 			.select('id, title, body, updated_at')
 			.order('updated_at', { ascending: false })

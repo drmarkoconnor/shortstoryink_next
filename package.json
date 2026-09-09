@@ -11,8 +11,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@supabase/ssr": "^0.5.2",
-		"@supabase/supabase-js": "^2.49.8",
+		"@netlify/database": "2.0.1",
+		"@netlify/identity": "2.0.0",
 		"@tiptap/extension-table": "^3.31.3",
 		"@tiptap/extension-underline": "^3.31.3",
 		"@tiptap/react": "^3.31.3",

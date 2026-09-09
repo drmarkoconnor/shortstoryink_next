@@ -1,60 +1,79 @@
-# Supabase exit — Netlify migration handoff
+# Netlify migration — release and handoff
 
-## Current decision
+## Current state
 
-On September 9 Mark clarified that the main objective is to remove the Supabase dependency, including its manual inactivity restoration. He authorised migration if technically possible and desirable on cost. The preceding stabilisation release is complete; it was not the requested backend replacement. Explain this distinction plainly and do not treat further stabilisation work as fulfilling the migration.
+**The live writing studio has migrated from Supabase to Netlify Database and Netlify Identity.** Mark upgraded the existing team to Personal and repeatedly authorised completion. No further plan or migration approval is needed.
 
-**Technical answer: yes.** Netlify Database can replace PostgreSQL hosting; Netlify Identity can replace sign-in. The application must also replace Supabase's query API and authentication integration. Netlify's database wakes automatically on a query after idle sleep, addressing the original operational frustration.
+- Site: **storyink**, ID `d8bc3715-124c-43a2-846d-009b995bb694`, https://shortstory.ink. Do not target the older similarly named site.
+- Team: `drmarkoconnor`, ID `604dff94a9112e607f4fa007`, verified `credit-personal`. Automatic credit purchases are disabled.
+- Clean production deployment: `6aa17b2ab77b111dc9b73ccc`. Final repository merge and small copy/account-email synchronisation cleanup are in progress through [PR #1](https://github.com/drmarkoconnor/shortstoryink_next/pull/1). Update this release ID after the merged build.
+- Netlify Identity instance: `6aa129dd145522096fa7e192`. Registration is reopened; email confirmation remains required.
+- All 16 application tables, 35 application accounts and 20 confirmed Netlify login mappings were imported into production in one transaction. Every table count and content hash matched the frozen-source export before commit. This includes 21 submissions, 544 snippets, 12 teacher documents, 56 feedback items and two teaching examples.
+- The 15 unconfirmed source accounts remain reserved in the application account map, without being activated. They must verify their email through signup before gaining access.
+- Existing confirmed users must use **Forgot password once** to set a new Netlify password. The supported Identity admin API does not import Supabase password hashes. No bulk invitation/reset emails were sent.
+- The elegant interface is preserved. Only authentication guidance and necessary session behaviour changed. The imagination-park idea is a future feature, not part of this release.
 
-**New prerequisite: the existing team is on a legacy Free plan, not a database-eligible credit plan.** No hosting plan, database, authentication service or live application has been changed during this migration assessment. No paid subscription is authorised yet. The latest production release remains the Supabase-backed stabilisation recorded in [the preceding handoff](handoff-workshop-stabilisation-2026-09-08.md).
+## Verification
 
-## Account evidence, September 9
+- 22 automated tests pass, using the actual Netlify baseline inside a platform-owned transaction. GitHub CI independently passed typecheck, tests, lint and build; rerun CI for the final PR commit.
+- Real PostgreSQL tests passed for every migrated writer's isolation, anonymous denial, role protection, simultaneous submission retry deduplication, publication waiting for a comment transaction, published-feedback locking, and competing revision exclusion. Temporary fixtures were removed and all original public hashes remained identical.
+- The deployed teacher/writer/peer HTTP rehearsal passed sign-in, writer provisioning, teacher-route denial, expired-session renewal before SSR, the real submission action, annotations, draft privacy, publication, peer isolation, export and the real bound revision action. Synthetic accounts and writing from these rehearsals were removed.
+- The exact production import was first rehearsed on a fresh branch with the maintenance gate active. Its 35 accounts, 20 mappings and all 16 hashes matched. Production then passed the same import verification.
+- Live public pages, protected-page/API denial, removal of both temporary import endpoints, and nine browser JavaScript bundles passed read-only checks. The bundles contain no Supabase client or connection references.
+- A database branch was confirmed idle, then woke and returned all 21 submissions in **1,868ms**. Settings: min CU 0.25, max CU 1, inactivity sleep 300 seconds. This addresses manual inactivity restoration; credit exhaustion remains a separate hosting limit.
+- Browser automation was unavailable. Do not claim screenshots, visual browser testing or email-delivery testing. The HTTP checks and database checks above were performed against deployed services.
 
-Read-only Netlify MCP and CLI calls confirmed:
+## Runtime architecture and invariants
 
-- One accessible team: `drmarkoconnor`, ID `604dff94a9112e607f4fa007`; Mark is Owner.
-- Account type `free-is-free`, created in 2021; `credit_features.included=false`.
-- `listAccountTypesForUser` returns `credit-free` with `available=false`, `credit-personal` with `available=true`, and `credit-pro` with `available=true`. A second Free team is therefore not offered through the current account API. Do not claim the API result rules out converting the existing team through Netlify's billing UI.
-- The existing team's older allowances include 100 GiB bandwidth and 300 build minutes. Capability `used` counters were not treated as measured traffic or billing usage.
-- Target site remains **storyink**, ID `d8bc3715-124c-43a2-846d-009b995bb694`, https://shortstory.ink. Do not target the older similarly named site.
+`@netlify/database` supplies the server connection automatically. `lib/data/query.ts` adapts the application's existing query shapes to parameterised SQL over a fixed table allowlist. It is not exposed as a generic HTTP SQL API. `lib/data/client.ts` uses a transaction-local verified application UUID and restricted `studio_authenticated` / `studio_anon` roles for RLS. Privileged operations remain server-only and require verified authentication plus the existing route/action guards.
 
-Private API responses are under `.local-backups/2026-09-09-pre-deploy/`: `migration-account.private.json` and `migration-plans.private.json`. They may contain credentials or billing details: never print, publish or commit them. The repository documents no Supabase project ref because Netlify scans its configured value.
+`studio_auth.users` preserves original application UUIDs and maps them to independent Netlify Identity UUIDs. Only an Identity-verified email can attach an unmapped account. Ambiguous email matches, changed identity IDs and blocked accounts fail closed. Role selection never comes from user-editable Identity metadata. Verified email changes are synchronised to the private map so notifications use the current address.
 
-## Cost recommendation and unresolved choice
+**Identity 2.0 SSR issue:** the SDK's `getUser()` returned a verified JWT-claims fallback without `confirmedAt` in Next.js, causing a sign-in loop. `lib/auth/verified-identity.ts` instead reads the actual Next request cookie and verifies it with the configured Netlify `/user` endpoint, requiring `confirmed_at`. Never replace this with unsigned JWT decoding or the incomplete SDK fallback. Browser and admin operations use `@netlify/identity`.
 
-Recommend a separate **Personal** team dedicated to this writing site if Mark accepts **US$9/month**, before applicable taxes. It supplies 1,000 shared monthly credits and includes Identity. Keep automatic credit purchases disabled unless explicitly authorised. This preserves the legacy plan for the other sites. Netlify's account API offers Personal, but checkout/payment requirements and successful team creation still need verification.
+Middleware renews expiring sessions before SSR and forwards the renewed cookies. JWT expiry decoding is only a refresh hint; it does not authenticate a user. Private responses are not cached. Logout clears local recovery drafts and auth cookies even if the service is temporarily unavailable. Preview builds suppress workshop notification emails.
 
-For comparison, Supabase Pro starts at US$25/month. A new subscription is not a saving against the current US$0 Supabase Free plan; the benefit is removing manual restoration with a lower starting subscription than Supabase Pro. Migration engineering and ongoing maintenance are separate costs. Sources: [Netlify pricing](https://www.netlify.com/pricing/), [Supabase pricing](https://supabase.com/pricing), [Identity pricing](https://docs.netlify.com/manage/security/secure-access-to-sites/identity/plans-and-pricing/).
+Preserve manuscript storage, paragraph identity and annotation offsets. Multipart FormData normalises new submissions' wire line endings to CRLF, as before migration; stored source manuscripts were preserved exactly during transfer. Do not normalise imported text.
 
-Illustrative database compute at minimum scale is 10 credits per active database hour, including idle time before sleep. Twenty active hours would consume 200 credits, leaving 800 of Personal's allowance for deployment, hosting, further database activity and other meters. This is arithmetic, not a forecast from measured class usage. Limit database scale to one unit initially and retain five-minute idle sleep; avoid polling and database writes on every keystroke. Production deployments consume credits too, so use previews for rehearsal.
+## Native migrations and cutover lessons
 
-Storage pricing remains unclear in the current public database billing page: it still references July 1, 2026 although this review is in September. Do not promise a complete fixed monthly bill without checking checkout/usage meters. With auto recharge off, credit exhaustion can pause the destination site's service. Sources: [Database billing](https://docs.netlify.com/build/data-and-storage/netlify-database/billing-and-usage/), [automatic sleep and wake](https://docs.netlify.com/build/data-and-storage/netlify-database/configure-sleep-on-inactivity/), [credit limits](https://docs.netlify.com/manage/accounts-and-billing/billing/resume-paused-projects/).
+The production baseline is `netlify/database/migrations/001_workshop-baseline/migration.sql`. It includes the verified live schema and the preceding workshop stabilisation. **It is now applied in production: never edit it. Add a new migration.** Netlify owns the outer transaction; BEGIN/COMMIT must not be added to migration files.
 
-Converting the whole existing team to credit-based Free may avoid a subscription, if the billing UI offers it. It also permanently changes the allowances for every site and pools their credit consumption. **Do not silently convert the whole team.** Netlify also says a site transferred to a credit-based team cannot be transferred back to a legacy team. This hosting-plan restriction is separate from an application-data rollback. Source: [Netlify's irreversible plan/transfer rules](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-legacy-plans/billing-faq-for-legacy-plans/).
+The first exact cutover rehearsal exposed an inherited COMMIT wrapper: Netlify reported `unexpected transaction status idle` after executing DDL. The corrected baseline was tested on a fresh branch and then applied successfully in production. Older rehearsal branches may have the earlier checksum and must not be reused for migrations.
 
-The next input needed is Mark's acceptance of the separate US$9/month Personal destination, or a different explicit plan choice. This is a newly discovered billing/irreversibility decision, not a SKILL.md approval requirement and not a request to re-authorise the migration itself.
+Current CLI builds use `@netlify/database` and the native migration directory. An older cached CLI source referred to `@netlify/db`; do not install that old package or the old Neon extension. Use the complete CLI build/deploy lifecycle with the Next adapter; a separate plain `.next` upload with `--no-build` packages the wrong static root.
 
-## Implementation scope once the destination is settled
+Production connection APIs supplied only a read-only connection despite an explicit owner-role request; a snapshot API request returned HTTP500. The normal deployed runtime correctly had `netlifydb_owner`. The cutover therefore used a short, rehearsed maintenance deployment and a digest-locked one-time import through that runtime. It required a random secret, exact payload SHA256, two-hour expiry, an empty destination and an atomic hash-verified import. **Those endpoints, guards and helper have been removed from the application.** No connection credentials were returned through an endpoint, and no private data SQL was committed.
 
-The source inventory finds 45 application/library/component/middleware files referencing the Supabase integration. Most database access is server-side. Browser authentication appears in sign-in, sign-up, password settings and logout; server authentication also covers callback/session refresh, account administration, writer lookup and publication notifications.
+## Backups and rollback
 
-| Current integration | Replacement |
-| --- | --- |
-| Supabase PostgreSQL and PostgREST query builders | `@netlify/database` with parameterised SQL and explicit server data operations |
-| Supabase browser/server auth and middleware | `@netlify/identity`, verified server identity and tested Next.js cookie/session handling |
-| Supabase account UUIDs referenced by application rows | Preserve application UUIDs; map independently verified Netlify identities to them |
-| Supabase `auth.uid()` / database role context | Restricted runtime role and transaction-scoped verified user context, with adapted RLS; never grant browser SQL access |
-| Service-only submission/publication RPCs | Preserve atomic locks, permissions, idempotency, revision uniqueness and exact manuscript text |
-| Auth-admin email lookups and user deletion | Verified identity mapping and Netlify administration; retain Resend for workshop notification delivery |
+Private files are under `.local-backups/2026-09-09-netlify-migration/`. They contain student data, credentials or billing details: never print, publish or commit them.
 
-Use a migration branch and protected previews. A database package installation/deploy can provision a database automatically; do not add it to production main before the destination is selected. Netlify requires `@netlify/database`; use its pool for transaction-scoped access. Read package APIs before implementation, including real Identity SSR/admin support. Read Netlify coding context again if platform behaviour changes.
+- `final-application-snapshot.json`: final export after source writes were frozen.
+- `identity-mappings.private.json`: 20 old-application/new-Identity UUID mappings.
+- `production-cutover-report.private.json`: committed production account counts and all verified table hashes.
+- `http-rehearsal-*.private.json`, `database-checks.private.json`, `live-release-checks.private.json`: verification evidence.
+- `cutover-implementation/`: private archive of the removed temporary operations.
+- `cleanup-report.private.json`: registration settings and obsolete variable removal.
+- `retirement-report.private.json`: retirement results for temporary deployments and database branches.
+- Earlier Supabase configuration/deployment backups remain under `.local-backups/2026-09-09-pre-deploy/`.
 
-Build a clean baseline from the actual live schema, incorporating the applied stabilisation migration. Do not replay historic destructive Supabase reset/seed scripts. The earlier private export contains application rows and auth identity mapping, not auth password/session backups. Password portability is unproven: investigate supported import before deciding on a reset process. Never grant ownership by an unverified email claim. Do not send bulk invites or reset messages without explicit authorisation.
+**Supabase is retained as frozen rollback material; it no longer serves the application.** Statement triggers named `studio_cutover_freeze` on the 16 public tables and `auth.users` prevent stale clients from changing the source. The freeze changes no original rows. The source may pause later without affecting the Netlify application.
 
-Preserve all 16 application tables, profiles, writing, annotation offsets, feedback, teaching library and memberships. The preceding verification recorded 35 auth accounts, 6 profiles and 21 submissions; refresh the snapshot before migration because this is a live site. There were no storage objects at the preceding inspection.
+`scripts/supabase-cutover.mjs --execute unfreeze` removes only this freeze. Do not run it casually: once Netlify has new writes, an application rollback also requires data reconciliation and restoration of the old Supabase environment. Prefer a forward fix. Do not delete the source project without a separate retention decision.
 
-Acceptance requires synthetic teacher/writer/peer accounts, a complete sign-in → submit → annotate → publish → revise → export loop, account and reset journeys, negative privacy tests, actual PostgreSQL concurrent-write checks, idle wake-up and measured database activity. First test synthetic data; then restore the private snapshot into the protected destination and compare every original row count and content hash. Do not claim browser verification until a Browser connection is available.
+Migration scripts are explicit, one-time operational records, not routine app commands. Some depend on private dated snapshots and the cached local CLI helper path. Read and adapt them before reuse. Historical Supabase verification scripts no longer have their old runtime client dependencies installed. Never replay old reset/seed migrations.
 
-For final cutover: establish a short write freeze, take a fresh snapshot, import and verify, switch the application, then verify live access and writes. Retain Supabase as an untouched rollback source temporarily; completion means the running site has no calls to Supabase, not merely that the tables were copied. Reconcile any new destination writes before an application rollback. Preserve the existing elegant interface throughout; the imaginative park scene remains later work.
+## Cleanup and remaining operational notes
 
-Netlify's [migration guide](https://docs.netlify.com/build/data-and-storage/netlify-database/switch-to-netlify-database/) provides the platform sequence. The application-specific privacy and write-freeze requirements above remain necessary.
+The six Supabase site environment variables and five temporary migration/cutover variables have been removed. The standalone diagnostic Identity account was deleted. Temporary migration deployments, including the maintenance deployment and original draft PR preview, were successfully deleted; the live deployment and original Supabase rollback releases were retained.
+
+Netlify returned HTTP401 for deletion of four idle rehearsal database branches: `migrate/netlify-database-identity`, `migration-rehearsal`, `migration-cutover-rehearsal`, and `migration-cutover-v2`. Their deployed temporary endpoints are gone. These copies remain within the same Netlify account and can be removed through its database dashboard; **never delete the production branch**. This cleanup limitation does not create a Supabase dependency or prevent student use. Record their removal if completed later.
+
+Netlify's Personal allowance is shared with the existing team's other sites. Automatic credit purchases are off; inspect usage before expanding class traffic. Database sleep/wake is automatic. Do not promise an unlimited fixed bill or change the plan/automatic-purchase setting without authorisation.
+
+## Product work after migration
+
+Follow the [product brief](product-brief.md), [teacher roadmap](teacher-area-roadmap.md) and [feedback export roadmap](export-feedback-packet-roadmap.md). Mark wants sophisticated, elegant visuals with more imaginative interaction. A suitable next prototype is an annotated scene organised around **someone, somewhere, under internal or external pressure**, with selectable craft notes and a prompt-to-draft path. Keep keyboard access, readable text and reduced motion central. The Miss Brill park idea is a teaching direction, not a request to replace the current design during migration.
+
+Sources for platform behaviour: [Netlify Database migrations](https://docs.netlify.com/build/data-and-storage/netlify-database/migrations/), [Identity](https://docs.netlify.com/manage/security/secure-access-to-sites/identity/get-started/), [pricing](https://www.netlify.com/pricing/). Runtime observations above take precedence over earlier assumptions in the preceding stabilisation handoff.

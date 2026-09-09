@@ -2,7 +2,7 @@ import { FeedbackSubmissionSelector } from '@/components/writer/feedback-submiss
 import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 
 type FeedbackSubmission = {
 	id: string
@@ -24,12 +24,12 @@ function getAnchorField(anchor: unknown, field: 'quote' | 'categoryLabel') {
 export default async function WriterFeedbackPage() {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
 	let submissions: FeedbackSubmission[] = []
 	let loadError: string | null = null
 
-	const submissionsResult = await adminSupabase
+	const submissionsResult = await adminData
 		.from('submissions')
 		.select('id, title, status, created_at, version')
 		.eq('author_id', user.id)
@@ -56,7 +56,7 @@ export default async function WriterFeedbackPage() {
 	> = {}
 
 	if (!loadError && submissionIds.length > 0) {
-		const summariesResult = await adminSupabase
+		const summariesResult = await adminData
 			.from('feedback_summaries')
 			.select('submission_id, summary')
 			.in('submission_id', submissionIds)
@@ -68,7 +68,7 @@ export default async function WriterFeedbackPage() {
 			]),
 		)
 
-		const feedbackItemsResult = await adminSupabase
+		const feedbackItemsResult = await adminData
 			.from('feedback_items')
 			.select('id, submission_id, comment, anchor')
 			.in('submission_id', submissionIds)

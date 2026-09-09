@@ -1,22 +1,10 @@
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getStudioUser } from '@/lib/auth/studio-user'
 
 export const getCurrentUser = cache(async function getCurrentUser() {
-	let supabase
-
-	try {
-		supabase = await createServerSupabaseClient()
-	} catch {
-		redirect('/auth/sign-in?error=config')
-	}
-
-	const {
-		data: { user },
-		error,
-	} = await supabase.auth.getUser()
-
-	if (error || !user) {
+	const user = await getStudioUser()
+	if (!user) {
 		redirect('/auth/sign-in')
 	}
 

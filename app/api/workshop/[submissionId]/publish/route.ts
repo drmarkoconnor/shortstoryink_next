@@ -2,8 +2,8 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { sendFeedbackPublishedNotification } from '@/lib/notifications/email'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminDataClient } from '@/lib/data/client'
+import { createServerDataClient } from '@/lib/data/client'
 
 export async function POST(
 	request: Request,
@@ -11,8 +11,8 @@ export async function POST(
 ) {
 	const profile = await requireTeacher()
 	const { submissionId } = await params
-	const supabase = await createServerSupabaseClient()
-	const adminSupabase = createAdminSupabaseClient()
+	const dataClient = await createServerDataClient()
+	const adminData = createAdminDataClient()
 	const payload: unknown = await request.json().catch(() => null)
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return NextResponse.json({ error: 'Please send a feedback summary.' }, { status: 400 })
@@ -23,7 +23,7 @@ export async function POST(
 	}
 	const summary = (value ?? '').trim()
 
-	const submissionResult = await supabase
+	const submissionResult = await dataClient
 		.from('submissions')
 		.select('id, title, author_id')
 		.eq('id', submissionId)
@@ -36,7 +36,7 @@ export async function POST(
 		)
 	}
 
-	const { data: publication, error: publishError } = await adminSupabase.rpc('publish_workshop_feedback', {
+	const { data: publication, error: publishError } = await adminData.rpc('publish_workshop_feedback', {
 		p_teacher_id: profile.user.id, p_submission_id: submissionId, p_summary: summary,
 	})
 	if (publishError || !publication) {
@@ -48,7 +48,7 @@ export async function POST(
 	const publishedAt = String(publication.publishedAt)
 
 	let notice = 'Feedback published to writer.'
-	const email = await adminSupabase.auth.admin
+	const email = await adminData.auth.admin
 		.getUserById(submissionResult.data.author_id as string)
 		.then((result) => result.data.user?.email?.trim().toLowerCase() ?? null)
 		.catch(() => null)

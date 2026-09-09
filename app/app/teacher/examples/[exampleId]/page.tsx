@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { TeacherExampleAnnotationWorkspace } from '@/components/teacher/example-annotation-workspace'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import {
 	exampleCategorySlug,
 	normalizeExampleCategory,
@@ -91,7 +91,7 @@ async function updateExampleMetadataAction(formData: FormData) {
 	'use server'
 
 	await requireTeacher()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const exampleId = String(formData.get('exampleId') ?? '').trim()
 	const title = String(formData.get('title') ?? '').trim()
 	const authorName = String(formData.get('authorName') ?? '').trim()
@@ -109,7 +109,7 @@ async function updateExampleMetadataAction(formData: FormData) {
 		redirect('/app/teacher/examples?error=Unable+to+save+example.')
 	}
 
-	const existingResult = await adminSupabase
+	const existingResult = await adminData
 		.from('teaching_examples')
 		.select('status')
 		.eq('id', exampleId)
@@ -124,7 +124,7 @@ async function updateExampleMetadataAction(formData: FormData) {
 		redirect(`/app/teacher/examples/${exampleId}?error=Story+text+is+required.`)
 	}
 
-	const { error } = await adminSupabase
+	const { error } = await adminData
 		.from('teaching_examples')
 		.update({
 			title,
@@ -150,7 +150,7 @@ async function updateExampleVisibilityAction(formData: FormData) {
 	'use server'
 
 	await requireTeacher()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const exampleId = String(formData.get('exampleId') ?? '').trim()
 	const visibleGroupIds = new Set(
 		formData
@@ -163,7 +163,7 @@ async function updateExampleVisibilityAction(formData: FormData) {
 		redirect('/app/teacher/examples?error=Unable+to+save+group+visibility.')
 	}
 
-	const { data: groups, error: groupError } = await adminSupabase
+	const { data: groups, error: groupError } = await adminData
 		.from('workshops')
 		.select('id')
 
@@ -181,7 +181,7 @@ async function updateExampleVisibilityAction(formData: FormData) {
 			workshop_id: groupId,
 		}))
 
-	const deleteResult = await adminSupabase
+	const deleteResult = await adminData
 		.from('teaching_example_hidden_groups')
 		.delete()
 		.eq('example_id', exampleId)
@@ -193,7 +193,7 @@ async function updateExampleVisibilityAction(formData: FormData) {
 	}
 
 	if (hiddenRows.length > 0) {
-		const insertResult = await adminSupabase
+		const insertResult = await adminData
 			.from('teaching_example_hidden_groups')
 			.insert(hiddenRows)
 
@@ -219,9 +219,9 @@ export default async function TeacherExampleDetailPage({
 	const query = searchParams ? await searchParams : {}
 	const notice = toMessage(query.notice)
 	const errorNotice = toMessage(query.error)
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const exampleResult = await adminSupabase
+	const exampleResult = await adminData
 		.from('teaching_examples')
 		.select(
 			'id, title, author_name, source_label, source_url, copyright_status, editorial_note, content_note, body, craft_tags, status, updated_at, published_at',
@@ -234,7 +234,7 @@ export default async function TeacherExampleDetailPage({
 	}
 
 	const example = exampleResult.data as ExampleRow
-	const annotationsResult = await adminSupabase
+	const annotationsResult = await adminData
 		.from('teaching_example_annotations')
 		.select('id, comment, category_label, category_slug, tags, anchor, created_at')
 		.eq('example_id', example.id)
@@ -244,13 +244,13 @@ export default async function TeacherExampleDetailPage({
 		toAnnotation,
 	)
 
-	const groupsResult = await adminSupabase
+	const groupsResult = await adminData
 		.from('workshops')
 		.select('id, title')
 		.order('title', { ascending: true })
 	const groups = (groupsResult.data ?? []) as GroupRow[]
 
-	const hiddenGroupsResult = await adminSupabase
+	const hiddenGroupsResult = await adminData
 		.from('teaching_example_hidden_groups')
 		.select('workshop_id')
 		.eq('example_id', example.id)

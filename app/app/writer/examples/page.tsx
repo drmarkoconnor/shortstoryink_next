@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import type {
 	ExampleCopyrightStatus,
 	ExampleStatus,
@@ -44,7 +44,7 @@ function formatUpdatedDate(value: string) {
 
 export default async function WriterExamplesPage() {
 	await requireWriter()
-	const db = await createServerSupabaseClient()
+	const db = await createServerDataClient()
 	const result = await db.from('teaching_examples')
 		.select('id, title, author_name, copyright_status, editorial_note, content_note, body, craft_tags, status, updated_at')
 		.eq('status', 'published').order('updated_at', { ascending: false }).limit(80)

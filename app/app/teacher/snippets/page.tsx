@@ -11,7 +11,7 @@ import {
 	normalizeSnippetStatus,
 	normalizeSnippetUseFlags,
 } from '@/lib/snippets/workbench'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
 type SnippetRow = {
@@ -59,11 +59,11 @@ function categoryFromAnchor(anchor: SelectionAnchor | null) {
 
 export default async function TeacherSnippetLibraryPage() {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	let snippets: SnippetLibraryEntry[] = []
 	let loadError: string | null = null
 
-	const snippetsResult = await supabase
+	const snippetsResult = await dataClient
 		.from('snippets')
 		.select('id, snippet_text, note, created_at, updated_at, anchor, source_submission_id, source_type')
 		.eq('saved_by', profile.user.id)

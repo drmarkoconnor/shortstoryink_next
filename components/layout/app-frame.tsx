@@ -1,10 +1,8 @@
-import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import type { User } from '@supabase/supabase-js'
+import type { StudioUser } from '@/lib/auth/studio-user'
 import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 import { SignOutForm } from '@/components/auth/sign-out-form'
 
@@ -34,18 +32,11 @@ export async function AppFrame({
 }: {
 	children: ReactNode
 	role: AppRole
-	user: User
+	user: StudioUser
 }) {
 	const userEmail = user.email || ''
 	const profile = await getCurrentProfile()
-	const displayName = profile.displayName || user.user_metadata?.display_name || user.user_metadata?.name || userEmail
-
-	async function signOutAction() {
-		'use server'
-		const supabase = await createServerSupabaseClient()
-		await supabase.auth.signOut()
-		redirect('/auth/sign-in')
-	}
+	const displayName = profile.displayName || userEmail
 
 	const visibleNav =
 		role === 'writer'
@@ -78,7 +69,7 @@ export async function AppFrame({
 					</div>
 					<div className="flex flex-wrap items-center justify-end gap-2">
 						<AppNav items={visibleNav} />
-						<SignOutForm ownerId={user.id} action={signOutAction} />
+						<SignOutForm ownerId={user.id} />
 					</div>
 				</div>
 			</header>

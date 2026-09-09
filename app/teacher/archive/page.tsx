@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { MenuTabs } from '@/components/prototype/menu-tabs'
 import { ArchivePieceSelect } from '@/components/teacher/archive-piece-select'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 
 type ArchivedSubmission = {
@@ -20,13 +20,13 @@ export default async function TeacherArchivePage({
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
 	await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const params = searchParams ? await searchParams : {}
 
 	let rows: ArchivedSubmission[] = []
 	let loadError: string | null = null
 
-	const result = await supabase
+	const result = await dataClient
 		.from('submissions')
 		.select('id, title, status, created_at, author_id, version')
 		.eq('status', 'feedback_published')
@@ -41,7 +41,7 @@ export default async function TeacherArchivePage({
 	const writerById: Record<string, string> = {}
 	if (!loadError && rows.length > 0) {
 		const ids = [...new Set(rows.map((item) => item.author_id))]
-		const profilesResult = await supabase
+		const profilesResult = await dataClient
 			.from('profiles')
 			.select('id, display_name')
 			.in('id', ids)

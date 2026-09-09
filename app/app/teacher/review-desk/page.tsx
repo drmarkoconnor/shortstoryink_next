@@ -5,8 +5,8 @@ import { DeleteQueuedSubmissionButton } from '@/components/teacher/delete-queued
 import { MenuTabs } from '@/components/prototype/menu-tabs'
 import { ProtoCard } from '@/components/prototype/card'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminDataClient } from '@/lib/data/client'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 
 type QueueSubmission = {
@@ -119,7 +119,7 @@ export default async function TeacherReviewDeskPage({
 	const params = searchParams ? await searchParams : {}
 	const notice = toMessage(params.notice)
 	const errorNotice = toMessage(params.error)
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
 	let queue: QueueSubmission[] = []
 	let queueError: string | null = null
@@ -129,8 +129,8 @@ export default async function TeacherReviewDeskPage({
 	let modernResult: {
 		data: ModernQueueRow[] | null
 		error: { message?: string } | null
-	} = await supabase
-		.from('submissions')
+	} = await dataClient
+		.from<ModernQueueRow>('submissions')
 		.select(
 			'id, title, author_id, status, created_at, version, parent_submission_id, source',
 		)
@@ -138,8 +138,8 @@ export default async function TeacherReviewDeskPage({
 		.order('created_at', { ascending: true })
 
 	if (modernResult.error && isMissingSubmissionSource(modernResult.error.message)) {
-		modernResult = await supabase
-			.from('submissions')
+		modernResult = await dataClient
+			.from<ModernQueueRow>('submissions')
 			.select('id, title, author_id, status, created_at, version, parent_submission_id')
 			.in('status', ['submitted', 'in_review'])
 			.order('created_at', { ascending: true })
@@ -155,7 +155,7 @@ export default async function TeacherReviewDeskPage({
 		const revisionChainByRootId: Record<string, RevisionChainRow[]> = {}
 
 		if (authorIds.length > 0) {
-			const { data: profileRows } = await supabase
+			const { data: profileRows } = await dataClient
 				.from('profiles')
 				.select('id, display_name')
 				.in('id', authorIds)
@@ -167,7 +167,7 @@ export default async function TeacherReviewDeskPage({
 				]),
 			)
 
-			const { data: chainRows } = await supabase
+			const { data: chainRows } = await dataClient
 				.from('submissions')
 				.select('id, author_id, parent_submission_id, status, created_at, version')
 				.in('author_id', authorIds)
@@ -182,7 +182,7 @@ export default async function TeacherReviewDeskPage({
 		}
 
 		if (submissionIds.length > 0) {
-			const { data: feedbackRows } = await supabase
+			const { data: feedbackRows } = await dataClient
 				.from('feedback_items')
 				.select('submission_id')
 				.in('submission_id', submissionIds)
@@ -197,7 +197,7 @@ export default async function TeacherReviewDeskPage({
 			)
 		}
 
-		const publishedCountResult = await supabase
+		const publishedCountResult = await dataClient
 			.from('submissions')
 			.select('id', { count: 'exact', head: true })
 			.eq('status', 'feedback_published')
@@ -235,7 +235,7 @@ export default async function TeacherReviewDeskPage({
 	} else if (isSchemaCacheMissing(modernResult.error.message)) {
 		schemaMode = 'legacy'
 
-		const legacyResult = await supabase
+		const legacyResult = await dataClient
 			.from('submissions')
 			.select(
 				'id, title, writer_first_name, writer_email, status, submitted_at, created_at',
@@ -302,8 +302,8 @@ export default async function TeacherReviewDeskPage({
 			redirect('/app/teacher/review-desk?error=Choose+a+submission+to+remove.')
 		}
 
-		const adminSupabase = createAdminSupabaseClient()
-		const { data: submission, error: submissionError } = await adminSupabase
+		const adminData = createAdminDataClient()
+		const { data: submission, error: submissionError } = await adminData
 			.from('submissions')
 			.select('id, status')
 			.eq('id', submissionId)
@@ -321,11 +321,11 @@ export default async function TeacherReviewDeskPage({
 		}
 
 		const [feedbackResult, childRevisionResult] = await Promise.all([
-			adminSupabase
+			adminData
 				.from('feedback_items')
 				.select('id', { count: 'exact', head: true })
 				.eq('submission_id', submissionId),
-			adminSupabase
+			adminData
 				.from('submissions')
 				.select('id', { count: 'exact', head: true })
 				.eq('parent_submission_id', submissionId),
@@ -349,7 +349,7 @@ export default async function TeacherReviewDeskPage({
 			)
 		}
 
-		const { error: deleteError } = await adminSupabase
+		const { error: deleteError } = await adminData
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)

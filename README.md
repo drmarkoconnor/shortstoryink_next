@@ -1,78 +1,47 @@
-# shortstory.ink — Phase 1 foundation
+# shortstory.ink — writing and teaching studio
 
-## Current work and handoff
+A Next.js application for manuscript submission and revision, private teacher
+feedback, printable feedback packets and reusable teaching materials. The backend
+uses Netlify Database and Netlify Identity.
 
-For the September 2026 workshop stabilisation, deployment prerequisites and
-follow-up Netlify migration plan, read
-[the active handoff](docs/handoff-workshop-stabilisation-2026-09-08.md).
-The shell-only description below is historical; the app now includes the writer
-submission/revision loop, teacher review and reusable teaching materials.
+## Read before changing the application
 
-This repository now hosts the **new frontend foundation** for shortstory.ink:
+- [Active migration and release handoff](docs/handoff-netlify-migration-2026-09-09.md): live status, verification, private backups and rollback.
+- [Workshop stabilisation](docs/handoff-workshop-stabilisation-2026-09-08.md): privacy, draft recovery and concurrent-write requirements.
+- [Product brief](docs/product-brief.md), [teacher roadmap](docs/teacher-area-roadmap.md) and [feedback export roadmap](docs/export-feedback-packet-roadmap.md).
 
-- Next.js App Router
-- React
-- Tailwind CSS
-- Supabase-backed authentication/session wiring
-- GitHub CI + Netlify hosting config
+Preserve manuscript text and annotation offsets. Students may read only their own
+submissions and published feedback; group membership does not grant access to
+another student's writing. Profile edits must never allow role changes.
 
-This phase intentionally ships only the application shell and route scaffolding.
+## Backend
 
-## What exists in Phase 1
+Netlify supplies the deployed PostgreSQL connection automatically. Queries run
+only on the server, using parameterised SQL and transaction-scoped restricted
+roles. Identity sessions are verified against Netlify before mapping them to
+application account UUIDs. Existing account UUIDs remain unchanged.
 
-- Public landing shell: `/`
-- Auth routes: `/auth/sign-in`, `/auth/sign-up`
-- Authenticated application shell: `/app`
-- Role/workflow placeholders:
-  - `/app/workshop`
-  - `/app/writer`
-  - `/app/teacher`
-  - `/app/teacher-studio`
+Schema migrations live in `netlify/database/migrations`. Netlify owns their
+surrounding transaction. Never edit an applied migration or add transaction
+wrappers; add a new migration instead. Historical Supabase SQL/export scripts are
+retained for backup and rollback reference. Never replay their reset/seed SQL.
+The application has no runtime dependency on Supabase.
 
-## Product documentation
+## Development and verification
 
-- Teacher-side product and workflow decisions should follow
-  `docs/teacher-area-roadmap.md`.
-- Writer-facing feedback export planning should follow
-  `docs/export-feedback-packet-roadmap.md`.
+Use Node 22.12 or later and install dependencies with `npm ci`. Optional settings
+are documented in `.env.example`; keep credentials in ignored local environment
+files or Netlify configuration. Never expose database credentials to the browser.
 
-## Environment variables
+Use `netlify dev` for local database development. Identity must be tested on a
+deployed preview because its SDK does not currently support local Identity.
+Preview deployments suppress workshop notification emails.
 
-Copy `.env.example` to `.env.local` and fill values from your existing Supabase
-project.
+Run `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` before
+release. GitHub CI runs these checks independently. Deployment uses the complete
+Netlify CLI build lifecycle so the Next.js adapter packages the correct assets;
+do not separately deploy an ordinary `.next` build with `--no-build`.
 
-Required now:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_AUTH_REDIRECT_BASE_URL`
-
-Expected soon (server-side workflows):
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_PROJECT_ID`
-- `APP_URL`
-- `AUTH_REDIRECT_BASE_URL`
-
-## Local development
-
-1. Install dependencies.
-2. Configure `.env.local`.
-3. Run the app and visit `http://localhost:3000`.
-
-## Quality gates
-
-Before merging foundation changes, run:
-
-- typecheck
-- lint
-- production build
-
-## Deployment
-
-- GitHub workflow: `.github/workflows/ci.yml`
-- Netlify config: `netlify.toml`
-
-Netlify must have the same environment variables configured as local
-development.
+The one-time migration scripts require explicit execution and private snapshot
+files. Their former temporary HTTP endpoints are removed after cutover. Read the
+handoff before attempting to use any migration or rollback tooling.

@@ -15,26 +15,18 @@ async function as(role: string, user: string | null, sql: string, params: unknow
 	} finally { await db.exec('reset role') }
 }
 async function submit(request: number, source: string | null = null, body = 'A private manuscript.', author = writer) {
-	return as('service_role', null, 'select public.submit_workshop_draft($1,$2,$3,$4,$5,$6) as result', [author, id(request), 'My story', body, group, source])
+	return as('netlifydb_owner', null, 'select public.submit_workshop_draft($1,$2,$3,$4,$5,$6) as result', [author, id(request), 'My story', body, group, source])
 }
 before(async () => {
-	await db.exec(`
-		create role anon; create role authenticated; create role service_role bypassrls;
-		create schema auth; create table auth.users(id uuid primary key);
-		create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-		grant usage on schema public, auth to anon, authenticated, service_role;
-		grant execute on function auth.uid() to anon, authenticated, service_role;
-	`)
-	const baseline = (await readFile('supabase/migrations/20260415_layer1_core_flow.sql', 'utf8')).replace('create extension if not exists pgcrypto;', '')
+	await db.exec('create role netlifydb_owner bypassrls createrole; grant all on schema public to netlifydb_owner; grant create on database postgres to netlifydb_owner; set role netlifydb_owner;')
+	const baseline = await readFile('netlify/database/migrations/001_workshop-baseline/migration.sql', 'utf8')
+	assert.doesNotMatch(baseline, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the migration transaction')
+	await db.exec('begin')
 	await db.exec(baseline)
-	await db.exec(await readFile('supabase/migrations/20260510_annotated_story_examples.sql', 'utf8'))
-	await db.exec(`
-		grant all on all tables in schema public to anon, authenticated, service_role;
-		grant update(role) on public.profiles to authenticated;
-	`)
-	await db.exec(await readFile('supabase/migrations/20260909064353_workshop_stabilisation.sql', 'utf8'))
+	await db.exec('commit')
+	await db.exec('reset role')
 	for (const user of [writer, other, teacher, outsider]) {
-		await db.query('insert into auth.users values ($1)', [user])
+		await db.query('insert into studio_auth.users(id,email) values ($1,$2)', [user, `${user}@example.invalid`])
 		await db.query('insert into public.profiles(id,role) values($1,$2)', [user, user === teacher ? 'teacher' : 'writer'])
 	}
 	await db.query("insert into public.workshops(id,title,slug) values ($1,'Authorised Basic User','authorised-basic-user'), ($2,'Hidden class','hidden')", [group, hidden])
@@ -48,62 +40,62 @@ before(async () => {
 after(async () => { await db.close() })
 
 test('owner and teacher can read; another group member and anonymous visitor cannot', async () => {
-	assert.equal((await as('authenticated', writer, 'select * from public.submissions')).rows.length, 1)
-	assert.equal((await as('authenticated', teacher, 'select * from public.submissions')).rows.length, 1)
-	assert.equal((await as('authenticated', other, 'select * from public.submissions')).rows.length, 0)
-	assert.equal((await as('anon', null, 'select * from public.submissions')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.submissions')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', teacher, 'select * from public.submissions')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', other, 'select * from public.submissions')).rows.length, 0)
+	assert.equal((await as('studio_anon', null, 'select * from public.submissions')).rows.length, 0)
 })
 test('profile name can change but role, identity and profile creation are protected', async () => {
-	await as('authenticated', writer, "update public.profiles set display_name='Writer name' where id=$1", [writer])
-	await assert.rejects(as('authenticated', writer, "update public.profiles set role='teacher' where id=$1", [writer]), /permission denied/)
-	await assert.rejects(as('authenticated', writer, 'update public.profiles set id=$1 where id=$2', [id(9), writer]), /permission denied/)
-	await assert.rejects(as('authenticated', outsider, "insert into public.profiles(id,role) values($1,'teacher')", [outsider]), /permission denied/)
-	assert.equal((await as('authenticated', writer, "update public.profiles set display_name='Intruder' where id=$1 returning id", [other])).rows.length, 0)
+	await as('studio_authenticated', writer, "update public.profiles set display_name='Writer name' where id=$1", [writer])
+	await assert.rejects(as('studio_authenticated', writer, "update public.profiles set role='teacher' where id=$1", [writer]), /permission denied/)
+	await assert.rejects(as('studio_authenticated', writer, 'update public.profiles set id=$1 where id=$2', [id(9), writer]), /permission denied/)
+	await assert.rejects(as('studio_authenticated', outsider, "insert into public.profiles(id,role) values($1,'teacher')", [outsider]), /permission denied/)
+	assert.equal((await as('studio_authenticated', writer, "update public.profiles set display_name='Intruder' where id=$1 returning id", [other])).rows.length, 0)
 })
 test('teacher draft feedback is invisible to its writer', async () => {
 	assert.equal((await db.query<{ status: string }>('select status from public.submissions where id=$1', [piece])).rows[0]?.status, 'in_review')
-	assert.equal((await as('authenticated', writer, 'select * from public.feedback_items')).rows.length, 0)
-	assert.equal((await as('authenticated', teacher, 'select * from public.feedback_items')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.feedback_items')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', teacher, 'select * from public.feedback_items')).rows.length, 1)
 })
 test('group-restricted examples and their annotations stay private, including direct queries', async () => {
 	for (const who of [writer, other, outsider]) {
-		assert.equal((await as('authenticated', who, 'select * from public.teaching_examples')).rows.length, 0)
-		assert.equal((await as('authenticated', who, 'select * from public.teaching_example_annotations')).rows.length, 0)
+		assert.equal((await as('studio_authenticated', who, 'select * from public.teaching_examples')).rows.length, 0)
+		assert.equal((await as('studio_authenticated', who, 'select * from public.teaching_example_annotations')).rows.length, 0)
 	}
-	assert.equal((await as('anon', null, 'select * from public.teaching_examples')).rows.length, 0)
-	assert.equal((await as('authenticated', teacher, 'select * from public.teaching_examples')).rows.length, 1)
+	assert.equal((await as('studio_anon', null, 'select * from public.teaching_examples')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', teacher, 'select * from public.teaching_examples')).rows.length, 1)
 	await db.query('delete from public.teaching_example_hidden_groups where example_id=$1 and workshop_id=$2', [example, hidden])
-	assert.equal((await as('authenticated', writer, 'select * from public.teaching_examples')).rows.length, 1)
-	assert.equal((await as('authenticated', writer, 'select * from public.teaching_example_annotations')).rows.length, 1)
-	assert.equal((await as('authenticated', other, 'select * from public.teaching_examples')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.teaching_examples')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.teaching_example_annotations')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', other, 'select * from public.teaching_examples')).rows.length, 0)
 })
 test('transaction operations cannot be invoked directly by writers or anonymous clients', async () => {
-	for (const role of ['authenticated', 'anon']) {
+	for (const role of ['studio_authenticated', 'studio_anon']) {
 		await assert.rejects(as(role, writer, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Forged']), /permission denied/)
 		await assert.rejects(as(role, writer, 'select public.submit_workshop_draft($1,$2,$3,$4,$5,null)', [writer, id(90), 'Title', 'Text', group]), /permission denied/)
 	}
-	await assert.rejects(as('authenticated', writer, "insert into public.submissions(author_id,workshop_id,title,body,status) values($1,$2,'Title','Text','feedback_published')", [writer, group]), /row-level security/)
+	await assert.rejects(as('studio_authenticated', writer, "insert into public.submissions(author_id,workshop_id,title,body,status) values($1,$2,'Title','Text','feedback_published')", [writer, group]), /row-level security/)
 })
 test('a publication failure rolls back its summary, then a successful publish reveals only to owner', async () => {
 	await db.exec(`create function public.reject_publish() returns trigger language plpgsql as $$ begin raise exception 'simulated failure'; end $$;
 		create trigger reject_publish before update on public.submissions for each row execute function public.reject_publish();`)
-	await assert.rejects(as('service_role', null, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Feedback']), /simulated failure/)
+	await assert.rejects(as('netlifydb_owner', null, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Feedback']), /simulated failure/)
 	assert.equal((await db.query('select * from public.feedback_summaries')).rows.length, 0)
 	await db.exec('drop trigger reject_publish on public.submissions; drop function public.reject_publish();')
-	const first = await as('service_role', null, 'select public.publish_workshop_feedback($1,$2,$3) as result', [teacher, piece, 'Feedback'])
+	const first = await as('netlifydb_owner', null, 'select public.publish_workshop_feedback($1,$2,$3) as result', [teacher, piece, 'Feedback'])
 	assert.equal((first.rows[0] as { result: { changed: boolean } }).result.changed, true)
-	const retry = await as('service_role', null, 'select public.publish_workshop_feedback($1,$2,$3) as result', [teacher, piece, 'Feedback'])
+	const retry = await as('netlifydb_owner', null, 'select public.publish_workshop_feedback($1,$2,$3) as result', [teacher, piece, 'Feedback'])
 	assert.equal((retry.rows[0] as { result: { changed: boolean } }).result.changed, false)
-	assert.equal((await as('authenticated', writer, 'select * from public.feedback_items')).rows.length, 1)
-	assert.equal((await as('authenticated', writer, 'select * from public.feedback_summaries')).rows.length, 1)
-	assert.equal((await as('authenticated', other, 'select * from public.feedback_items')).rows.length, 0)
-	assert.equal((await as('authenticated', other, 'select * from public.feedback_summaries')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.feedback_items')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', writer, 'select * from public.feedback_summaries')).rows.length, 1)
+	assert.equal((await as('studio_authenticated', other, 'select * from public.feedback_items')).rows.length, 0)
+	assert.equal((await as('studio_authenticated', other, 'select * from public.feedback_summaries')).rows.length, 0)
 })
 test('published feedback stays locked against edits, deletion, late comments and a changed summary', async () => {
-	await assert.rejects(as('authenticated', teacher, "update public.feedback_items set comment='Late change' where submission_id=$1", [piece]), /Published feedback is locked/)
-	await assert.rejects(as('authenticated', teacher, 'delete from public.feedback_items where submission_id=$1', [piece]), /Published feedback is locked/)
-	await assert.rejects(as('authenticated', teacher, "insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,'{}','Late comment')", [piece, teacher]), /Published feedback is locked/)
-	await assert.rejects(as('service_role', null, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Changed summary']), /Published feedback is locked/)
+	await assert.rejects(as('studio_authenticated', teacher, "update public.feedback_items set comment='Late change' where submission_id=$1", [piece]), /Published feedback is locked/)
+	await assert.rejects(as('studio_authenticated', teacher, 'delete from public.feedback_items where submission_id=$1', [piece]), /Published feedback is locked/)
+	await assert.rejects(as('studio_authenticated', teacher, "insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,'{}','Late comment')", [piece, teacher]), /Published feedback is locked/)
+	await assert.rejects(as('netlifydb_owner', null, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Changed summary']), /Published feedback is locked/)
 })
 test('submission retries preserve exact whitespace and do not duplicate a manuscript', async () => {
 	const body = '\tA line.\r\n\r\n  Another line.  '
@@ -131,7 +123,7 @@ test('revisions enforce ownership, one active successor, unique versions and ide
 test('a teacher comment atomically starts review and prevents a writer deleting reviewed work', async () => {
 	const result = await submit(120)
 	const submissionId = (result.rows[0] as { result: { id: string } }).result.id
-	await as('authenticated', teacher, "insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,'First thought')", [submissionId, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 1, quote: 'A' }])
+	await as('studio_authenticated', teacher, "insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,'First thought')", [submissionId, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 1, quote: 'A' }])
 	assert.equal((await db.query<{ status: string }>('select status from public.submissions where id=$1', [submissionId])).rows[0]?.status, 'in_review')
-	assert.equal((await as('authenticated', writer, 'delete from public.submissions where id=$1 returning id', [submissionId])).rows.length, 0)
+	assert.equal((await as('studio_authenticated', writer, 'delete from public.submissions where id=$1 returning id', [submissionId])).rows.length, 0)
 })

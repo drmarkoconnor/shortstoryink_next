@@ -14,7 +14,7 @@ import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { normalizeSnippetLabel } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import { isCuratedSnippet } from '@/lib/snippets/curation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import {
 	teacherLibraryItemLimit,
 	teacherSnippetLibraryLimit,
@@ -232,7 +232,7 @@ function groupIdsFromBody(body: unknown) {
 
 export default async function TeacherDocumentsPage() {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	let snippets: BuilderSnippet[] = []
 	let libraryItems: BuilderLibraryItem[] = []
 	let documents: SavedTeachingDocument[] = []
@@ -240,7 +240,7 @@ export default async function TeacherDocumentsPage() {
 	let snippetsError: string | null = null
 	let documentsNotice: string | null = null
 
-	const teacherProfileResult = await supabase
+	const teacherProfileResult = await dataClient
 		.from('profiles')
 		.select('display_name')
 		.eq('id', profile.user.id)
@@ -252,7 +252,7 @@ export default async function TeacherDocumentsPage() {
 			profile.user.email,
 	)
 
-	const snippetsResult = await supabase
+	const snippetsResult = await dataClient
 		.from('snippets')
 		.select(
 			'id, snippet_text, note, created_at, anchor, source_type, source_submission_id, source_feedback_item_id, source_author_id',
@@ -309,7 +309,7 @@ export default async function TeacherDocumentsPage() {
 		})
 	}
 
-	const libraryResult = await supabase
+	const libraryResult = await dataClient
 		.from('teaching_library_items')
 		.select(
 			'id, item_type, title, body, reference_type, url, category_label, tags, updated_at',
@@ -345,7 +345,7 @@ export default async function TeacherDocumentsPage() {
 		})
 	}
 
-	const groupsResult = await supabase
+	const groupsResult = await dataClient
 		.from('workshops')
 		.select('id, title')
 		.order('title', { ascending: true })
@@ -358,7 +358,7 @@ export default async function TeacherDocumentsPage() {
 	}
 	const activeGroupIds = new Set(groups.map((group) => group.id))
 
-	const documentsResult = await supabase
+	const documentsResult = await dataClient
 		.from('teacher_documents')
 		.select('id, title, body, created_at, updated_at')
 		.eq('owner_id', profile.user.id)

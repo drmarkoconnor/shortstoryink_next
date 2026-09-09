@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { buildClientAuthCallbackUrl } from '@/lib/site/client-urls'
-import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { login, requestPasswordRecovery } from '@netlify/identity'
 import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 
 export function SignInPanel({ configError = false, callbackError = false, postSignInPath = '/app' }: {
@@ -19,12 +18,9 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 		setStatus('resetting')
 		setMessage(null)
 		try {
-			const { error } = await createBrowserSupabaseClient().auth.resetPasswordForEmail(email.trim(), {
-				redirectTo: buildClientAuthCallbackUrl('/auth/reset-password'),
-			})
-			if (error) throw error
+			await requestPasswordRecovery(email.trim())
 			setStatus('reset-sent')
-			setMessage('If an account exists for this email, a reset link is on its way. Open it in this browser.')
+			setMessage('If an account exists for this email, a reset link is on its way. Follow it to choose a new password.')
 		} catch {
 			setStatus('error')
 			setMessage('Unable to send a reset email right now. Please try again shortly.')
@@ -37,8 +33,7 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 		setStatus('signing-in')
 		setMessage(null)
 		try {
-			const { error } = await createBrowserSupabaseClient().auth.signInWithPassword({ email: email.trim(), password })
-			if (error) throw error
+			await login(email.trim(), password)
 			window.location.assign(safeRedirectPath(postSignInPath))
 		} catch (failure) {
 			setStatus('error')
@@ -55,6 +50,7 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 			<p className="muted mt-3 text-sm">
 				Sign in with your email and password.
 			</p>
+			<p className="muted mt-3 text-sm">Returning after our September update? Choose “Forgot password?” once to set a new password. Your writing and feedback are still here.</p>
 			{configError && (
 				<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
 					Sign-in is temporarily unavailable. Please try again later.

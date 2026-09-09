@@ -2,7 +2,7 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { normalizeSnippetCategoryLabel } from '@/lib/feedback/categories'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import {
 	normalizeTeachingLibraryItemType,
 	normalizeTeachingLibraryReferenceType,
@@ -95,7 +95,7 @@ function revalidateLibraryPaths() {
 
 export async function POST(request: Request) {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const payload = (await request.json()) as LibraryPayload
 
 	const libraryItemId = String(payload.id ?? '').trim()
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 	}
 
 	const result = libraryItemId
-		? await supabase
+		? await dataClient
 				.from('teaching_library_items')
 				.update(record)
 				.eq('id', libraryItemId)
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
 					'id, item_type, title, body, reference_type, url, category_label, tags, created_at, updated_at',
 				)
 				.single()
-		: await supabase
+		: await dataClient
 				.from('teaching_library_items')
 				.insert({
 					owner_id: profile.user.id,
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const requestUrl = new URL(request.url)
 	const libraryItemId = String(requestUrl.searchParams.get('id') ?? '').trim()
 
@@ -187,7 +187,7 @@ export async function DELETE(request: Request) {
 		)
 	}
 
-	const result = await supabase
+	const result = await dataClient
 		.from('teaching_library_items')
 		.delete()
 		.eq('id', libraryItemId)

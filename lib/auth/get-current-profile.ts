@@ -1,16 +1,16 @@
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import { ensureAbuMembership } from '@/lib/workshop/access-groups'
 
 export type AppRole = 'writer' | 'teacher' | 'admin'
 
 export const getCurrentProfile = cache(async function getCurrentProfile() {
 	const user = await getCurrentUser()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const { data, error } = await adminSupabase
+	const { data, error } = await adminData
 		.from('profiles')
 		.select('role, display_name')
 		.eq('id', user.id)
@@ -30,7 +30,7 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
 			(user.user_metadata?.name as string | undefined) ||
 			String(user.email ?? 'Writer').split('@')[0]
 
-		const { error: insertError } = await adminSupabase
+		const { error: insertError } = await adminData
 			.from('profiles')
 			.insert({
 				id: user.id,

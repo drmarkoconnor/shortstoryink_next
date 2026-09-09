@@ -9,7 +9,7 @@ import {
 	snippetUseFlags,
 	type SnippetUseFlag,
 } from '@/lib/snippets/workbench'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 const defaultTriageModel = 'gpt-5.4-mini'
 const maxTriageSnippets = 30
@@ -263,9 +263,9 @@ export async function POST(request: Request) {
 		)
 	}
 
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
-	const snippetsResult = await supabase
+	const snippetsResult = await dataClient
 		.from('snippets')
 		.select('id, snippet_text, note, anchor, source_type')
 		.eq('saved_by', profile.user.id)
