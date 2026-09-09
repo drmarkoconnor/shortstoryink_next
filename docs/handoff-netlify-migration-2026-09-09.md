@@ -6,7 +6,7 @@
 
 - Site: **storyink**, ID `d8bc3715-124c-43a2-846d-009b995bb694`, https://shortstory.ink. Do not target the older similarly named site.
 - Team: `drmarkoconnor`, ID `604dff94a9112e607f4fa007`, verified `credit-personal`. Automatic credit purchases are disabled.
-- Clean production deployment: `6aa17b2ab77b111dc9b73ccc`. Final repository merge and small copy/account-email synchronisation cleanup are in progress through [PR #1](https://github.com/drmarkoconnor/shortstoryink_next/pull/1). Update this release ID after the merged build.
+- Final production deployment: `6aa17f236c2a2500089f2c9e`, published 9 September 2026 at 15:46:55 UTC from merged commit `ca4547d85376217317ee9a87388eda67d3e59fb4`. [PR #1](https://github.com/drmarkoconnor/shortstoryink_next/pull/1) is merged; local main is synchronised. The preceding clean manual deployment `6aa17b2ab77b111dc9b73ccc` is retained as an additional Netlify rollback release. Migration and release work are complete.
 - Netlify Identity instance: `6aa129dd145522096fa7e192`. Registration is reopened; email confirmation remains required.
 - All 16 application tables, 35 application accounts and 20 confirmed Netlify login mappings were imported into production in one transaction. Every table count and content hash matched the frozen-source export before commit. This includes 21 submissions, 544 snippets, 12 teacher documents, 56 feedback items and two teaching examples.
 - The 15 unconfirmed source accounts remain reserved in the application account map, without being activated. They must verify their email through signup before gaining access.
@@ -15,11 +15,11 @@
 
 ## Verification
 
-- 22 automated tests pass, using the actual Netlify baseline inside a platform-owned transaction. GitHub CI independently passed typecheck, tests, lint and build; rerun CI for the final PR commit.
+- 22 automated tests pass, using the actual Netlify baseline inside a platform-owned transaction. GitHub CI passed typecheck, tests, lint and build on both the final PR commit and merged main commit; [final main CI run](https://github.com/drmarkoconnor/shortstoryink_next/actions/runs/34372357566). The Netlify Git production build also passed.
 - Real PostgreSQL tests passed for every migrated writer's isolation, anonymous denial, role protection, simultaneous submission retry deduplication, publication waiting for a comment transaction, published-feedback locking, and competing revision exclusion. Temporary fixtures were removed and all original public hashes remained identical.
 - The deployed teacher/writer/peer HTTP rehearsal passed sign-in, writer provisioning, teacher-route denial, expired-session renewal before SSR, the real submission action, annotations, draft privacy, publication, peer isolation, export and the real bound revision action. Synthetic accounts and writing from these rehearsals were removed.
 - The exact production import was first rehearsed on a fresh branch with the maintenance gate active. Its 35 accounts, 20 mappings and all 16 hashes matched. Production then passed the same import verification.
-- Live public pages, protected-page/API denial, removal of both temporary import endpoints, and nine browser JavaScript bundles passed read-only checks. The bundles contain no Supabase client or connection references.
+- Live public pages, protected-page/API denial, removal of both temporary import endpoints, and nine browser JavaScript bundles passed read-only checks, repeated successfully after the final merged production release. The bundles contain no Supabase client or connection references.
 - A database branch was confirmed idle, then woke and returned all 21 submissions in **1,868ms**. Settings: min CU 0.25, max CU 1, inactivity sleep 300 seconds. This addresses manual inactivity restoration; credit exhaustion remains a separate hosting limit.
 - Browser automation was unavailable. Do not claim screenshots, visual browser testing or email-delivery testing. The HTTP checks and database checks above were performed against deployed services.
 
