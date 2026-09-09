@@ -2,6 +2,8 @@
 
 ## Read this first
 
+**Migration follow-up:** Mark has now explicitly requested removal of Supabase. Continue from [the September 9 migration handoff](handoff-netlify-migration-2026-09-09.md), which records the confirmed legacy Netlify plan, available destination plans and the new billing decision. This file records the completed stabilisation release only.
+
 Mark authorised the first recommendation in the September 8 review: stabilise the private workshop before the Netlify backend migration and interactive writing-world work. Preserve the existing elegant literary visual language. Keep this file current during implementation and after verification.
 
 The broader intent is reliable, low-maintenance access for students, followed by Netlify Database/Identity evaluation, then one annotated park scene connecting close reading to original writing. This pass is the reliability and privacy foundation, not a backend migration or visual redesign.
