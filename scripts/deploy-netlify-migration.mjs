@@ -6,7 +6,7 @@ const directory = '.local-backups/2026-09-09-netlify-migration'
 const mode = process.argv[2] ?? 'preview'
 if (!['preview', 'rehearsal', 'maintenance-production', 'final-production'].includes(mode)) throw new Error('Unknown deploy mode')
 const production = mode.endsWith('-production')
-const alias = mode === 'rehearsal' ? 'migration-cutover-rehearsal' : 'migration-rehearsal'
+const alias = mode === 'rehearsal' ? 'migration-cutover-v2' : 'migration-rehearsal'
 const parked = `${directory}/local-env.private`
 await access(parked).then(() => { throw new Error('Parked environment already exists') }, () => {})
 let hasLocal = true

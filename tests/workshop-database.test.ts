@@ -19,7 +19,11 @@ async function submit(request: number, source: string | null = null, body = 'A p
 }
 before(async () => {
 	await db.exec('create role netlifydb_owner bypassrls createrole; grant all on schema public to netlifydb_owner; grant create on database postgres to netlifydb_owner; set role netlifydb_owner;')
-	await db.exec(await readFile('netlify/database/migrations/001_workshop-baseline/migration.sql', 'utf8'))
+	const baseline = await readFile('netlify/database/migrations/001_workshop-baseline/migration.sql', 'utf8')
+	assert.doesNotMatch(baseline, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the migration transaction')
+	await db.exec('begin')
+	await db.exec(baseline)
+	await db.exec('commit')
 	await db.exec('reset role')
 	for (const user of [writer, other, teacher, outsider]) {
 		await db.query('insert into studio_auth.users(id,email) values ($1,$2)', [user, `${user}@example.invalid`])

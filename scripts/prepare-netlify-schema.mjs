@@ -12,7 +12,7 @@ const literal = s => "'" + s.replaceAll("'", "''") + "'"
 const adapt = s => s.replace(/\bauth\./g, 'studio_auth.').replace(/\banon\b/g, 'studio_anon').replace(/\bauthenticated\b/g, 'studio_authenticated').replace(/\bservice_role\b/g, 'netlifydb_owner')
 const sql = [`-- Studio baseline: schema only, preserving the verified workshop invariants.
 -- Application rows and identity mappings are imported privately after rehearsal.
-begin;
+-- Netlify owns the surrounding transaction; do not BEGIN or COMMIT here.
 set local search_path = public;
 do $$ begin
  if not exists(select 1 from pg_roles where rolname='studio_anon') then create role studio_anon nologin; end if;
@@ -47,7 +47,6 @@ for (const p of inventory.policies) sql.push(`create policy ${quote(p.policyname
 for (const g of inventory.grants) sql.push(`grant ${g.privilege_type} on public.${quote(g.table_name)} to ${g.grantee==='PUBLIC'?'PUBLIC':quote(g.grantee)};`)
 const stabilisation = await readFile('supabase/migrations/20260909064353_workshop_stabilisation.sql','utf8')
 sql.push(stabilisation.replace(/^begin;\s*$/m,'').replace(/^commit;\s*$/m,''))
-sql.push('commit;')
 const destination = 'netlify/database/migrations/001_workshop-baseline'
 await mkdir(destination, {recursive:true})
 await writeFile(`${destination}/migration.sql`,adapt(sql.join('\n\n'))+'\n')

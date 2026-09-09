@@ -1,6 +1,6 @@
 -- Studio baseline: schema only, preserving the verified workshop invariants.
 -- Application rows and identity mappings are imported privately after rehearsal.
-begin;
+-- Netlify owns the surrounding transaction; do not BEGIN or COMMIT here.
 set local search_path = public;
 do $$ begin
  if not exists(select 1 from pg_roles where rolname='studio_anon') then create role studio_anon nologin; end if;
@@ -1383,5 +1383,3 @@ $$;
 revoke all on function public.publish_workshop_feedback(uuid, uuid, text) from public, studio_anon, studio_authenticated;
 grant execute on function public.publish_workshop_feedback(uuid, uuid, text) to netlifydb_owner;
 
-
-commit;

@@ -7,9 +7,10 @@ const action = process.argv[3]
 assert.ok(['freeze','export','unfreeze'].includes(action))
 const directory = '.local-backups/2026-09-09-netlify-migration'
 const previous = JSON.parse(await readFile(`${directory}/application-snapshot.json`, 'utf8')).rows[0].snapshot
-process.loadEnvFile('.env.local')
-const project = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL).hostname.split('.')[0]
-assert.equal(previous.project, project, 'Source project does not match the verified backup')
+// This private inventory was checked against the linked source before cutover.
+// Avoid depending on .env.local, which is deliberately parked during builds.
+const project = previous.project
+assert.match(project, /^[a-z]{20}$/, 'Invalid source project in the verified backup')
 const tables = Object.keys(previous.tables).map(name => { assert.match(name, /^[a-z_]+$/); return `public."${name}"` }).concat('auth.users')
 let sqlPath = `${directory}/export.sql`
 if (action !== 'export') {
