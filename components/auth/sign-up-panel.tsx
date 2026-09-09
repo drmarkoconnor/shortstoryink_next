@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
-import { buildClientAuthCallbackUrl } from '@/lib/site/client-urls';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { signup } from '@netlify/identity';
+import { passwordValidationError } from '@/lib/auth/password-validation';
 
 export function SignUpPanel() {
   const [email, setEmail] = useState('');
@@ -14,26 +14,20 @@ export function SignUpPanel() {
     e.preventDefault();
     setStatus('signing-up');
     setMessage(null);
-    if (password !== confirm) {
+    const invalid = passwordValidationError(password, confirm);
+    if (invalid) {
       setStatus('error');
-      setMessage('Passwords do not match.');
+      setMessage(invalid);
       return;
     }
-    const emailRedirectTo = buildClientAuthCallbackUrl('/app');
-    const supabase = createBrowserSupabaseClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo,
-      },
-    });
-    if (error) {
+    try {
+      const user = await signup(email.trim(), password);
+      window.location.assign(user.confirmedAt ? '/app' : '/auth/confirm-email');
+    } catch (error) {
       setStatus('error');
-      setMessage(error.message);
+      setMessage(error instanceof Error ? error.message : 'Unable to create your account. Please try again.');
       return;
     }
-    window.location.assign('/auth/confirm-email');
   };
 
   return (

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import type {
 	ExampleCopyrightStatus,
 	ExampleStatus,
@@ -57,7 +57,7 @@ async function createExampleAction(formData: FormData) {
 	'use server'
 
 	const profile = await requireTeacher()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const title = String(formData.get('title') ?? '').trim()
 	const authorName = String(formData.get('authorName') ?? '').trim()
 	const body = String(formData.get('body') ?? '').trim()
@@ -72,7 +72,7 @@ async function createExampleAction(formData: FormData) {
 		redirect('/app/teacher/examples?error=Title+and+story+text+are+required.')
 	}
 
-	const insertResult = await adminSupabase
+	const insertResult = await adminData
 		.from('teaching_examples')
 		.insert({
 			owner_id: profile.user.id,
@@ -106,12 +106,12 @@ export default async function TeacherExamplesPage({
 	const params = searchParams ? await searchParams : {}
 	const notice = toMessage(params.notice)
 	const errorNotice = toMessage(params.error)
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	let examples: ExampleRow[] = []
 	let annotationCounts: Record<string, number> = {}
 	let loadError: string | null = null
 
-	const examplesResult = await adminSupabase
+	const examplesResult = await adminData
 		.from('teaching_examples')
 		.select(
 			'id, title, author_name, source_label, copyright_status, editorial_note, content_note, craft_tags, status, updated_at, published_at',
@@ -127,7 +127,7 @@ export default async function TeacherExamplesPage({
 		examples = (examplesResult.data ?? []) as ExampleRow[]
 		const exampleIds = examples.map((example) => example.id)
 		if (exampleIds.length > 0) {
-			const countResult = await adminSupabase
+			const countResult = await adminData
 				.from('teaching_example_annotations')
 				.select('example_id')
 				.in('example_id', exampleIds)

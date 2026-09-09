@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { PrintAction } from '@/components/export/print-action'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import {
 	normalizeTeachingDocumentType,
 	type TeachingDocumentType,
@@ -264,9 +264,9 @@ export default async function WriterDocumentPage({
 	await requireWriter()
 	const user = await getCurrentUser()
 	const { documentId } = await params
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const { data: memberRows, error: membershipError } = await adminSupabase
+	const { data: memberRows, error: membershipError } = await adminData
 		.from('workshop_members')
 		.select('workshop_id')
 		.eq('profile_id', user.id)
@@ -282,7 +282,7 @@ export default async function WriterDocumentPage({
 		notFound()
 	}
 
-	const { data: activeWorkshopRows, error: activeWorkshopError } = await adminSupabase
+	const { data: activeWorkshopRows, error: activeWorkshopError } = await adminData
 		.from('workshops')
 		.select('id')
 		.in('id', Array.from(writerWorkshopIds))
@@ -298,7 +298,7 @@ export default async function WriterDocumentPage({
 		notFound()
 	}
 
-	const { data: documentRow, error } = await adminSupabase
+	const { data: documentRow, error } = await adminData
 		.from('teacher_documents')
 		.select('id, title, body, updated_at')
 		.eq('id', documentId)

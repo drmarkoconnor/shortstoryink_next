@@ -7,3 +7,6 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+[db.migrations]
+  path = "netlify/database/migrations"

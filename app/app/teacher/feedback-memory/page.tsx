@@ -10,7 +10,7 @@ import {
 	normalizeFeedbackLabel,
 } from '@/lib/feedback/categories'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherFeedbackMemoryLimit } from '@/lib/teacher-library/query-limits'
 
 type FeedbackRow = {
@@ -62,11 +62,11 @@ function categoryFromAnchor(anchor: FeedbackAnchor | null) {
 
 export default async function TeacherFeedbackMemoryPage() {
 	const profile = await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	let entries: FeedbackMemoryEntry[] = []
 	let loadError: string | null = null
 
-	const feedbackResult = await supabase
+	const feedbackResult = await dataClient
 		.from('feedback_items')
 		.select('id, submission_id, comment, anchor, created_at')
 		.eq('author_id', profile.user.id)
@@ -84,7 +84,7 @@ export default async function TeacherFeedbackMemoryPage() {
 		let writersById: Record<string, string> = {}
 
 		if (submissionIds.length > 0) {
-			const submissionsResult = await supabase
+			const submissionsResult = await dataClient
 				.from('submissions')
 				.select('id, title, author_id, status, version, created_at')
 				.in('id', submissionIds)
@@ -98,7 +98,7 @@ export default async function TeacherFeedbackMemoryPage() {
 				...new Set(submissionRows.map((submission) => submission.author_id)),
 			]
 			if (writerIds.length > 0) {
-				const profilesResult = await supabase
+				const profilesResult = await dataClient
 					.from('profiles')
 					.select('id, display_name')
 					.in('id', writerIds)

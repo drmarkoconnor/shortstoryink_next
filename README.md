@@ -1,22 +1,23 @@
-# shortstory.ink — Phase 1 foundation
+# shortstory.ink — writing and teaching studio
 
 ## Current work and handoff
 
-For the September 2026 workshop stabilisation, deployment prerequisites and
-follow-up Netlify migration plan, read
-[the active handoff](docs/handoff-workshop-stabilisation-2026-09-08.md).
-The shell-only description below is historical; the app now includes the writer
-submission/revision loop, teacher review and reusable teaching materials.
+Read [the active Netlify migration handoff](docs/handoff-netlify-migration-2026-09-09.md)
+before changing the backend or deploying. It records the live state, private
+backup locations, completed checks and remaining cutover work. The preceding
+[workshop stabilisation handoff](docs/handoff-workshop-stabilisation-2026-09-08.md)
+documents the privacy and submission invariants that must be preserved.
 
-This repository now hosts the **new frontend foundation** for shortstory.ink:
+The application supports manuscript submission and revision, private teacher
+feedback, printable feedback packets and reusable teaching materials:
 
 - Next.js App Router
 - React
 - Tailwind CSS
-- Supabase-backed authentication/session wiring
+- Netlify Database and Netlify Identity integration on the migration branch
 - GitHub CI + Netlify hosting config
 
-This phase intentionally ships only the application shell and route scaffolding.
+The migration branch is not the production release until the handoff confirms cutover.
 
 ## What exists in Phase 1
 
@@ -38,28 +39,29 @@ This phase intentionally ships only the application shell and route scaffolding.
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill values from your existing Supabase
-project.
+Copy `.env.example` to `.env.local` for optional local configuration. Netlify
+provisions the deployed database connection automatically. Database credentials
+and identity admin tokens must never reach browser code.
 
-Required now:
+Application configuration:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_AUTH_REDIRECT_BASE_URL`
-
-Expected soon (server-side workflows):
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_PROJECT_ID`
 - `APP_URL`
-- `AUTH_REDIRECT_BASE_URL`
+- Optional Resend and teacher AI settings listed in `.env.example`
+
+The runtime does not require Supabase settings. Its historical SQL and export
+scripts are retained as migration references; never replay their reset/seed
+scripts into the Netlify database.
+
+Schema migrations live in `netlify/database/migrations`. Data restoration uses
+the explicit private snapshot import script, followed by row/hash verification.
 
 ## Local development
 
 1. Install dependencies.
 2. Configure `.env.local`.
-3. Run the app and visit `http://localhost:3000`.
+3. Use `netlify dev` for local database work. Verify Identity on a deployed
+   preview: its SDK does not currently support local Identity development.
 
 ## Quality gates
 

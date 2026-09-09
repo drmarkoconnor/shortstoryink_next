@@ -1,5 +1,5 @@
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
@@ -217,9 +217,9 @@ export async function getFeedbackExportPacket(
 	currentTeacherId: string,
 	overrides: FeedbackExportOverrides = {},
 ) {
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
-	const submissionResult = await supabase
+	const submissionResult = await dataClient
 		.from('submissions')
 		.select(
 			'id, title, body, status, created_at, author_id, version, workshop_id',
@@ -245,29 +245,29 @@ export async function getFeedbackExportPacket(
 
 	const [writerResult, workshopResult, feedbackResult, summaryResult, teacherResult] =
 		await Promise.all([
-			supabase
+			dataClient
 				.from('profiles')
 				.select('display_name')
 				.eq('id', submission.author_id)
 				.maybeSingle(),
-			supabase
+			dataClient
 				.from('workshops')
 				.select('title')
 				.eq('id', submission.workshop_id)
 				.maybeSingle(),
-			supabase
+			dataClient
 				.from('feedback_items')
 				.select('id, comment, anchor, created_at, author_id')
 				.eq('submission_id', submission.id)
 				.order('created_at', { ascending: true }),
-			supabase
+			dataClient
 				.from('feedback_summaries')
 				.select(
 					'id, summary, published_at, author_id, personal_note, next_steps, reading_suggestions, export_copy_version, export_copy_updated_at, last_exported_at, last_exported_copy_version',
 				)
 				.eq('submission_id', submission.id)
 				.maybeSingle(),
-			supabase
+			dataClient
 				.from('profiles')
 				.select('display_name')
 				.eq('id', currentTeacherId)
@@ -299,7 +299,7 @@ export async function getFeedbackExportPacket(
 
 	let authorNameById: Record<string, string> = {}
 	if (authorIds.length > 0) {
-		const authorLookup = await supabase
+		const authorLookup = await dataClient
 			.from('profiles')
 			.select('id, display_name')
 			.in('id', authorIds)
@@ -315,7 +315,7 @@ export async function getFeedbackExportPacket(
 	}
 
 	const exportEventsResult = summaryId
-		? await supabase
+		? await dataClient
 				.from('feedback_export_events')
 				.select(
 					'id, created_at, exported_by, export_copy_version, note, packet_template',

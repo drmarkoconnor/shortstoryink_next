@@ -1,5 +1,5 @@
 import 'server-only'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import { isRequestId } from '@/lib/drafts/recovery'
 
 export async function saveWorkshopDraft(authorId: string, form: FormData, sourceId?: string) {
@@ -8,7 +8,7 @@ export async function saveWorkshopDraft(authorId: string, form: FormData, source
 	const title = String(form.get('title') ?? '').trim()
 	const body = String(form.get('body') ?? '')
 	if (!title || !body.trim()) return { error: 'Please complete the title and manuscript.' } as const
-	const { data, error } = await createAdminSupabaseClient().rpc('submit_workshop_draft', {
+	const { data, error } = await createAdminDataClient().rpc('submit_workshop_draft', {
 		p_author_id: authorId, p_request_id: requestId, p_title: title, p_body: body,
 		p_workshop_id: sourceId ? null : String(form.get('workshopId') ?? '') || null,
 		p_source_id: sourceId ?? null,

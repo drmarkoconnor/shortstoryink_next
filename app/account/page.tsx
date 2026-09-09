@@ -2,11 +2,11 @@ import { revalidatePath } from 'next/cache'
 import ProfileSection, { type ProfileSaveState } from '@/components/account/profile-section'
 import SecuritySection from '@/components/account/security-section'
 import { getCurrentProfile } from '@/lib/auth/get-current-profile'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 export default async function AccountPage() {
 	const { user } = await getCurrentProfile()
-	const client = await createServerSupabaseClient()
+	const client = await createServerDataClient()
 	const { data, error } = await client.from('profiles').select('display_name').eq('id', user.id).single()
 	async function saveProfile(_state: ProfileSaveState, form: FormData): Promise<ProfileSaveState> {
 		'use server'
@@ -14,7 +14,7 @@ export default async function AccountPage() {
 		const displayName = String(form.get('displayName') ?? '').trim()
 		if (!displayName || displayName.length > 100) return { error: 'Enter a display name of 1–100 characters.' }
 		try {
-			const db = await createServerSupabaseClient()
+			const db = await createServerDataClient()
 			const result = await db.from('profiles').update({ display_name: displayName }).eq('id', currentUser.id).select('id').single()
 			if (result.error || !result.data) return { error: 'Unable to save your profile. Please try again.' }
 		} catch {

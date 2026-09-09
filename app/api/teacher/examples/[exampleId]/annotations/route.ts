@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import {
 	exampleCategorySlug,
 	normalizeExampleCategory,
@@ -83,7 +83,7 @@ export async function POST(
 	const profile = await requireTeacher()
 	const { exampleId } = await params
 	const payload = (await request.json()) as AnnotationPayload
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
 	const anchor = validAnchorPayload(payload)
 	const comment = String(payload.comment ?? '').trim()
@@ -98,7 +98,7 @@ export async function POST(
 		)
 	}
 
-	const exampleResult = await adminSupabase
+	const exampleResult = await adminData
 		.from('teaching_examples')
 		.select('id')
 		.eq('id', exampleId)
@@ -108,8 +108,8 @@ export async function POST(
 		return NextResponse.json({ error: 'Example not found.' }, { status: 404 })
 	}
 
-	const insertResult = await adminSupabase
-		.from('teaching_example_annotations')
+	const insertResult = await adminData
+		.from<Parameters<typeof toAnnotationResponse>[0]>('teaching_example_annotations')
 		.insert({
 			example_id: exampleId,
 			author_id: profile.user.id,
@@ -148,7 +148,7 @@ export async function PATCH(
 	const categoryLabel = normalizeExampleCategory(payload.categoryLabel)
 	const categorySlug = exampleCategorySlug(categoryLabel)
 	const tags = normalizeExampleTags(payload.tags)
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
 	if (!annotationId || !comment) {
 		return NextResponse.json(
@@ -157,8 +157,8 @@ export async function PATCH(
 		)
 	}
 
-	const existingResult = await adminSupabase
-		.from('teaching_example_annotations')
+	const existingResult = await adminData
+		.from<Parameters<typeof toAnnotationResponse>[0]>('teaching_example_annotations')
 		.select('id, anchor')
 		.eq('id', annotationId)
 		.eq('example_id', exampleId)
@@ -173,8 +173,8 @@ export async function PATCH(
 			? (existingResult.data.anchor as Record<string, unknown>)
 			: {}
 
-	const updateResult = await adminSupabase
-		.from('teaching_example_annotations')
+	const updateResult = await adminData
+		.from<Parameters<typeof toAnnotationResponse>[0]>('teaching_example_annotations')
 		.update({
 			comment,
 			category_label: categoryLabel,
@@ -209,14 +209,14 @@ export async function DELETE(
 	const { exampleId } = await params
 	const payload = (await request.json()) as AnnotationPayload
 	const annotationId = String(payload.id ?? '').trim()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
 	if (!annotationId) {
 		return NextResponse.json({ error: 'Choose a note to delete.' }, { status: 400 })
 	}
 
-	const deleteResult = await adminSupabase
-		.from('teaching_example_annotations')
+	const deleteResult = await adminData
+		.from<Parameters<typeof toAnnotationResponse>[0]>('teaching_example_annotations')
 		.delete()
 		.eq('id', annotationId)
 		.eq('example_id', exampleId)

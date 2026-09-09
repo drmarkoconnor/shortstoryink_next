@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { IdentityLifecycle } from '@/components/auth/identity-lifecycle'
 
 export const metadata: Metadata = {
 	title: 'shortstory.ink',
@@ -13,7 +14,7 @@ export default function RootLayout({
 }) {
 	return (
 		 <html lang="en">
-			  <body>{children}</body>
+			  <body><IdentityLifecycle />{children}</body>
 		 </html>
 	)
 }

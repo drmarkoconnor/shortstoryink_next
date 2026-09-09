@@ -1,4 +1,4 @@
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 
 export const ABU_WORKSHOP_SLUG = 'authorised-basic-user'
 export const ABU_WORKSHOP_TITLE = 'Authorised Basic User'
@@ -8,9 +8,9 @@ export function isAbuWorkshopSlug(value: string | null | undefined) {
 }
 
 export async function getOrCreateAbuWorkshopId() {
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const { data: existing, error: existingError } = await adminSupabase
+	const { data: existing, error: existingError } = await adminData
 		.from('workshops')
 		.select('id')
 		.eq('slug', ABU_WORKSHOP_SLUG)
@@ -24,7 +24,7 @@ export async function getOrCreateAbuWorkshopId() {
 		return existing.id as string
 	}
 
-	const { data: created, error: createError } = await adminSupabase
+	const { data: created, error: createError } = await adminData
 		.from('workshops')
 		.insert({
 			title: ABU_WORKSHOP_TITLE,
@@ -43,10 +43,10 @@ export async function getOrCreateAbuWorkshopId() {
 }
 
 export async function ensureAbuMembership(profileId: string) {
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const workshopId = await getOrCreateAbuWorkshopId()
 
-	const { error } = await adminSupabase.from('workshop_members').upsert(
+	const { error } = await adminData.from('workshop_members').upsert(
 		{
 			workshop_id: workshopId,
 			profile_id: profileId,
@@ -65,10 +65,10 @@ export async function ensureAbuMembership(profileId: string) {
 }
 
 export async function ensureAbuMembershipForAllProfiles() {
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const workshopId = await getOrCreateAbuWorkshopId()
 
-	const { data: profiles, error: profileError } = await adminSupabase
+	const { data: profiles, error: profileError } = await adminData
 		.from('profiles')
 		.select('id')
 
@@ -85,7 +85,7 @@ export async function ensureAbuMembershipForAllProfiles() {
 		profile_id: profile.id as string,
 	}))
 
-	const { error } = await adminSupabase.from('workshop_members').upsert(rows, {
+	const { error } = await adminData.from('workshop_members').upsert(rows, {
 		onConflict: 'workshop_id,profile_id',
 		ignoreDuplicates: true,
 	})

@@ -5,7 +5,7 @@ import { redirect, notFound } from 'next/navigation'
 import { RevisionDraftForm } from '@/components/writer/revision-draft-form'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
 
 const ABU_SUBMISSION_WORD_LIMIT = 2000
@@ -90,13 +90,13 @@ export default async function WriterRevisionPage({
 }) {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 	const { submissionId } = await params
 	const query = searchParams ? await searchParams : {}
 	const notice = toMessage(query.notice)
 	const errorNotice = toMessage(query.error)
 
-	const submissionResult = await adminSupabase
+	const submissionResult = await adminData
 		.from('submissions')
 		.select(
 			'id, title, body, status, created_at, author_id, workshop_id, version, parent_submission_id',
@@ -116,7 +116,7 @@ export default async function WriterRevisionPage({
 	}
 
 	const rootSubmissionId = submission.parent_submission_id ?? submission.id
-	const historyResult = await adminSupabase
+	const historyResult = await adminData
 		.from('submissions')
 		.select('id, version, status, created_at')
 		.eq('author_id', user.id)
@@ -132,7 +132,7 @@ export default async function WriterRevisionPage({
 		) + 1
 	const blockedReason = getRevisionBlockReason(submission, revisionHistory)
 
-	const workshopResult = await adminSupabase
+	const workshopResult = await adminData
 		.from('workshops')
 		.select('title, slug')
 		.eq('id', submission.workshop_id)

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { ExampleReadingWorkspace } from '@/components/writer/example-reading-workspace'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import {
 	exampleCategorySlug,
 	normalizeExampleCategory,
@@ -53,7 +53,7 @@ export default async function WriterExampleReaderPage({
 }) {
 	await requireWriter()
 	const { exampleId } = await params
-	const db = await createServerSupabaseClient()
+	const db = await createServerDataClient()
 
 	const exampleResult = await db
 		.from('teaching_examples')

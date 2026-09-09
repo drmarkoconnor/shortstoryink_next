@@ -10,7 +10,7 @@ import {
 	normalizeSnippetStatus,
 	normalizeSnippetUseFlags,
 } from '@/lib/snippets/workbench'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 type SnippetPayload = {
 	text?: string
@@ -110,7 +110,7 @@ export async function PATCH(
 ) {
 	const profile = await requireTeacher()
 	const { snippetId } = await params
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const payload = (await request.json()) as SnippetPayload
 	const text = cleanSnippetText(String(payload.text ?? ''))
 	const note = String(payload.note ?? '').trim()
@@ -133,7 +133,7 @@ export async function PATCH(
 		return NextResponse.json({ error: 'Snippet text cannot be empty.' }, { status: 400 })
 	}
 
-	const snippetResult = await supabase
+	const snippetResult = await dataClient
 		.from('snippets')
 		.select('id, anchor')
 		.eq('id', snippetId)
@@ -167,7 +167,7 @@ export async function PATCH(
 	}
 
 	const updateSnippet = (includeCategoryColumn: boolean) =>
-		supabase
+		dataClient
 			.from('snippets')
 			.update({
 				...updatePayload,
@@ -218,13 +218,13 @@ export async function DELETE(
 ) {
 	const profile = await requireTeacher()
 	const { snippetId } = await params
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
 	if (!snippetId) {
 		return NextResponse.json({ error: 'Choose a snippet to delete.' }, { status: 400 })
 	}
 
-	const { error } = await supabase
+	const { error } = await dataClient
 		.from('snippets')
 		.delete()
 		.eq('id', snippetId)

@@ -3,7 +3,7 @@ import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-rea
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 
 type FeedbackKind = 'typo' | 'craft' | 'pacing' | 'structure'
 
@@ -51,9 +51,9 @@ export default async function WriterFeedbackDetailPage({
 	await requireWriter()
 	const user = await getCurrentUser()
 	const { submissionId } = await params
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const submissionResult = await adminSupabase
+	const submissionResult = await adminData
 		.from('submissions')
 		.select(
 			'id, title, body, status, created_at, author_id, version, parent_submission_id',
@@ -77,7 +77,7 @@ export default async function WriterFeedbackDetailPage({
 		parent_submission_id: string | null
 	}
 	const rootSubmissionId = submission.parent_submission_id ?? submission.id
-	const versionHistoryResult = await adminSupabase
+	const versionHistoryResult = await adminData
 		.from('submissions')
 		.select('id, version, status, created_at')
 		.eq('author_id', user.id)
@@ -92,7 +92,7 @@ export default async function WriterFeedbackDetailPage({
 
 	const paragraphs = toManuscriptParagraphs(submission.body)
 
-	const feedbackRowsResult = await adminSupabase
+	const feedbackRowsResult = await adminData
 		.from('feedback_items')
 		.select('id, comment, anchor, created_at')
 		.eq('submission_id', submission.id)
@@ -150,7 +150,7 @@ export default async function WriterFeedbackDetailPage({
 			: null,
 	}))
 
-	const summaryResult = await adminSupabase
+	const summaryResult = await adminData
 		.from('feedback_summaries')
 		.select('summary, published_at')
 		.eq('submission_id', submission.id)

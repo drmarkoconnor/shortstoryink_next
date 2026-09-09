@@ -8,7 +8,7 @@ import {
 } from '@/lib/feedback/categories'
 import { normalizeTeacherDisplayName } from '@/lib/display-names'
 import { buildSnippetInsert } from '@/lib/snippets/build-snippet-insert'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 
 type AnnotationPayload = {
 	type?: 'comment' | 'snippet'
@@ -135,15 +135,15 @@ function toFeedbackResponse(row: {
 }
 
 async function loadModernSubmission(submissionId: string) {
-	const supabase = await createServerSupabaseClient()
-	const submissionResult = await supabase
+	const dataClient = await createServerDataClient()
+	const submissionResult = await dataClient
 		.from('submissions')
 		.select('id, author_id, status')
 		.eq('id', submissionId)
 		.maybeSingle()
 
 	return {
-		supabase,
+		dataClient,
 		submissionResult,
 	}
 }
@@ -168,7 +168,7 @@ export async function POST(
 ) {
 	const profile = await requireTeacher()
 	const { submissionId } = await params
-	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
+	const { dataClient, submissionResult } = await loadModernSubmission(submissionId)
 	const payload = (await request.json()) as AnnotationPayload
 
 	const type = payload.type
@@ -243,7 +243,7 @@ export async function POST(
 			suggestedAction,
 		}
 
-		const insertResult = await supabase
+		const insertResult = await dataClient
 			.from('feedback_items')
 			.insert({
 				submission_id: submissionId,
@@ -261,7 +261,7 @@ export async function POST(
 			)
 		}
 
-		await supabase
+		await dataClient
 			.from('submissions')
 			.update({ status: 'in_review' })
 			.eq('id', submissionId)
@@ -288,7 +288,7 @@ export async function POST(
 		: normalizeSnippetCategoryLabel(
 				payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
 			)
-	const teacherProfileResult = await supabase
+	const teacherProfileResult = await dataClient
 		.from('profiles')
 		.select('display_name')
 		.eq('id', profile.user.id)
@@ -328,7 +328,7 @@ export async function POST(
 		visibility: 'private',
 	})
 
-	const snippetResult = await supabase
+	const snippetResult = await dataClient
 		.from('snippets')
 		.insert(snippetInsert)
 		.select('id, note, created_at, anchor, snippet_category_id')
@@ -363,7 +363,7 @@ export async function PATCH(
 ) {
 	await requireTeacher()
 	const { submissionId } = await params
-	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
+	const { dataClient, submissionResult } = await loadModernSubmission(submissionId)
 	const payload = (await request.json()) as AnnotationPayload
 	const type = payload.type
 	const id = String(payload.id ?? '').trim()
@@ -406,7 +406,7 @@ export async function PATCH(
 			)
 		}
 
-		const feedbackItemResult = await supabase
+		const feedbackItemResult = await dataClient
 			.from('feedback_items')
 			.select('id, anchor, created_at')
 			.eq('id', id)
@@ -428,7 +428,7 @@ export async function PATCH(
 			suggestedAction,
 		}
 
-		const updateResult = await supabase
+		const updateResult = await dataClient
 			.from('feedback_items')
 			.update({
 				comment,
@@ -465,7 +465,7 @@ export async function PATCH(
 	const snippetCategoryLabel = normalizeSnippetCategoryLabel(
 		payload.snippetCategoryLabel ?? payload.feedbackCategoryLabel,
 	)
-	const snippetResult = await supabase
+	const snippetResult = await dataClient
 		.from('snippets')
 		.select('id, anchor')
 		.eq('id', id)
@@ -488,7 +488,7 @@ export async function PATCH(
 				: feedbackSlug(snippetCategoryLabel),
 	}
 
-	const updateResult = await supabase
+	const updateResult = await dataClient
 		.from('snippets')
 		.update({
 			note: note || null,
@@ -529,7 +529,7 @@ export async function DELETE(
 ) {
 	await requireTeacher()
 	const { submissionId } = await params
-	const { supabase, submissionResult } = await loadModernSubmission(submissionId)
+	const { dataClient, submissionResult } = await loadModernSubmission(submissionId)
 	const payload = (await request.json()) as AnnotationPayload
 	const type = payload.type
 	const id = String(payload.id ?? '').trim()
@@ -559,7 +559,7 @@ export async function DELETE(
 			)
 		}
 
-		const { error } = await supabase
+		const { error } = await dataClient
 			.from('feedback_items')
 			.delete()
 			.eq('id', id)
@@ -580,7 +580,7 @@ export async function DELETE(
 		})
 	}
 
-	const { error } = await supabase
+	const { error } = await dataClient
 		.from('snippets')
 		.delete()
 		.eq('id', id)

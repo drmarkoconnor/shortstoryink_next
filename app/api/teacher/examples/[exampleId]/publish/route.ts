@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 
 export async function POST(
 	request: Request,
@@ -10,9 +10,9 @@ export async function POST(
 	const { exampleId } = await params
 	const payload = (await request.json()) as { status?: string }
 	const nextStatus = payload.status === 'draft' ? 'draft' : 'published'
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
-	const updateResult = await adminSupabase
+	const updateResult = await adminData
 		.from('teaching_examples')
 		.update({
 			status: nextStatus,

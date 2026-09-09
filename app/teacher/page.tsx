@@ -4,8 +4,8 @@ import { MenuTabs } from '@/components/prototype/menu-tabs'
 import { ProtoCard } from '@/components/prototype/card'
 import { WriterAccessSelect } from '@/components/teacher/writer-access-select'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminDataClient } from '@/lib/data/client'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherTabs } from '@/lib/mock/teacher-prototype'
 import {
 	ABU_WORKSHOP_TITLE,
@@ -66,7 +66,7 @@ export default async function TeacherPage({
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
 	await requireTeacher()
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 	const params = searchParams ? await searchParams : {}
 	const notice = toMessage(params.notice)
 	const errorNotice = toMessage(params.error)
@@ -82,7 +82,7 @@ export default async function TeacherPage({
 			'use server'
 
 		const profile = await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
+		const serverSupabase = await createServerDataClient()
 		const title = String(formData.get('title') ?? '').trim()
 
 		if (!title) {
@@ -108,7 +108,7 @@ export default async function TeacherPage({
 			'use server'
 
 			await requireTeacher()
-			const serverSupabase = await createServerSupabaseClient()
+			const serverSupabase = await createServerDataClient()
 			const workshopId = String(formData.get('workshopId') ?? '').trim()
 			const workshopSlug = String(formData.get('workshopSlug') ?? '').trim()
 			const currentTitle = String(formData.get('currentTitle') ?? '').trim()
@@ -159,8 +159,8 @@ export default async function TeacherPage({
 				redirect('/app/teacher/groups?error=ABU+cannot+be+deleted.')
 			}
 
-			const adminSupabase = createAdminSupabaseClient()
-			const { error: moveSubmissionsError } = await adminSupabase
+			const adminData = createAdminDataClient()
+			const { error: moveSubmissionsError } = await adminData
 				.from('submissions')
 				.update({ workshop_id: abuWorkshopId })
 				.eq('workshop_id', workshopId)
@@ -169,7 +169,7 @@ export default async function TeacherPage({
 				redirect('/app/teacher/groups?error=Unable+to+move+linked+submissions+back+to+ABU.')
 			}
 
-			const { error } = await adminSupabase
+			const { error } = await adminData
 				.from('workshops')
 				.delete()
 				.eq('id', workshopId)
@@ -190,7 +190,7 @@ export default async function TeacherPage({
 		'use server'
 
 		await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
+		const serverSupabase = await createServerDataClient()
 		const writerId = String(formData.get('writerId') ?? '').trim()
 		const workshopId = String(formData.get('workshopId') ?? '').trim()
 
@@ -215,7 +215,7 @@ export default async function TeacherPage({
 		'use server'
 
 		await requireTeacher()
-		const serverSupabase = await createServerSupabaseClient()
+		const serverSupabase = await createServerDataClient()
 		const writerId = String(formData.get('writerId') ?? '').trim()
 		const workshopId = String(formData.get('workshopId') ?? '').trim()
 		const workshopSlug = String(formData.get('workshopSlug') ?? '').trim()
@@ -266,8 +266,8 @@ export default async function TeacherPage({
 			redirect('/app/teacher/groups?error=You+cannot+delete+your+own+account+from+here.')
 		}
 
-		const adminSupabase = createAdminSupabaseClient()
-		const { data: targetProfile, error: targetError } = await adminSupabase
+		const adminData = createAdminDataClient()
+		const { data: targetProfile, error: targetError } = await adminData
 			.from('profiles')
 			.select('role')
 			.eq('id', userId)
@@ -283,7 +283,7 @@ export default async function TeacherPage({
 			)
 		}
 
-		const modernDeleteResult = await adminSupabase
+		const modernDeleteResult = await adminData
 			.from('submissions')
 			.delete()
 			.eq('author_id', userId)
@@ -297,7 +297,7 @@ export default async function TeacherPage({
 		}
 
 		if (modernDeleteResult.error) {
-			const legacyDeleteResult = await adminSupabase
+			const legacyDeleteResult = await adminData
 				.from('submissions')
 				.delete()
 				.eq('writer_id', userId)
@@ -307,11 +307,11 @@ export default async function TeacherPage({
 			}
 		}
 
-		await adminSupabase.from('workshop_members').delete().eq('profile_id', userId)
-		await adminSupabase.from('profiles').delete().eq('id', userId)
+		await adminData.from('workshop_members').delete().eq('profile_id', userId)
+		await adminData.from('profiles').delete().eq('id', userId)
 
 		const { error: deleteUserError } =
-			await adminSupabase.auth.admin.deleteUser(userId)
+			await adminData.auth.admin.deleteUser(userId)
 
 		if (deleteUserError) {
 			redirect('/app/teacher/groups?error=Unable+to+delete+the+user+account.')
@@ -324,12 +324,12 @@ export default async function TeacherPage({
 		redirect('/app/teacher/groups?notice=User+deleted.')
 	}
 
-	const { data: profileRows } = await supabase
+	const { data: profileRows } = await dataClient
 		.from('profiles')
 		.select('id, display_name, role')
 		.order('display_name', { ascending: true })
 
-	const { data: workshopRows } = await supabase
+	const { data: workshopRows } = await dataClient
 		.from('workshops')
 		.select('id, title, slug')
 		.order('title', { ascending: true })
@@ -342,7 +342,7 @@ export default async function TeacherPage({
 		(workshop) => !isProtectedWorkshop(workshop),
 	)
 
-	const { data: membershipRows } = await supabase
+	const { data: membershipRows } = await dataClient
 		.from('workshop_members')
 		.select('profile_id, workshop_id')
 

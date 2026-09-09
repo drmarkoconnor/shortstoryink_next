@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { PrintAction } from '@/components/export/print-action'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import {
 	getFeedbackExportPacket,
 	type ExportFeedbackItem,
@@ -184,13 +184,13 @@ export default async function WorkshopSubmissionExportPage({
 		resolvedSearchParams?.includeAppendix,
 		true,
 	)
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
 	async function saveExportCopyAction(formData: FormData) {
 		'use server'
 
 		await requireTeacher()
-		const supabase = await createServerSupabaseClient()
+		const dataClient = await createServerDataClient()
 		const personalNote = String(formData.get('personalNote') ?? '').trim()
 		const nextStepsInput = String(formData.get('nextSteps') ?? '')
 		const readingSuggestionsInput = String(
@@ -198,7 +198,7 @@ export default async function WorkshopSubmissionExportPage({
 		)
 		const nextSteps = splitLines(nextStepsInput)
 		const readingSuggestions = splitLines(readingSuggestionsInput)
-		const currentSummaryResult = await supabase
+		const currentSummaryResult = await dataClient
 			.from('feedback_summaries')
 			.select(
 				'personal_note, next_steps, reading_suggestions, export_copy_version',
@@ -231,7 +231,7 @@ export default async function WorkshopSubmissionExportPage({
 			currentNextSteps.join('\n') !== nextSteps.join('\n') ||
 			currentReadingSuggestions.join('\n') !== readingSuggestions.join('\n')
 
-		const { error } = await supabase
+		const { error } = await dataClient
 			.from('feedback_summaries')
 			.update({
 				personal_note: personalNote || null,
@@ -254,8 +254,8 @@ export default async function WorkshopSubmissionExportPage({
 		'use server'
 
 		await requireTeacher()
-		const supabase = await createServerSupabaseClient()
-		const currentSummaryResult = await supabase
+		const dataClient = await createServerDataClient()
+		const currentSummaryResult = await dataClient
 			.from('feedback_summaries')
 			.select('export_copy_version')
 			.eq('submission_id', submissionId)
@@ -265,7 +265,7 @@ export default async function WorkshopSubmissionExportPage({
 			Number(currentSummaryResult.data?.export_copy_version ?? 1) || 1,
 		)
 
-		const { error } = await supabase
+		const { error } = await dataClient
 			.from('feedback_summaries')
 			.update({
 				personal_note: null,
@@ -284,7 +284,7 @@ export default async function WorkshopSubmissionExportPage({
 		redirect(`/app/workshop/${submissionId}/export?saved=cleared`)
 	}
 
-	const submissionResult = await supabase
+	const submissionResult = await dataClient
 		.from('submissions')
 		.select('id, status, title')
 		.eq('id', submissionId)

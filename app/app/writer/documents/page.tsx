@@ -2,7 +2,7 @@ import type { JSONContent } from '@tiptap/core'
 import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createAdminDataClient } from '@/lib/data/client'
 import {
 	normalizeTeachingDocumentType,
 	type TeachingDocumentType,
@@ -135,13 +135,13 @@ function isLegacySchemaError(message: string | null | undefined) {
 export default async function WriterDocumentsPage() {
 	await requireWriter()
 	const user = await getCurrentUser()
-	const adminSupabase = createAdminSupabaseClient()
+	const adminData = createAdminDataClient()
 
 	let groups: WriterGroup[] = []
 	let documents: WriterTeachingDocument[] = []
 	let loadError: string | null = null
 
-	const { data: memberRows, error: membershipError } = await adminSupabase
+	const { data: memberRows, error: membershipError } = await adminData
 		.from('workshop_members')
 		.select('workshop_id')
 		.eq('profile_id', user.id)
@@ -155,7 +155,7 @@ export default async function WriterDocumentsPage() {
 	]
 
 	if (!loadError && writerWorkshopIds.length > 0) {
-		const { data: groupRows, error: groupError } = await adminSupabase
+		const { data: groupRows, error: groupError } = await adminData
 			.from('workshops')
 			.select('id, title')
 			.in('id', writerWorkshopIds)
@@ -169,7 +169,7 @@ export default async function WriterDocumentsPage() {
 	}
 
 	if (!loadError && groups.length > 0) {
-		const { data: documentRows, error } = await adminSupabase
+		const { data: documentRows, error } = await adminData
 			.from('teacher_documents')
 			.select('id, title, body, updated_at')
 			.order('updated_at', { ascending: false })

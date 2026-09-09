@@ -9,7 +9,7 @@ import {
 } from '@/lib/feedback/categories'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { isCuratedSnippet } from '@/lib/snippets/curation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerDataClient } from '@/lib/data/client'
 import { teacherSnippetLibraryLimit } from '@/lib/teacher-library/query-limits'
 
 type SchemaMode = 'modern' | 'legacy'
@@ -120,7 +120,7 @@ export default async function WorkshopSubmissionPage({
 	const query = searchParams ? await searchParams : {}
 	const notice = toMessage(query.notice)
 	const errorNotice = toMessage(query.error)
-	const supabase = await createServerSupabaseClient()
+	const dataClient = await createServerDataClient()
 
 	let schemaMode: SchemaMode = 'modern'
 	let submissionTitle = ''
@@ -213,7 +213,7 @@ export default async function WorkshopSubmissionPage({
 		createdAt: string
 	}> = []
 
-	let modernSubmissionResult = await supabase
+	let modernSubmissionResult = await dataClient
 		.from('submissions')
 		.select(
 			'id, title, body, status, created_at, author_id, source, version, parent_submission_id',
@@ -225,7 +225,7 @@ export default async function WorkshopSubmissionPage({
 		modernSubmissionResult.error &&
 		isMissingSubmissionSource(modernSubmissionResult.error.message)
 	) {
-		modernSubmissionResult = await supabase
+		modernSubmissionResult = await dataClient
 			.from('submissions')
 			.select(
 				'id, title, body, status, created_at, author_id, version, parent_submission_id',
@@ -255,7 +255,7 @@ export default async function WorkshopSubmissionPage({
 		rootSubmissionId = submission.parent_submission_id ?? submission.id
 		submissionSource = 'workshop'
 
-		const { data: profileData } = await supabase
+		const { data: profileData } = await dataClient
 			.from('profiles')
 			.select('display_name')
 			.eq('id', submission.author_id)
@@ -266,7 +266,7 @@ export default async function WorkshopSubmissionPage({
 
 		paragraphs = toManuscriptParagraphs(submission.body)
 
-		const { data: feedbackRows } = await supabase
+		const { data: feedbackRows } = await dataClient
 			.from('feedback_items')
 			.select('id, comment, anchor, created_at')
 			.eq('submission_id', submission.id)
@@ -323,7 +323,7 @@ export default async function WorkshopSubmissionPage({
 				: null,
 		}))
 
-		const { data: summaryRow } = await supabase
+		const { data: summaryRow } = await dataClient
 			.from('feedback_summaries')
 			.select('summary, published_at')
 			.eq('submission_id', submission.id)
@@ -333,7 +333,7 @@ export default async function WorkshopSubmissionPage({
 		summaryPublishedAt =
 			(summaryRow?.published_at as string | null | undefined) ?? null
 
-		const { data: snippetRows } = await supabase
+		const { data: snippetRows } = await dataClient
 			.from('snippets')
 			.select('id, snippet_text, note, created_at, anchor, snippet_category_id')
 			.eq('source_submission_id', submission.id)
@@ -385,7 +385,7 @@ export default async function WorkshopSubmissionPage({
 			}))
 			.filter((item) => item.anchor !== null)
 
-		const { data: snippetLibraryRows } = await supabase
+		const { data: snippetLibraryRows } = await dataClient
 			.from('snippets')
 			.select('id, snippet_text, note, created_at, anchor')
 			.eq('saved_by', profile.user.id)
@@ -466,7 +466,7 @@ export default async function WorkshopSubmissionPage({
 	} else {
 		schemaMode = 'legacy'
 
-		const legacyResult = await supabase
+		const legacyResult = await dataClient
 			.from('submissions')
 			.select(
 				'id, title, status, created_at, writer_first_name, writer_email, latest_version_id',
@@ -497,7 +497,7 @@ export default async function WorkshopSubmissionPage({
 
 		let body = ''
 		if (latestVersionId) {
-			const { data: versionRow } = await supabase
+			const { data: versionRow } = await dataClient
 				.from('submission_versions')
 				.select('body')
 				.eq('id', latestVersionId)
@@ -505,7 +505,7 @@ export default async function WorkshopSubmissionPage({
 			body = (versionRow?.body as string | undefined) ?? ''
 		}
 
-		const { data: paragraphRows } = await supabase
+		const { data: paragraphRows } = await dataClient
 			.from('submission_paragraphs')
 			.select('pid, text, position')
 			.eq('submission_version_id', latestVersionId ?? '')
@@ -520,7 +520,7 @@ export default async function WorkshopSubmissionPage({
 			paragraphs = toManuscriptParagraphs(body)
 		}
 
-		const { data: commentRows } = await supabase
+		const { data: commentRows } = await dataClient
 			.from('comments')
 			.select('id, body, paragraph_id, created_at')
 			.eq('submission_id', submission.id)
@@ -555,7 +555,7 @@ export default async function WorkshopSubmissionPage({
 	}
 
 	if (schemaMode === 'modern' && currentAuthorId && rootSubmissionId) {
-		const versionHistoryResult = await supabase
+		const versionHistoryResult = await dataClient
 			.from('submissions')
 			.select('id, version, status, created_at')
 			.eq('author_id', currentAuthorId)
@@ -576,7 +576,7 @@ export default async function WorkshopSubmissionPage({
 	}
 
 	if (schemaMode === 'modern' && currentAuthorId) {
-		const writerSubmissionsResult = await supabase
+		const writerSubmissionsResult = await dataClient
 			.from('submissions')
 			.select('id, title, status, version, created_at')
 			.eq('author_id', currentAuthorId)
@@ -596,7 +596,7 @@ export default async function WorkshopSubmissionPage({
 		)
 
 		if (writerSubmissionIds.length > 0) {
-			const memoryResult = await supabase
+			const memoryResult = await dataClient
 				.from('feedback_items')
 				.select('id, submission_id, comment, anchor, created_at')
 				.eq('author_id', profile.user.id)
