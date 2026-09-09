@@ -152,3 +152,7 @@ Rollback is coordinated: reverting only the frontend after this migration will r
 ## Repository release record
 
 The source release is identified by the main-branch commit titled **“Stabilise private workshop, recovery and publishing”**, containing this handoff, application changes, migration, tests and verification scripts. Keep Git-based deployments on this revision or a compatible successor; reverting only the application to the older direct-insert implementation is incompatible with the new database policy. The verified manual deploy above remains an immutable reference even if Netlify subsequently publishes an identical Git-triggered build. Private backups, credentials, generated deployment bundles and test-account journals are excluded from the commit.
+
+### Clean-checkout CI follow-up
+
+The first pushed release commit (`0e33f66`) exposed two missing explicit result types in PostgreSQL test queries when GitHub ran a fresh typecheck. The follow-up adds `{ status: string }` result types and stops tracking the generated `tsconfig.tsbuildinfo` cache. Application runtime code is unchanged. Verify the follow-up CI run before treating repository validation as complete; local cached build success alone was insufficient evidence here.

@@ -61,7 +61,7 @@ test('profile name can change but role, identity and profile creation are protec
 	assert.equal((await as('authenticated', writer, "update public.profiles set display_name='Intruder' where id=$1 returning id", [other])).rows.length, 0)
 })
 test('teacher draft feedback is invisible to its writer', async () => {
-	assert.equal((await db.query('select status from public.submissions where id=$1', [piece])).rows[0]?.status, 'in_review')
+	assert.equal((await db.query<{ status: string }>('select status from public.submissions where id=$1', [piece])).rows[0]?.status, 'in_review')
 	assert.equal((await as('authenticated', writer, 'select * from public.feedback_items')).rows.length, 0)
 	assert.equal((await as('authenticated', teacher, 'select * from public.feedback_items')).rows.length, 1)
 })
@@ -132,6 +132,6 @@ test('a teacher comment atomically starts review and prevents a writer deleting 
 	const result = await submit(120)
 	const submissionId = (result.rows[0] as { result: { id: string } }).result.id
 	await as('authenticated', teacher, "insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,'First thought')", [submissionId, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 1, quote: 'A' }])
-	assert.equal((await db.query('select status from public.submissions where id=$1', [submissionId])).rows[0]?.status, 'in_review')
+	assert.equal((await db.query<{ status: string }>('select status from public.submissions where id=$1', [submissionId])).rows[0]?.status, 'in_review')
 	assert.equal((await as('authenticated', writer, 'delete from public.submissions where id=$1 returning id', [submissionId])).rows.length, 0)
 })
