@@ -1,6 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useRecoveryDraft } from '@/lib/drafts/use-recovery-draft'
+import { DraftRecoveryNotice } from '@/components/writer/draft-recovery-notice'
+import type { DraftSubmissionResult } from '@/lib/drafts/recovery'
 import { useMemo, useRef, useState } from 'react'
 import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
 
@@ -20,6 +24,7 @@ function statusLabel(value: string) {
 }
 
 export function RevisionDraftForm({
+	writerId,
 	title,
 	body,
 	status,
@@ -36,13 +41,14 @@ export function RevisionDraftForm({
 	notice,
 	errorNotice,
 }: {
+	writerId: string
 	title: string
 	body: string
 	status: string
 	sourceVersion: number
 	nextVersion: number
 	sourceCreatedAt: string
-	submitRevisionAction: (formData: FormData) => void
+	submitRevisionAction: (formData: FormData) => Promise<DraftSubmissionResult>
 	canSubmitRevision: boolean
 	blockedReason: string | null
 	isAbuRevision: boolean
@@ -52,13 +58,32 @@ export function RevisionDraftForm({
 	notice: string | null
 	errorNotice: string | null
 }) {
-	const [draftBody, setDraftBody] = useState(body)
+	const router = useRouter()
+	const recovery = useRecoveryDraft(writerId, `revision:${currentSubmissionId}`, { title, body, workshopId: '' })
+	const { draft } = recovery
+	const draftBody = draft.body
+	const [pending, setPending] = useState(false)
+	const [saveError, setSaveError] = useState<string | null>(null)
+	async function submit(form: FormData) {
+		if (pending) return
+		setPending(true); setSaveError(null)
+		const saved = { ...draft }
+		form.set('requestId', saved.requestId)
+		try {
+			const result = await submitRevisionAction(form)
+			if ('error' in result) { setSaveError(result.error); return }
+			recovery.submitted(saved)
+			router.push(`/app/writer?notice=${encodeURIComponent(`Revision submitted as version ${result.version}.`)}`)
+		} catch {
+			setSaveError('We could not confirm the save. Your revision is still here; retrying will not create a duplicate.')
+		} finally { setPending(false) }
+	}
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 	const historySectionRef = useRef<HTMLElement>(null)
 	const wordCount = useMemo(() => countWords(draftBody), [draftBody])
 	const remainingWords = abuSubmissionWordLimit - wordCount
 	const isOverAbuLimit = isAbuRevision && wordCount > abuSubmissionWordLimit
-	const isSubmitDisabled = !canSubmitRevision || isOverAbuLimit
+	const isSubmitDisabled = !recovery.ready || pending || !canSubmitRevision || isOverAbuLimit
 	const scrollToSectionEnd = (element: HTMLElement | null) => {
 		window.requestAnimationFrame(() => {
 			element?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -77,11 +102,12 @@ export function RevisionDraftForm({
 							name="body"
 							required
 							form="writer-revision-form"
-							defaultValue={body}
+							value={draft.body}
+							disabled={!recovery.ready || pending}
 							rows={16}
 							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-ink-900/90 outline-none placeholder:text-ink-900/45 lg:min-h-[28rem]"
 							placeholder="Revise your draft here"
-							onValueChange={setDraftBody}
+							onValueChange={(body) => recovery.edit({ body })}
 						/>
 					</div>
 					<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -98,6 +124,8 @@ export function RevisionDraftForm({
 						) : null}
 					</div>
 				</label>
+
+				<DraftRecoveryNotice message={recovery.message} download={recovery.download} />
 
 				<section ref={historySectionRef} className="surface p-4 lg:p-5">
 					<div className="flex flex-wrap items-center justify-between gap-3">
@@ -176,7 +204,7 @@ export function RevisionDraftForm({
 
 			<form
 				id="writer-revision-form"
-				action={submitRevisionAction}
+				action={submit}
 				className="surface p-4 lg:sticky lg:top-6 lg:p-5">
 				<div className="mb-4 flex items-start justify-between gap-3">
 					<div>
@@ -215,7 +243,9 @@ export function RevisionDraftForm({
 						<input
 							name="title"
 							required
-							defaultValue={title}
+							value={draft.title}
+							onChange={(event) => recovery.edit({ title: event.target.value })}
+							disabled={!recovery.ready || pending}
 							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
 							placeholder="Draft title"
 						/>
@@ -253,6 +283,7 @@ export function RevisionDraftForm({
 							{notice}
 						</p>
 					) : null}
+					{saveError && <p role="alert" className="text-sm text-amber-100">{saveError}</p>}
 					{errorNotice ? (
 						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
 							{errorNotice}
@@ -264,7 +295,7 @@ export function RevisionDraftForm({
 					type="submit"
 					disabled={isSubmitDisabled}
 					className="mt-5 w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:border-white/15 disabled:bg-white/5 disabled:text-silver-400">
-					Submit revision
+					{pending ? 'Saving…' : 'Submit revision'}
 				</button>
 			</form>
 		</div>

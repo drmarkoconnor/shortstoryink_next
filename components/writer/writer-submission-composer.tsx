@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
+import { useRecoveryDraft } from '@/lib/drafts/use-recovery-draft'
+import { DraftRecoveryNotice } from '@/components/writer/draft-recovery-notice'
+import type { DraftSubmissionResult } from '@/lib/drafts/recovery'
 import { SubmissionHistorySelect } from '@/components/writer/submission-history-select'
 
 type WriterWorkshop = {
@@ -33,6 +36,7 @@ function countWords(value: string) {
 }
 
 export function WriterSubmissionComposer({
+	writerId,
 	writerName,
 	createSubmissionAction,
 	deleteSubmissionAction,
@@ -51,8 +55,9 @@ export function WriterSubmissionComposer({
 	availableDocuments,
 	documentsError,
 }: {
+	writerId: string
 	writerName: string
-	createSubmissionAction: (formData: FormData) => void
+	createSubmissionAction: (formData: FormData) => Promise<DraftSubmissionResult>
 	deleteSubmissionAction: (formData: FormData) => void
 	workshops: WriterWorkshop[]
 	isWorkshopRequired: boolean
@@ -70,9 +75,29 @@ export function WriterSubmissionComposer({
 	documentsError: string | null
 }) {
 	const router = useRouter()
-	const [draftBody, setDraftBody] = useState('')
-	const [selectedWorkshopId, setSelectedWorkshopId] =
-		useState(defaultWorkshopId)
+	const recovery = useRecoveryDraft(writerId, 'new', { title: '', body: '', workshopId: defaultWorkshopId })
+	const { draft } = recovery
+	const draftBody = draft.body
+	const selectedWorkshopId = draft.workshopId
+	const [pending, setPending] = useState(false)
+	const [saveError, setSaveError] = useState<string | null>(null)
+	const [savedNotice, setSavedNotice] = useState<string | null>(null)
+	async function submit(form: FormData) {
+		if (pending) return
+		setPending(true); setSaveError(null)
+		const saved = { ...draft }
+		form.set('requestId', saved.requestId)
+		try {
+			const result = await createSubmissionAction(form)
+			if ('error' in result) { setSaveError(result.error); return }
+			recovery.submitted(saved)
+			setSavedNotice('Your submission has been saved.')
+			setIsSuccessModalOpen(true)
+			router.refresh()
+		} catch {
+			setSaveError('We could not confirm the save. Your draft is still here; retrying will not create a duplicate.')
+		} finally { setPending(false) }
+	}
 	const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(Boolean(notice))
 	const titleInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -91,7 +116,7 @@ export function WriterSubmissionComposer({
 
 	return (
 		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-			{notice && isSuccessModalOpen ? (
+			{(notice || savedNotice) && isSuccessModalOpen ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/65 px-4 backdrop-blur-sm">
 					<div className="w-full max-w-md rounded-3xl border border-emerald-300/25 bg-ink-950 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
 						<p className="text-xs uppercase tracking-[0.12em] text-emerald-200">
@@ -144,6 +169,8 @@ export function WriterSubmissionComposer({
 					<div className="folio-page p-5 sm:p-6 lg:min-h-[34rem] lg:p-7">
 						<ManuscriptTextarea
 							name="body"
+							value={draft.body}
+							disabled={!recovery.ready || pending}
 							required
 							form="writer-submit-form"
 							rows={16}
@@ -151,7 +178,7 @@ export function WriterSubmissionComposer({
 							placeholder={
 								'Paste or type the piece here as you want it read. Formatting is preserved.\n\nUse Tab to indent dialogue in the standard way.'
 							}
-							onValueChange={setDraftBody}
+							onValueChange={(body) => recovery.edit({ body })}
 						/>
 					</div>
 					<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -172,6 +199,8 @@ export function WriterSubmissionComposer({
 					</div>
 				</label>
 
+				<DraftRecoveryNotice message={recovery.message} download={recovery.download} />
+
 				<SubmissionHistorySelect
 					submissions={submissions}
 					submissionsError={submissionsError}
@@ -181,7 +210,7 @@ export function WriterSubmissionComposer({
 
 			<form
 				id="writer-submit-form"
-				action={createSubmissionAction}
+				action={submit}
 				className="surface p-4 lg:sticky lg:top-6 lg:p-5">
 				<div className="grid grid-cols-3 gap-2 text-center text-[11px] text-silver-100">
 					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
@@ -222,6 +251,9 @@ export function WriterSubmissionComposer({
 						<input
 							ref={titleInputRef}
 							name="title"
+							value={draft.title}
+							onChange={(event) => recovery.edit({ title: event.target.value })}
+							disabled={!recovery.ready || pending}
 							required
 							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
 							placeholder="Draft title"
@@ -237,8 +269,8 @@ export function WriterSubmissionComposer({
 								name="workshopId"
 								required
 								value={selectedWorkshopId}
-								onChange={(event) => setSelectedWorkshopId(event.target.value)}
-								disabled={workshops.length === 0}
+								onChange={(event) => recovery.edit({ workshopId: event.target.value })}
+								disabled={!recovery.ready || pending || workshops.length === 0}
 								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
 								{workshops.length === 0 ? (
 									<option value="">No group membership found</option>
@@ -267,6 +299,7 @@ export function WriterSubmissionComposer({
 							{notice}
 						</p>
 					)}
+					{saveError && <p role="alert" className="text-sm text-amber-100">{saveError}</p>}
 					{errorNotice && (
 						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
 							{errorNotice}
@@ -342,10 +375,10 @@ export function WriterSubmissionComposer({
 				<button
 					type="submit"
 					disabled={
-						isOverAbuLimit || (isWorkshopRequired && workshops.length === 0)
+						!recovery.ready || pending || isOverAbuLimit || (isWorkshopRequired && !selectedWorkshop)
 					}
 					className="mt-5 w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
-					{isOverAbuLimit ? 'Shorten before submitting' : 'Save submission'}
+					{pending ? 'Saving…' : isOverAbuLimit ? 'Shorten before submitting' : 'Save submission'}
 				</button>
 			</form>
 		</div>

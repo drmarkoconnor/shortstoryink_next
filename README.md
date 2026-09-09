@@ -1,5 +1,13 @@
 # shortstory.ink — Phase 1 foundation
 
+## Current work and handoff
+
+For the September 2026 workshop stabilisation, deployment prerequisites and
+follow-up Netlify migration plan, read
+[the active handoff](docs/handoff-workshop-stabilisation-2026-09-08.md).
+The shell-only description below is historical; the app now includes the writer
+submission/revision loop, teacher review and reusable teaching materials.
+
 This repository now hosts the **new frontend foundation** for shortstory.ink:
 
 - Next.js App Router

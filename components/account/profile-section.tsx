@@ -1,28 +1,24 @@
-import React from 'react';
-// TODO: Wire up with user data and update logic
-export default function ProfileSection() {
-  return (
-    <section className="space-y-6">
-      <h2 className="text-xl font-semibold text-parchment-100">Profile</h2>
-      <form className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-silver-100">Name</label>
-          <input type="text" className="mt-1 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition focus:ring" placeholder="Your name" defaultValue="" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-silver-100">Email</label>
-          <input type="email" className="mt-1 w-full rounded-xl border border-white/15 bg-ink-900/60 px-3 py-2 text-silver-200 outline-none" value="user@email.com" readOnly />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-silver-100">Avatar</label>
-          <input type="file" className="mt-1 text-sm text-silver-200 file:mr-3 file:rounded-full file:border file:border-white/20 file:bg-white/10 file:px-3 file:py-1.5 file:text-sm file:text-parchment-100" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-silver-100">Bio</label>
-          <textarea className="mt-1 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition focus:ring" rows={3} placeholder="Tell us about yourself..." defaultValue="" />
-        </div>
-        <button type="submit" className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-sm text-parchment-100 transition hover:bg-accent-400/30">Save Changes</button>
-      </form>
-    </section>
-  );
+'use client'
+
+import { useActionState } from 'react'
+
+export type ProfileSaveState = { error?: string; saved?: boolean }
+export default function ProfileSection({ displayName, email, saveAction }: {
+	displayName: string
+	email: string
+	saveAction: (state: ProfileSaveState, form: FormData) => Promise<ProfileSaveState>
+}) {
+	const [state, action, pending] = useActionState(saveAction, {})
+	return <section className="space-y-6">
+		<h2 className="literary-title text-2xl text-parchment-100">Profile</h2>
+		<form action={action} className="space-y-4">
+			<label className="block text-sm text-silver-100">Display name
+				<input name="displayName" defaultValue={displayName} required maxLength={100} autoComplete="name" className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none focus:ring focus:ring-accent-400" />
+			</label>
+			<p className="text-sm text-silver-200">Account email: {email}</p>
+			{state.error && <p role="alert" className="text-sm text-amber-100">{state.error}</p>}
+			{state.saved && <p role="status" className="text-sm text-emerald-200">Your display name has been saved.</p>}
+			<button disabled={pending} className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-sm text-parchment-100 disabled:opacity-60">{pending ? 'Saving…' : 'Save profile'}</button>
+		</form>
+	</section>
 }

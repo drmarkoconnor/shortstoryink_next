@@ -12,16 +12,17 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
 
 	const { data, error } = await adminSupabase
 		.from('profiles')
-		.select('role')
+		.select('role, display_name')
 		.eq('id', user.id)
 		.maybeSingle()
 
 	if (error) {
-		return { user, role: 'writer' as AppRole, profileFound: false }
+		throw new Error('Your profile could not be loaded. Please try again shortly.')
 	}
 
 	let profileFound = Boolean(data?.role)
 	let role: AppRole = (data?.role as AppRole | undefined) ?? 'writer'
+	let displayName = (data?.display_name as string | null | undefined) ?? null
 
 	if (!data?.role) {
 		const fallbackDisplayName =
@@ -38,11 +39,12 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
 			})
 
 		if (insertError) {
-			return { user, role: 'writer' as AppRole, profileFound: false }
+			throw new Error('Your profile could not be prepared. Please try again shortly.')
 		}
 
 		profileFound = true
 		role = 'writer'
+		displayName = fallbackDisplayName
 	}
 
 	if (role === 'writer') {
@@ -56,7 +58,7 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
 		}
 	}
 
-	return { user, role, profileFound }
+	return { user, role, profileFound, displayName }
 })
 
 export async function requireTeacher() {

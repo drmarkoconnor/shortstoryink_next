@@ -13,8 +13,15 @@ export async function POST(
 	const { submissionId } = await params
 	const supabase = await createServerSupabaseClient()
 	const adminSupabase = createAdminSupabaseClient()
-	const payload = (await request.json()) as { summary?: string }
-	const summary = String(payload.summary ?? '').trim()
+	const payload: unknown = await request.json().catch(() => null)
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return NextResponse.json({ error: 'Please send a feedback summary.' }, { status: 400 })
+	}
+	const value = (payload as { summary?: unknown }).summary
+	if (value !== undefined && typeof value !== 'string') {
+		return NextResponse.json({ error: 'The summary must be text.' }, { status: 400 })
+	}
+	const summary = (value ?? '').trim()
 
 	const submissionResult = await supabase
 		.from('submissions')
@@ -29,57 +36,16 @@ export async function POST(
 		)
 	}
 
-	const { count, error: countError } = await supabase
-		.from('feedback_items')
-		.select('id', { count: 'exact', head: true })
-		.eq('submission_id', submissionId)
-
-	if (countError) {
+	const { data: publication, error: publishError } = await adminSupabase.rpc('publish_workshop_feedback', {
+		p_teacher_id: profile.user.id, p_submission_id: submissionId, p_summary: summary,
+	})
+	if (publishError || !publication) {
 		return NextResponse.json(
-			{ error: 'Unable to validate feedback items before publish.' },
-			{ status: 500 },
+			{ error: publishError?.code === '22023' ? publishError.message : 'Unable to publish feedback. Please try again.' },
+			{ status: publishError?.code === '22023' ? 400 : 500 },
 		)
 	}
-
-	if (!count || count < 1) {
-		return NextResponse.json(
-			{ error: 'Add at least one feedback comment before publish.' },
-			{ status: 400 },
-		)
-	}
-
-	const publishedAt = new Date().toISOString()
-	const { error: upsertError } = await supabase
-		.from('feedback_summaries')
-		.upsert(
-			{
-				submission_id: submissionId,
-				author_id: profile.user.id,
-				summary:
-					summary || 'Feedback published. See inline comments for detail.',
-				published_at: publishedAt,
-			},
-			{ onConflict: 'submission_id' },
-		)
-
-	if (upsertError) {
-		return NextResponse.json(
-			{ error: 'Unable to save feedback summary.' },
-			{ status: 500 },
-		)
-	}
-
-	const { error: statusError } = await supabase
-		.from('submissions')
-		.update({ status: 'feedback_published' })
-		.eq('id', submissionId)
-
-	if (statusError) {
-		return NextResponse.json(
-			{ error: 'Unable to update submission status to published.' },
-			{ status: 500 },
-		)
-	}
+	const publishedAt = String(publication.publishedAt)
 
 	let notice = 'Feedback published to writer.'
 	const email = await adminSupabase.auth.admin
@@ -87,7 +53,7 @@ export async function POST(
 		.then((result) => result.data.user?.email?.trim().toLowerCase() ?? null)
 		.catch(() => null)
 
-	if (email) {
+	if (email && publication.changed) {
 		try {
 			await sendFeedbackPublishedNotification({
 				email,

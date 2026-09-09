@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation'
 import { ExampleReadingWorkspace } from '@/components/writer/example-reading-workspace'
 import { requireWriter } from '@/lib/auth/get-current-profile'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
 	exampleCategorySlug,
 	normalizeExampleCategory,
@@ -34,10 +33,6 @@ type AnnotationRow = {
 	created_at: string
 }
 
-type HiddenGroupRow = {
-	workshop_id: string
-}
-
 function toAnnotation(row: AnnotationRow): ExampleAnnotation {
 	const categoryLabel = normalizeExampleCategory(row.category_label)
 	return {
@@ -57,27 +52,10 @@ export default async function WriterExampleReaderPage({
 	params: Promise<{ exampleId: string }>
 }) {
 	await requireWriter()
-	const user = await getCurrentUser()
 	const { exampleId } = await params
-	const adminSupabase = createAdminSupabaseClient()
+	const db = await createServerSupabaseClient()
 
-	const { data: memberRows, error: membershipError } = await adminSupabase
-		.from('workshop_members')
-		.select('workshop_id')
-		.eq('profile_id', user.id)
-
-	if (membershipError) {
-		notFound()
-	}
-
-	const writerGroupIds = [
-		...new Set((memberRows ?? []).map((row) => row.workshop_id as string)),
-	]
-	if (writerGroupIds.length === 0) {
-		notFound()
-	}
-
-	const exampleResult = await adminSupabase
+	const exampleResult = await db
 		.from('teaching_examples')
 		.select(
 			'id, title, author_name, copyright_status, editorial_note, content_note, body, craft_tags, status',
@@ -90,26 +68,13 @@ export default async function WriterExampleReaderPage({
 		notFound()
 	}
 
-	const hiddenGroupsResult = await adminSupabase
-		.from('teaching_example_hidden_groups')
-		.select('workshop_id')
-		.eq('example_id', exampleId)
-	const hiddenGroupIds = new Set(
-		((hiddenGroupsResult.data ?? []) as HiddenGroupRow[]).map(
-			(row) => row.workshop_id,
-		),
-	)
-	const canRead = writerGroupIds.some((groupId) => !hiddenGroupIds.has(groupId))
-	if (!canRead) {
-		notFound()
-	}
-
-	const annotationsResult = await adminSupabase
+	const annotationsResult = await db
 		.from('teaching_example_annotations')
 		.select('id, comment, category_label, category_slug, tags, anchor, created_at')
 		.eq('example_id', exampleId)
 		.order('created_at', { ascending: true })
 
+	if (annotationsResult.error) throw new Error('Annotations could not be loaded. Please try again.')
 	const example = exampleResult.data as ExampleRow
 	const annotations = ((annotationsResult.data ?? []) as AnnotationRow[]).map(
 		toAnnotation,

@@ -80,7 +80,7 @@ export async function sendFeedbackPublishedNotification({
 	await sendEmail({
 		to: email,
 		subject: `Feedback is ready for ${title}`,
-		html: `<p>Your feedback is ready in shortstory.ink.</p><p><strong>${title}</strong></p><p><a href="${destination}">View feedback</a></p>`,
+		html: `<p>Your feedback is ready in shortstory.ink.</p><p><strong>${escapeHtml(title)}</strong></p><p><a href="${destination}">View feedback</a></p>`,
 		text: `Your feedback is ready in shortstory.ink.\n\n${title}\n\nView feedback:\n${destination}`,
 	})
 }

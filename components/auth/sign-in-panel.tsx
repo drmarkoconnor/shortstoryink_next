@@ -1,81 +1,50 @@
 'use client'
 
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { buildClientAuthCallbackUrl } from '@/lib/site/client-urls'
 import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 
-export function SignInPanel({
-	configError = false,
-	postSignInPath = '/app',
-}: {
+export function SignInPanel({ configError = false, callbackError = false, postSignInPath = '/app' }: {
 	configError?: boolean
+	callbackError?: boolean
 	postSignInPath?: string
 }) {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
-	const [status, setStatus] = useState<
-		'idle' | 'signing-in' | 'resetting' | 'reset-sent' | 'error'
-	>('idle')
-	const [message, setMessage] = useState<string | null>(null)
-	const [showReset, setShowReset] = useState(false)
-	const sendPasswordReset = async () => {
-	       if (!email.trim()) {
-		       setStatus('error')
-		       setMessage('Enter your email to reset your password.')
-		       return
-	       }
-	       setStatus('resetting')
-	       setMessage(null)
-	       const supabase = createBrowserSupabaseClient()
-	       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-		       redirectTo: buildClientAuthCallbackUrl('/app/account'),
-	       })
-
-		       if (error) {
-			       setStatus('error')
-			       if (
-				       error.message &&
-				       error.message.toLowerCase().includes('email not confirmed')
-			       ) {
-				       setMessage('Your email is not confirmed. Please check your inbox for the confirmation link, then try signing in again.')
-			       } else {
-				       setMessage(error.message)
-			       }
-			       return
-		       }
-	       setStatus('reset-sent')
-	       setMessage('Password reset email sent. Check your inbox.')
+	const [status, setStatus] = useState<'idle' | 'signing-in' | 'resetting' | 'reset-sent' | 'error'>('idle')
+	const [message, setMessage] = useState<string | null>(callbackError ? 'This sign-in link has expired or could not be verified. Sign in or request a new password reset email in this browser.' : null)
+	const [showReset, setShowReset] = useState(callbackError)
+	async function sendPasswordReset() {
+		setStatus('resetting')
+		setMessage(null)
+		try {
+			const { error } = await createBrowserSupabaseClient().auth.resetPasswordForEmail(email.trim(), {
+				redirectTo: buildClientAuthCallbackUrl('/auth/reset-password'),
+			})
+			if (error) throw error
+			setStatus('reset-sent')
+			setMessage('If an account exists for this email, a reset link is on its way. Open it in this browser.')
+		} catch {
+			setStatus('error')
+			setMessage('Unable to send a reset email right now. Please try again shortly.')
+		}
 	}
-
-
-
-	const onPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+	async function onPasswordSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault()
+		if (status === 'signing-in' || status === 'resetting') return
+		if (showReset) { await sendPasswordReset(); return }
 		setStatus('signing-in')
 		setMessage(null)
-
-		const supabase = createBrowserSupabaseClient()
-		const { error } = await supabase.auth.signInWithPassword({
-			email,
-			password,
-		})
-
-		if (error) {
+		try {
+			const { error } = await createBrowserSupabaseClient().auth.signInWithPassword({ email: email.trim(), password })
+			if (error) throw error
+			window.location.assign(safeRedirectPath(postSignInPath))
+		} catch (failure) {
 			setStatus('error')
-			if (error.message.toLowerCase().includes('email not confirmed')) {
-				setMessage(
-					'Your email is not confirmed yet. Please open the confirmation email, then sign in again.',
-				)
-			} else {
-				setMessage(error.message)
-			}
-			return
+			setMessage(failure instanceof Error ? failure.message : 'Unable to sign in. Please try again shortly.')
 		}
-
-		window.location.assign(postSignInPath)
 	}
-
 
 	return (
 		<section className="surface w-full p-8">
@@ -88,9 +57,7 @@ export function SignInPanel({
 			</p>
 			{configError && (
 				<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-					Environment is not configured. Add `NEXT_PUBLIC_SUPABASE_URL` and
-					`NEXT_PUBLIC_SUPABASE_ANON_KEY` to `.env.local`, then restart the dev
-					server.
+					Sign-in is temporarily unavailable. Please try again later.
 				</p>
 			)}
 
@@ -101,6 +68,7 @@ export function SignInPanel({
 						value={email}
 						onChange={(event) => setEmail(event.target.value)}
 						type="email"
+						autoComplete="email"
 						required
 						className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
 						placeholder="you@example.com"
@@ -114,6 +82,7 @@ export function SignInPanel({
 							value={password}
 							onChange={(event) => setPassword(event.target.value)}
 							type="password"
+							autoComplete="current-password"
 							required
 							className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
 							placeholder="Your password"
@@ -121,36 +90,37 @@ export function SignInPanel({
 					</label>
 				)}
 
-				       <div className="flex flex-wrap gap-2">
-					       {!showReset && (
-						       <>
-							       <button
-								       type="submit"
-								       disabled={status === 'signing-in'}
-								       className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
-								       {status === 'signing-in' ? 'Signing in…' : 'Sign in'}
-							       </button>
-							       <button
-								       type="button"
-								       onClick={() => setShowReset(true)}
-								       className="rounded-full border border-white/25 bg-white/5 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-white/10">
-								       Forgot password?
-							       </button>
-						       </>
-					       )}
-					       {showReset && (
-						       <button
-							       type="button"
-							       onClick={sendPasswordReset}
-							       disabled={status === 'resetting'}
-							       className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
-							       {status === 'resetting' ? 'Sending reset…' : 'Send password reset email'}
-						       </button>
-					       )}
-				       </div>
+				<div className="flex flex-wrap gap-2">
+					{!showReset && (
+						<>
+							<button
+								type="submit"
+								disabled={configError || status === 'signing-in'}
+								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+								{status === 'signing-in' ? 'Signing in…' : 'Sign in'}
+							</button>
+							<button
+								type="button"
+								disabled={status === 'signing-in'}
+								onClick={() => setShowReset(true)}
+								className="rounded-full border border-white/25 bg-white/5 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-white/10">
+								Forgot password?
+							</button>
+						</>
+					)}
+					{showReset && (
+						<button
+							type="submit"
+							disabled={configError || status === 'resetting'}
+							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+							{status === 'resetting' ? 'Sending reset…' : 'Send password reset email'}
+						</button>
+					)}
+				</div>
 
+				{showReset && <button type="button" disabled={status === 'resetting'} className="text-sm text-accent-200" onClick={() => { setShowReset(false); setMessage(null) }}>Back to sign in</button>}
 				{message && (
-					<p
+					<p role="status"
 						className={`text-sm ${status === 'error' ? 'text-red-300' : 'text-silver-200'}`}>
 						{message}
 					</p>

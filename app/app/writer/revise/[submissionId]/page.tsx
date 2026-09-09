@@ -1,3 +1,5 @@
+import { saveWorkshopDraft } from '@/lib/workshop/save-draft'
+import type { DraftSubmissionResult } from '@/lib/drafts/recovery'
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { RevisionDraftForm } from '@/components/writer/revision-draft-form'
@@ -38,10 +40,6 @@ function toMessage(value: string | string[] | undefined) {
 
 function buildRevisionScopeFilter(rootSubmissionId: string) {
 	return `id.eq.${rootSubmissionId},parent_submission_id.eq.${rootSubmissionId}`
-}
-
-function countWords(value: string) {
-	return value.trim().split(/\s+/).filter(Boolean).length
 }
 
 function statusLabel(value: string) {
@@ -125,6 +123,7 @@ export default async function WriterRevisionPage({
 		.or(buildRevisionScopeFilter(rootSubmissionId))
 		.order('version', { ascending: true })
 
+	if (historyResult.error) throw new Error('Revision history could not be loaded. Please try again.')
 	const revisionHistory = (historyResult.data ?? []) as RevisionHistoryItem[]
 	const nextVersion =
 		revisionHistory.reduce(
@@ -144,134 +143,24 @@ export default async function WriterRevisionPage({
 		String(workshop?.title ?? '').trim().toLowerCase() ===
 			'authorised basic user'
 
-	async function submitRevisionAction(formData: FormData) {
+	async function submitRevisionAction(formData: FormData): Promise<DraftSubmissionResult> {
 		'use server'
-
-		await requireWriter()
-		const revisionUser = await getCurrentUser()
-		const serverSupabase = createAdminSupabaseClient()
-		const title = String(formData.get('title') ?? '').trim()
-		const rawBody = String(formData.get('body') ?? '')
-		const body = rawBody.trim()
-		const wordCount = countWords(body)
-
-		if (!title || !body) {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=Please+complete+title+and+body.`,
-			)
-		}
-
-		const currentResult = await serverSupabase
-			.from('submissions')
-			.select(
-				'id, status, author_id, workshop_id, version, parent_submission_id',
-			)
-			.eq('id', submissionId)
-			.eq('author_id', revisionUser.id)
-			.maybeSingle()
-
-		if (currentResult.error || !currentResult.data) {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=Original+submission+could+not+be+loaded.`,
-			)
-		}
-
-		const currentSubmission = currentResult.data as Omit<
-			RevisionSubmission,
-			'title' | 'body' | 'created_at'
-		>
-
-		if (currentSubmission.status !== 'feedback_published') {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=Only+published+feedback+can+start+a+revision.`,
-			)
-		}
-
-		const currentRootSubmissionId =
-			currentSubmission.parent_submission_id ?? currentSubmission.id
-
-		const currentHistoryResult = await serverSupabase
-			.from('submissions')
-			.select('id, version, status, created_at')
-			.eq('author_id', revisionUser.id)
-			.or(buildRevisionScopeFilter(currentRootSubmissionId))
-
-		const currentHistory = (currentHistoryResult.data ?? []) as Array<{
-			id: string
-			version: number
-			status: string
-			created_at: string
-		}>
-		const currentBlockingReason = getRevisionBlockReason(
-			{
-				version: currentSubmission.version,
-			},
-			currentHistory.map((item) => ({
-				id: item.id,
-				version: item.version,
-				status: item.status,
-				created_at: item.created_at,
-			})),
-		)
-
-		if (currentBlockingReason) {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=${encodeURIComponent(currentBlockingReason)}`,
-			)
-		}
-
-		const currentWorkshopResult = await serverSupabase
-			.from('workshops')
-			.select('title, slug')
-			.eq('id', currentSubmission.workshop_id)
-			.maybeSingle()
-		const currentWorkshop = currentWorkshopResult.data as RevisionWorkshop | null
-		const isCurrentAbuRevision =
-			isAbuWorkshopSlug(currentWorkshop?.slug) ||
-			String(currentWorkshop?.title ?? '').trim().toLowerCase() ===
-				'authorised basic user'
-
-		if (isCurrentAbuRevision && wordCount > ABU_SUBMISSION_WORD_LIMIT) {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=Authorised+Basic+User+revisions+are+currently+limited+to+${ABU_SUBMISSION_WORD_LIMIT}+words.`,
-			)
-		}
-
-		const currentNextVersion =
-			currentHistory.reduce(
-				(highestVersion, item) => Math.max(highestVersion, item.version),
-				currentSubmission.version,
-			) + 1
-
-		const { error: insertError } = await serverSupabase.from('submissions').insert({
-			author_id: revisionUser.id,
-			workshop_id: currentSubmission.workshop_id,
-			parent_submission_id: currentRootSubmissionId,
-			title,
-			body: rawBody,
-			status: 'submitted',
-			version: currentNextVersion,
-		})
-
-		if (insertError) {
-			redirect(
-				`/app/writer/revise/${submissionId}?error=Unable+to+submit+revision.`,
-			)
-		}
-
+		const { user: revisionUser } = await requireWriter()
+		const result = await saveWorkshopDraft(revisionUser.id, formData, submissionId)
+		if ('error' in result) return result
 		revalidatePath('/app/writer')
 		revalidatePath('/app/writer/feedback')
 		revalidatePath(`/app/writer/feedback/${submissionId}`)
 		revalidatePath('/app/teacher/review-desk')
 		revalidatePath('/app/teacher/archive')
-		redirect(
-			`/app/writer?notice=${encodeURIComponent(`Revision submitted as version ${currentNextVersion}.`)}`,
-		)
+		return { id: result.id, version: result.version }
 	}
 
 	return (
 		<section>
 			<RevisionDraftForm
+				key={`${user.id}:${submission.id}`}
+				writerId={user.id}
 				title={submission.title}
 				body={submission.body}
 				status={submission.status}

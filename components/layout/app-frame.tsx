@@ -5,6 +5,8 @@ import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type { User } from '@supabase/supabase-js'
+import { getCurrentProfile } from '@/lib/auth/get-current-profile'
+import { SignOutForm } from '@/components/auth/sign-out-form'
 
 const writerNavItems = [
 	{ href: '/app/writer', label: 'Write' },
@@ -12,7 +14,7 @@ const writerNavItems = [
 	{ href: '/app/writer/examples', label: 'Examples' },
 	{ href: '/app/writer/feedback', label: 'Finished Pieces' },
 	{ href: '/guide/new-writers', label: 'Guide' },
-	{ href: '/app/account', label: 'Account', disabled: true },
+	{ href: '/app/account', label: 'Account' },
 ]
 
 const teacherNavItems = [
@@ -22,6 +24,7 @@ const teacherNavItems = [
 	{ href: '/app/teacher/feedback-memory', label: 'Memory' },
 	{ href: '/app/teacher/examples', label: 'Examples' },
 	{ href: '/app/teacher/archive', label: 'Archive' },
+	{ href: '/app/account', label: 'Account' },
 ]
 
 export async function AppFrame({
@@ -34,7 +37,8 @@ export async function AppFrame({
 	user: User
 }) {
 	const userEmail = user.email || ''
-	const displayName = user.user_metadata?.display_name || user.user_metadata?.name || userEmail
+	const profile = await getCurrentProfile()
+	const displayName = profile.displayName || user.user_metadata?.display_name || user.user_metadata?.name || userEmail
 
 	async function signOutAction() {
 		'use server'
@@ -74,13 +78,7 @@ export async function AppFrame({
 					</div>
 					<div className="flex flex-wrap items-center justify-end gap-2">
 						<AppNav items={visibleNav} />
-						<form action={signOutAction}>
-							<button
-								type="submit"
-								className="rounded-full border border-white/25 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-100 transition hover:border-white/35 hover:bg-white/5 hover:text-parchment-100">
-								Log out
-							</button>
-						</form>
+						<SignOutForm ownerId={user.id} action={signOutAction} />
 					</div>
 				</div>
 			</header>

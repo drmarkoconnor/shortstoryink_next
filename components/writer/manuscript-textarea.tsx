@@ -55,6 +55,8 @@ function outdentSelectedLines(
 export function ManuscriptTextarea({
 	name,
 	defaultValue,
+	value,
+	disabled,
 	placeholder,
 	rows,
 	className,
@@ -64,6 +66,8 @@ export function ManuscriptTextarea({
 }: {
 	name: string
 	defaultValue?: string
+	value?: string
+	disabled?: boolean
 	placeholder?: string
 	rows?: number
 	className?: string
@@ -130,6 +134,8 @@ export function ManuscriptTextarea({
 		<textarea
 			name={name}
 			defaultValue={defaultValue}
+			value={value}
+			disabled={disabled}
 			placeholder={placeholder}
 			rows={rows}
 			className={className}

@@ -1,10 +1,10 @@
-import { randomUUID } from 'crypto'
+import { saveWorkshopDraft } from '@/lib/workshop/save-draft'
+import type { DraftSubmissionResult } from '@/lib/drafts/recovery'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { WriterSubmissionComposer } from '@/components/writer/writer-submission-composer'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { sendSubmissionReceivedNotification } from '@/lib/notifications/email'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -175,187 +175,25 @@ async function notifyTeachersOfSubmission({
 	}
 }
 
-async function createSubmissionAction(formData: FormData) {
+async function createSubmissionAction(formData: FormData): Promise<DraftSubmissionResult> {
 	'use server'
-
-	const user = await getCurrentUser()
-	const mode = await detectSchemaMode()
-
-	const title = String(formData.get('title') ?? '').trim()
-	const rawBody = String(formData.get('body') ?? '')
-	const body = rawBody.trim()
-	const workshopId = String(formData.get('workshopId') ?? '').trim()
-	const wordCount = body.split(/\s+/).filter(Boolean).length
-	const writerLabel =
-		(user.user_metadata?.display_name as string | undefined) ||
-		(user.user_metadata?.name as string | undefined) ||
-		(user.user_metadata?.first_name as string | undefined) ||
-		String(user.email ?? 'Writer').split('@')[0]
-	let createdSubmissionId = ''
-	let submittedWorkshopTitle = 'Default group queue'
-
-	if (!title || !body) {
-		redirect('/app/writer?error=Please+complete+title+and+body.')
-	}
-
-	if (mode === 'modern') {
-		const adminSupabase = createAdminSupabaseClient()
-
-		if (!workshopId) {
-			redirect('/app/writer?error=Please+select+a+group.')
-		}
-
-		const { data: membership, error: membershipError } = await adminSupabase
-			.from('workshop_members')
-			.select('workshop_id')
-			.eq('profile_id', user.id)
-			.eq('workshop_id', workshopId)
-			.maybeSingle()
-
-		if (membershipError) {
-			redirect('/app/writer?error=Unable+to+validate+group+membership.')
-		}
-
-		if (!membership) {
-			redirect(
-				'/app/writer?error=You+can+only+submit+to+your+assigned+groups.',
-			)
-		}
-
-		const { data: workshop, error: workshopReadError } = await adminSupabase
-			.from('workshops')
-			.select('slug, title')
-			.eq('id', workshopId)
-			.maybeSingle()
-
-		if (workshopReadError) {
-			redirect('/app/writer?error=Unable+to+validate+group+settings.')
-		}
-
-		const isAbuSubmission =
-			isAbuWorkshopSlug(workshop?.slug as string | null | undefined) ||
-			String(workshop?.title ?? '').trim().toLowerCase() ===
-				'authorised basic user'
-		submittedWorkshopTitle = String(workshop?.title ?? '').trim() || 'Group'
-
-		if (isAbuSubmission && wordCount > ABU_SUBMISSION_WORD_LIMIT) {
-			redirect(
-				`/app/writer?error=Authorised+Basic+User+submissions+are+currently+limited+to+${ABU_SUBMISSION_WORD_LIMIT}+words.`,
-			)
-		}
-
-		const { data: submissionRow, error: insertError } = await adminSupabase
-			.from('submissions')
-			.insert({
-				author_id: user.id,
-				workshop_id: workshopId,
-				title,
-				body: rawBody,
-				status: 'submitted',
-				version: 1,
-			})
-			.select('id')
-			.single()
-
-		if (insertError || !submissionRow?.id) {
-			redirect(
-				'/app/writer?error=Unable+to+save+submission.+Check+Layer+1+migration.',
-			)
-		}
-
-		createdSubmissionId = submissionRow.id as string
-	} else {
-		const supabase = await createServerSupabaseClient()
-		const writerFirstName =
-			(user.user_metadata?.first_name as string | undefined) ||
-			(user.user_metadata?.name as string | undefined) ||
-			String(user.email ?? 'Writer').split('@')[0]
-
-		const { data: submissionRows, error: submissionInsertError } =
-			await supabase
-				.from('submissions')
-				.insert({
-					writer_id: user.id,
-					writer_email: user.email ?? '',
-					writer_first_name: writerFirstName,
-					title,
-					status: 'submitted',
-					submitted_at: new Date().toISOString(),
-				})
-				.select('id')
-				.single()
-
-		if (submissionInsertError || !submissionRows?.id) {
-			redirect(
-				`/app/writer?error=Unable+to+save+submission+header:+${encodeErrorMessage(submissionInsertError?.message)}`,
-			)
-		}
-
-		const submissionId = submissionRows.id as string
-		createdSubmissionId = submissionId
-
-		const { data: versionRows, error: versionInsertError } = await supabase
-			.from('submission_versions')
-			.insert({
-				submission_id: submissionId,
-				version_number: 1,
-				body: rawBody,
-				word_count: wordCount,
-				created_by: user.id,
-			})
-			.select('id')
-			.single()
-
-		if (versionInsertError || !versionRows?.id) {
-			redirect(
-				`/app/writer?error=Unable+to+save+submission+body+version:+${encodeErrorMessage(versionInsertError?.message)}`,
-			)
-		}
-
-		const versionId = versionRows.id as string
-
-		await supabase
-			.from('submissions')
-			.update({ latest_version_id: versionId })
-			.eq('id', submissionId)
-
-		const paragraphs = toManuscriptParagraphs(rawBody)
-		if (paragraphs.length > 0) {
-			let cursor = 0
-			const paragraphRows = paragraphs.map((text, index) => {
-				const paragraphText = text.text
-				const startChar = cursor
-				const endChar = startChar + paragraphText.length
-				cursor = endChar + 2
-
-				return {
-					submission_version_id: versionId,
-					pid: randomUUID(),
-					position: index + 1,
-					text: paragraphText,
-					start_char: startChar,
-					end_char: endChar,
-				}
-			})
-
-			await supabase.from('submission_paragraphs').insert(paragraphRows)
-		}
-	}
-
-	if (createdSubmissionId) {
+	const { user, displayName } = await requireWriter()
+	const result = await saveWorkshopDraft(user.id, formData)
+	if ('error' in result) return result
+	if (result.created) {
+		const workshop = await createAdminSupabaseClient().from('workshops').select('title').eq('id', String(formData.get('workshopId'))).maybeSingle()
 		await notifyTeachersOfSubmission({
-			submissionId: createdSubmissionId,
-			title,
-			writerLabel,
+			submissionId: result.id,
+			title: String(formData.get('title') ?? '').trim(),
+			writerLabel: displayName || user.email || 'Writer',
 			writerEmail: user.email,
-			workshopTitle: submittedWorkshopTitle,
-			wordCount,
+			workshopTitle: workshop.data?.title ?? 'Writing group',
+			wordCount: String(formData.get('body') ?? '').trim().split(/\s+/).filter(Boolean).length,
 		})
 	}
-
 	revalidatePath('/app/writer')
 	revalidatePath('/app/teacher/review-desk')
-	redirect('/app/writer?notice=Submission+saved+with+status+submitted.')
+	return { id: result.id, version: result.version }
 }
 
 async function deleteSubmissionAction(formData: FormData) {
@@ -386,17 +224,20 @@ async function deleteSubmissionAction(formData: FormData) {
 			redirect('/app/writer?error=Only+submitted+drafts+can+be+deleted.')
 		}
 
-		const { error: deleteError } = await adminSupabase
+		const { data: deleted, error: deleteError } = await adminSupabase
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)
 			.eq('author_id', user.id)
+			.eq('status', 'submitted')
+			.select('id')
 
 		if (deleteError) {
 			redirect(
 				`/app/writer?error=Unable+to+delete+submission:+${encodeErrorMessage(deleteError.message)}`,
 			)
 		}
+		if (!deleted?.length) redirect('/app/writer?error=This+draft+has+changed+and+can+no+longer+be+deleted.')
 	} else {
 		const supabase = await createServerSupabaseClient()
 		const { data: row, error: readError } = await supabase
@@ -414,17 +255,20 @@ async function deleteSubmissionAction(formData: FormData) {
 			redirect('/app/writer?error=Only+submitted+drafts+can+be+deleted.')
 		}
 
-		const { error: deleteError } = await supabase
+		const { data: deleted, error: deleteError } = await supabase
 			.from('submissions')
 			.delete()
 			.eq('id', submissionId)
 			.eq('writer_id', user.id)
+			.eq('status', 'submitted')
+			.select('id')
 
 		if (deleteError) {
 			redirect(
 				`/app/writer?error=Unable+to+delete+submission:+${encodeErrorMessage(deleteError.message)}`,
 			)
 		}
+		if (!deleted?.length) redirect('/app/writer?error=This+draft+has+changed+and+can+no+longer+be+deleted.')
 	}
 
 	revalidatePath('/app/writer')
@@ -437,8 +281,8 @@ export default async function WriterPage({
 }: {
 	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-	await requireWriter()
-	const user = await getCurrentUser()
+	const writerProfile = await requireWriter()
+	const user = writerProfile.user
 	const mode = await detectSchemaMode()
 	const params = searchParams ? await searchParams : {}
 
@@ -512,7 +356,7 @@ export default async function WriterPage({
 					workshopTitleById[submission.workshop_id] ?? 'Group unknown',
 			}))
 
-			const submissionIds = submissions.map((submission) => submission.id)
+			const submissionIds = submissions.filter((submission) => submission.status === 'feedback_published').map((submission) => submission.id)
 
 			if (submissionIds.length > 0) {
 				const { data: feedbackRows } = await adminSupabase
@@ -629,7 +473,10 @@ export default async function WriterPage({
 	return (
 		<section className="space-y-5">
 			<WriterSubmissionComposer
+				key={user.id}
+				writerId={user.id}
 				writerName={
+					writerProfile.displayName ||
 					(user.user_metadata?.first_name as string | undefined) ||
 					(user.user_metadata?.name as string | undefined) ||
 					String(user.email ?? 'Writer').split('@')[0]

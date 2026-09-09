@@ -24,9 +24,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Workshop regression tests
+        run: npm test
+
       - name: Lint
         run: npm run lint
 
       - name: Build
         run: npm run build
-

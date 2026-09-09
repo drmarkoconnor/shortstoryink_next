@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { requireWriter } from '@/lib/auth/get-current-profile'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import type {
 	ExampleCopyrightStatus,
 	ExampleStatus,
@@ -19,11 +18,6 @@ type ExampleRow = {
 	craft_tags: string[] | null
 	status: ExampleStatus | null
 	updated_at: string
-}
-
-type HiddenGroupRow = {
-	example_id: string
-	workshop_id: string
 }
 
 function previewFromBody(body: string) {
@@ -50,63 +44,12 @@ function formatUpdatedDate(value: string) {
 
 export default async function WriterExamplesPage() {
 	await requireWriter()
-	const user = await getCurrentUser()
-	const adminSupabase = createAdminSupabaseClient()
-	let examples: ExampleRow[] = []
-	let loadError: string | null = null
-
-	const { data: memberRows, error: membershipError } = await adminSupabase
-		.from('workshop_members')
-		.select('workshop_id')
-		.eq('profile_id', user.id)
-
-	if (membershipError) {
-		loadError = 'Unable to load your group memberships.'
-	}
-
-	const writerGroupIds = [
-		...new Set((memberRows ?? []).map((row) => row.workshop_id as string)),
-	]
-
-	if (!loadError && writerGroupIds.length > 0) {
-		const examplesResult = await adminSupabase
-			.from('teaching_examples')
-			.select(
-				'id, title, author_name, copyright_status, editorial_note, content_note, body, craft_tags, status, updated_at',
-			)
-			.eq('status', 'published')
-			.order('updated_at', { ascending: false })
-			.limit(80)
-
-		if (examplesResult.error) {
-			loadError = 'Unable to load annotated examples.'
-		} else {
-			const rows = (examplesResult.data ?? []) as ExampleRow[]
-			const exampleIds = rows.map((example) => example.id)
-			const hiddenResult =
-				exampleIds.length > 0
-					? await adminSupabase
-							.from('teaching_example_hidden_groups')
-							.select('example_id, workshop_id')
-							.in('example_id', exampleIds)
-					: { data: [] as HiddenGroupRow[] }
-			const hiddenByExample = ((hiddenResult.data ?? []) as HiddenGroupRow[]).reduce(
-				(acc, row) => {
-					if (!acc[row.example_id]) {
-						acc[row.example_id] = new Set<string>()
-					}
-					acc[row.example_id].add(row.workshop_id)
-					return acc
-				},
-				{} as Record<string, Set<string>>,
-			)
-
-			examples = rows.filter((example) => {
-				const hiddenGroups = hiddenByExample[example.id] ?? new Set<string>()
-				return writerGroupIds.some((groupId) => !hiddenGroups.has(groupId))
-			})
-		}
-	}
+	const db = await createServerSupabaseClient()
+	const result = await db.from('teaching_examples')
+		.select('id, title, author_name, copyright_status, editorial_note, content_note, body, craft_tags, status, updated_at')
+		.eq('status', 'published').order('updated_at', { ascending: false }).limit(80)
+	const examples = (result.data ?? []) as ExampleRow[]
+	const loadError = result.error ? 'Unable to load annotated examples. Please try again.' : null
 
 	return (
 		<section className="space-y-5">
