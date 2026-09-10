@@ -1,0 +1,45 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const out='/Users/moc/repos/all_things_coding/2026/shortstoryink_next/docs/reviews/2026-09-10-anchored-examples';await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/Users/moc/Library/Caches/ms-playwright/chromium-1223/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',headless:true});
+const errors=[];const results=[];
+for(const width of [1360,390]) for(const role of ['teacher','writer']) {
+ const page=await browser.newPage({viewport:{width,height:900}});page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/**',route=>route.fulfill({status:403,contentType:'application/json',body:'{"error":"Local test blocked API write"}'}));
+ await page.goto('http://127.0.0.1:3000/qa-local-redesign?view='+role,{waitUntil:'networkidle'});
+ await page.screenshot({path:`${out}/${role}-${width}-reading.png`,fullPage:true,style:'nextjs-portal{display:none}'});
+ const marker=page.getByRole('button',{name:'Open note 1: Character'}).first();
+ await marker.click();await page.getByRole('dialog').waitFor();
+ assert.ok((await page.getByRole('dialog').innerText()).includes('repeated fold'));
+ const bounds=await page.getByRole('dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width&&bounds.y>=0&&bounds.y+bounds.height<=901);
+ await page.screenshot({path:`${out}/${role}-${width}-note.png`,style:'nextjs-portal{display:none}'});
+ await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await marker.evaluate(el=>el===document.activeElement),true);
+ await page.getByRole('button',{name:'Open note 2: Structure'}).click();assert.ok((await page.getByRole('dialog').innerText()).includes('overlapping observation'));
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ // Clicking a highlight opens the same note.
+ await page.locator('mark').first().click();await page.getByRole('dialog').waitFor();
+ if(role==='teacher') {
+  await page.getByText('Edit note',{exact:true}).click();await page.getByRole('textbox',{name:'Note text'}).fill('A revised local note.');
+  await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('alert').filter({hasText:'Local test blocked API write'}).waitFor();
+  assert.equal(await page.getByRole('textbox',{name:'Note text'}).inputValue(),'A revised local note.');
+  await page.screenshot({path:`${out}/${role}-${width}-edit.png`,style:'nextjs-portal{display:none}'});
+ }
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ if(role==='teacher') {
+  await page.locator('p#p-0').evaluate(el=>{const node=el.firstChild;const range=document.createRange();range.setStart(node,0);range.setEnd(node,12);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);});
+  await page.locator('p#p-0').dispatchEvent('mouseup');await page.getByRole('textbox',{name:'New note',exact:true}).fill('A new local annotation.');
+  await page.getByRole('button',{name:'Save note',exact:true}).click();await page.getByText('Local test blocked API write',{exact:true}).last().waitFor();
+  assert.equal(await page.getByRole('textbox',{name:'New note',exact:true}).inputValue(),'A new local annotation.');
+  await page.unroute('**/api/**');
+  await page.route('**/api/**',async route=>{const data=route.request().postDataJSON();assert.equal(data.quote,'Eleanor chos');assert.equal(data.startOffset,0);assert.equal(data.endOffset,12);await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({annotation:{id:'local-new',comment:data.comment,categoryLabel:data.categoryLabel,categorySlug:'uncategorised',tags:[],createdAt:'2026-09-10',anchor:{blockId:data.blockId,startOffset:data.startOffset,endOffset:data.endOffset,quote:data.quote}}})});});
+  await page.getByRole('button',{name:'Save note',exact:true}).click();await page.getByText('Note saved.',{exact:true}).waitFor();assert.equal(await page.getByRole('textbox',{name:'New note',exact:true}).count(),0);
+ }
+ const text=await page.locator('p#p-0').evaluate(el=>{const copy=el.cloneNode(true);copy.querySelectorAll('button').forEach(b=>b.remove());return copy.textContent});assert.ok(text.startsWith('Eleanor chose')&&text.endsWith('made him laugh.'));
+ await page.getByRole('button',{name:'Next',exact:true}).first().click();assert.equal(await page.getByRole('combobox',{name:'Reading section'}).first().inputValue(),'1');
+ await page.getByRole('button',{name:'Previous',exact:true}).first().click();assert.equal(await page.getByRole('combobox',{name:'Reading section'}).first().inputValue(),'0');
+ if(role==='writer') {await page.getByRole('button',{name:'Focus on the text'}).click();assert.equal(await page.locator('mark').count(),0);assert.equal(await page.locator('[data-note-marker]').count(),0);}
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ results.push({role,width,passed:true});await page.close();
+}
+await browser.close();await fs.writeFile(out+'/browser-report.json',JSON.stringify({results,errors},null,2));assert.deepEqual(errors,[]);console.log('All four teacher/writer desktop/mobile checks passed');

@@ -284,3 +284,14 @@ input, select, textarea { accent-color: #496859; }
  .guide-chapter-row { grid-template-columns: 2rem minmax(0,1fr); gap: 1rem; }
  .guide-chapter-row > a { grid-column: 2; justify-self: start; }
 }
+
+/* Shared teacher/writer annotated reading: notes stay attached to the text. */
+.example-note-marker { display:inline-flex; align-items:center; justify-content:center; min-width:1.5rem; height:1.5rem; margin-left:.25rem; padding:0 .3rem; vertical-align:super; border:1px solid #9aafa3; border-radius:3px; background:#edf1e9; color:#29483c; font:600 12px/1 system-ui,sans-serif; }
+.example-note-marker--active { background:#294e43; color:#fff; }
+.example-note-popover { position:fixed; z-index:90; width:min(380px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; border:1px solid #a6b7ac; border-left:3px solid #507563; border-radius:4px; padding:1.25rem; background:#fffefa; color:#263b34; box-shadow:0 8px 30px #263b3420; }
+.example-reading-column { max-width:760px; margin-inline:auto; scroll-margin-top:2rem; }
+.example-reading-column .example-book-page { padding:2rem .25rem; }
+.example-reading-column .example-book-page__content { max-width:65ch; margin:auto; }
+.example-reading-column mark { cursor:pointer; }
+
+.example-reading-column[data-large-text="true"] .example-book-page__content p { font-size:22px; line-height:1.9; }

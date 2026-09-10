@@ -49,3 +49,6 @@ Final draft HTTP verification: all 44 checks passed, including six guide pages, 
 
 ## 10 September — approved Git release
 Mark approved pushing the reviewed redesign and refreshed walkthrough to Git for live testing. The release includes the validated application changes, illustrations, guide captures and review evidence. Authenticated live testing will be performed by Mark; preview login was not verified in this session.
+
+## 10 September — connected annotation reading
+Mark’s live feedback requested comments attached to highlights and similar teacher/writer experiences. Removed the detached example-note lists; both readers now share anchored popups, numbered markers and section navigation. Teacher setup is collapsed and note editing lives inside the same popup. Fixed new-note failure recovery. Four local desktop/mobile browser runs passed with intercepted requests; see reviews/2026-09-10-anchored-examples/review.md. Authenticated live testing remains with Mark.

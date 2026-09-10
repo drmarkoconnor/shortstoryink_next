@@ -261,8 +261,8 @@ export default async function TeacherExampleDetailPage({
 	)
 
 	return (
-		<section className="space-y-5">
-			<div className="surface p-5 lg:p-6">
+		<section className="mx-auto max-w-6xl space-y-6">
+			<div className="border-b border-studio-line pb-6">
 				<div className="flex flex-wrap items-start justify-between gap-4">
 					<div>
 						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
@@ -284,7 +284,7 @@ export default async function TeacherExampleDetailPage({
 				</div>
 			</div>
 
-			<div className="grid gap-5 lg:grid-cols-2">
+			<details className="border-b border-studio-line pb-5"><summary className="cursor-pointer text-sm text-studio-muted">Reading details and group visibility</summary><div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
 				<form action={updateExampleMetadataAction} className="surface p-5">
 					<input type="hidden" name="exampleId" value={example.id} />
 					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
@@ -440,6 +440,7 @@ export default async function TeacherExampleDetailPage({
 				</form>
 			</div>
 
+</details>
 			<TeacherExampleAnnotationWorkspace
 				exampleId={example.id}
 				title={example.title}

@@ -11,6 +11,7 @@ import {
 	type MouseEvent,
 	type ReactNode,
 } from 'react'
+import { AnchoredNote, NoteMarker, ReadingNavigation } from '@/components/reading/anchored-note'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
 import {
 	captureManuscriptSelection,
@@ -49,11 +50,7 @@ type AnnotationSegment = {
 
 type ExamplePage = ReturnType<typeof paginateManuscript>['pages'][number]
 
-type TurningPage = {
-	key: string
-	direction: 'next' | 'previous'
-	page: ExamplePage | undefined
-}
+
 
 function annotationSegmentForParagraph(
 	anchor: ExampleAnchor,
@@ -106,25 +103,11 @@ function formatQuote(quote: string) {
 	return quote.trim() ? `"${quote.trim()}"` : 'General note'
 }
 
-function markClass(active: boolean) {
-	return active
-		? 'mark-craft rounded px-1 ring-2 ring-burgundy-300/45'
-		: 'mark-craft rounded px-1'
-}
 
-function markerClass(active: boolean) {
-	return active
-		? 'border-burgundy-200 bg-studio-soft text-studio-ink'
-		: 'border-burgundy-300/55 bg-studio-soft text-studio-accent'
-}
 
-function compact(value: string, limit = 130) {
-	const normalized = value.replace(/\s+/g, ' ').trim()
-	if (normalized.length <= limit) {
-		return normalized
-	}
-	return `${normalized.slice(0, limit - 1).trimEnd()}...`
-}
+
+
+
 
 export function TeacherExampleAnnotationWorkspace({
 	exampleId,
@@ -163,7 +146,11 @@ export function TeacherExampleAnnotationWorkspace({
 	const [editCategory, setEditCategory] = useState('Uncategorised')
 	const [editTags, setEditTags] = useState('')
 	const [spreadIndex, setSpreadIndex] = useState(0)
-	const [turningPage, setTurningPage] = useState<TurningPage | null>(null)
+ const [showNotes, setShowNotes] = useState(true)
+ const [largeText, setLargeText] = useState(false)
+ const [noteAnchor, setNoteAnchor] = useState<HTMLElement | null>(null)
+ const readingRef = useRef<HTMLDivElement>(null)
+
 	const mainRef = useRef<HTMLDivElement | null>(null)
 	const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
@@ -201,14 +188,14 @@ export function TeacherExampleAnnotationWorkspace({
 		() =>
 			[...items].sort((a, b) => {
 				if (a.anchor.blockId !== b.anchor.blockId) {
-					return a.anchor.blockId.localeCompare(b.anchor.blockId)
+					return (paragraphIndexById[a.anchor.blockId] ?? 0) - (paragraphIndexById[b.anchor.blockId] ?? 0)
 				}
 				if (a.anchor.startOffset !== b.anchor.startOffset) {
 					return a.anchor.startOffset - b.anchor.startOffset
 				}
 				return a.createdAt.localeCompare(b.createdAt)
 			}),
-		[items],
+		[items, paragraphIndexById],
 	)
 	const annotationsByBlock = useMemo(() => {
 		const map: Record<string, ExampleAnnotation[]> = {}
@@ -248,21 +235,11 @@ export function TeacherExampleAnnotationWorkspace({
 	const activeAnnotation =
 		sortedItems.find((item) => item.id === activeAnnotationId) ?? null
 	const totalPages = pagedManuscript.pages.length
-	const totalSpreads = Math.max(1, Math.ceil(totalPages / 2))
+	const totalSpreads = Math.max(1, totalPages)
 	const currentPages = [
-		pagedManuscript.pages[spreadIndex * 2],
-		pagedManuscript.pages[spreadIndex * 2 + 1],
+		pagedManuscript.pages[spreadIndex],
 	]
 
-	useEffect(() => {
-		if (!turningPage) {
-			return
-		}
-
-		const timeout = window.setTimeout(() => setTurningPage(null), 720)
-
-		return () => window.clearTimeout(timeout)
-	}, [turningPage])
 
 	const goToSpread = useCallback(
 		(nextSpread: number) => {
@@ -271,23 +248,12 @@ export function TeacherExampleAnnotationWorkspace({
 				return
 			}
 
-			const direction = clamped > spreadIndex ? 'next' : 'previous'
-			const sourcePage =
-				direction === 'next'
-					? pagedManuscript.pages[spreadIndex * 2 + 1] ??
-						pagedManuscript.pages[spreadIndex * 2]
-					: pagedManuscript.pages[spreadIndex * 2] ??
-						pagedManuscript.pages[spreadIndex * 2 + 1]
-
-			setTurningPage({
-				key: `${spreadIndex}-${clamped}-${Date.now()}`,
-				direction,
-				page: sourcePage,
-			})
 			setSelectedAnchor(null)
+			setActiveAnnotationId(null)
 			setSpreadIndex(clamped)
+            readingRef.current?.scrollIntoView({block: "start"})
 		},
-		[pagedManuscript.pages, spreadIndex, totalSpreads],
+		[spreadIndex, totalSpreads],
 	)
 
 	usePagedArrowNavigation({
@@ -308,12 +274,7 @@ export function TeacherExampleAnnotationWorkspace({
 		setEditCategory(activeAnnotation.categoryLabel)
 		setEditTags(activeAnnotation.tags.join(', '))
 
-		const targetPage =
-			pagedManuscript.paragraphIdToPageIndex[activeAnnotation.anchor.blockId]
-		if (Number.isFinite(targetPage)) {
-			setSpreadIndex(Math.floor(targetPage / 2))
-		}
-	}, [activeAnnotation, pagedManuscript.paragraphIdToPageIndex])
+	}, [activeAnnotation])
 
 	useEffect(() => {
 		if (selectedAnchor) {
@@ -332,7 +293,7 @@ export function TeacherExampleAnnotationWorkspace({
 	const captureSelection = (
 		event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
 	) => {
-		if (shouldIgnoreSelectionTarget(event?.target ?? null)) {
+		if (!showNotes || shouldIgnoreSelectionTarget(event?.target ?? null)) {
 			return
 		}
 
@@ -365,67 +326,30 @@ export function TeacherExampleAnnotationWorkspace({
 		clearBrowserSelection()
 	}
 
-	const renderParagraphWithAnnotations = (
-		paragraph: { id: string; text: string },
-		blockItems: ExampleAnnotation[],
-	): ReactNode[] => {
-		const { text } = paragraph
-		if (blockItems.length === 0) {
-			return [text]
-		}
-
-		const nodes: ReactNode[] = []
-		let cursor = 0
-
-		for (const item of blockItems) {
-			const segment = annotationSegmentForParagraph(
-				item.anchor,
-				paragraph,
-				paragraphIndexById,
-			)
-			if (!segment) {
-				continue
-			}
-
-			const start = Math.max(cursor, Math.min(segment.startOffset, text.length))
-			const end = Math.max(start, Math.min(segment.endOffset, text.length))
-			if (start > cursor) {
-				nodes.push(text.slice(cursor, start))
-			}
-
-			const markedText = text.slice(start, end)
-			if (markedText) {
-				const isActive = activeAnnotationId === item.id
-				nodes.push(
-					<span key={item.id} className="inline">
-						<mark className={markClass(isActive)}>{markedText}</mark>
-							<button
-								type="button"
-								onClick={() => {
-									closeInlineComposer()
-									setActiveAnnotationId((current) =>
-										current === item.id ? null : item.id,
-									)
-							}}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-medium transition ${markerClass(
-								isActive,
-							)}`}
-							aria-label="Open example annotation">
-							•
-						</button>
-					</span>,
-				)
-			}
-
-			cursor = end
-		}
-
-		if (cursor < text.length) {
-			nodes.push(text.slice(cursor))
-		}
-
-		return nodes
-	}
+ const renderParagraphWithAnnotations = (paragraph: {id:string;text:string}, blockItems:ExampleAnnotation[]):ReactNode[] => {
+  if (!showNotes || !blockItems.length) return [paragraph.text]
+  const segments = blockItems.flatMap(item => {
+   const segment = annotationSegmentForParagraph(item.anchor, paragraph, paragraphIndexById)
+   return segment ? [{item,start:Math.max(0,Math.min(segment.startOffset,paragraph.text.length)),end:Math.max(0,Math.min(segment.endOffset,paragraph.text.length))}] : []
+  }).filter(segment=>segment.end>segment.start)
+  const edges = [...new Set([0, paragraph.text.length, ...segments.flatMap(segment=>[segment.start,segment.end])])].sort((a,b)=>a-b)
+  const nodes:ReactNode[]=[]
+  for(let i=0;i<edges.length-1;i++) {
+   const start=edges[i],end=edges[i+1]
+   const covering=segments.filter(segment=>segment.start<=start&&segment.end>=end)
+   const text=paragraph.text.slice(start,end)
+   if(covering.length) {
+    const item=covering.find(segment=>segment.item.id===activeAnnotationId)?.item ?? covering[0].item
+    nodes.push(<mark key={`text-${start}`} className={`mark-craft rounded ${covering.some(segment=>segment.item.id===activeAnnotationId)?'ring-2 ring-studio-accent/40':''}`} onClick={()=>{
+     if(window.getSelection()?.toString()) return
+     const marker=document.getElementById(`marker-${paragraph.id}-${item.id}`)?.querySelector('button')
+     if(marker) { closeInlineComposer(); setNoteAnchor(marker); setActiveAnnotationId(current=>current===item.id?null:item.id) }
+    }}>{text}</mark>)
+   } else nodes.push(text)
+   for(const {item} of segments.filter(segment=>segment.end===end)) nodes.push(<span key={item.id} id={`marker-${paragraph.id}-${item.id}`}><NoteMarker number={sortedItems.findIndex(note=>note.id===item.id)+1} category={item.categoryLabel} active={activeAnnotationId===item.id} onOpen={anchor=>{closeInlineComposer(); setNoteAnchor(anchor); setActiveAnnotationId(current=>current===item.id?null:item.id)}} /></span>)
+  }
+  return nodes
+ }
 
 	const saveNewAnnotation = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -466,8 +390,6 @@ export function TeacherExampleAnnotationWorkspace({
 		setComposerError(null)
 		setIsComposerSaving(true)
 		setItems((current) => [...current, optimistic])
-		closeInlineComposer()
-		setComposerText('')
 
 		try {
 			const response = await fetch(
@@ -502,7 +424,9 @@ export function TeacherExampleAnnotationWorkspace({
 					item.id === tempId ? payload.annotation! : item,
 				),
 			)
-			setActiveAnnotationId(payload.annotation.id)
+			closeInlineComposer()
+            setComposerText('')
+            setFlashNotice('Note saved.')
 		} catch (error) {
 			setItems((current) => current.filter((item) => item.id !== tempId))
 			setComposerError(error instanceof Error ? error.message : 'Unable to save note.')
@@ -650,11 +574,6 @@ export function TeacherExampleAnnotationWorkspace({
 				{page
 					? page.paragraphs.map((paragraph) => {
 							const blockItems = annotationsByBlock[paragraph.id] ?? []
-							const activeBlockItem =
-								blockItems.find((item) => item.id === activeAnnotationId) ??
-								null
-							const shouldShowActiveBlockItem =
-								activeBlockItem?.anchor.blockId === paragraph.id
 							const isSceneBreak = paragraph.text.trim() === '**'
 
 							return (
@@ -670,27 +589,6 @@ export function TeacherExampleAnnotationWorkspace({
 											? '***'
 											: renderParagraphWithAnnotations(paragraph, blockItems)}
 									</p>
-									{shouldShowActiveBlockItem ? (
-										<div className="rounded-md border border-burgundy-300/35 bg-studio-canvas px-4 py-3 text-sm text-studio-ink shadow-none">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
-													{activeBlockItem.categoryLabel}
-												</p>
-												<button
-													type="button"
-													onClick={() => setActiveAnnotationId(null)}
-													className="text-xs text-current/85 transition hover:text-current">
-													Close
-												</button>
-											</div>
-											<p className="mt-2 font-serif italic text-studio-ink/85">
-												{formatQuote(activeBlockItem.anchor.quote)}
-											</p>
-											<p className="mt-3 leading-relaxed">
-												{activeBlockItem.comment}
-											</p>
-										</div>
-									) : null}
 								</div>
 							)
 						})
@@ -700,125 +598,9 @@ export function TeacherExampleAnnotationWorkspace({
 	)
 
 	return (
-		<div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-			<main
-				ref={mainRef}
-				onMouseUp={captureSelection}
-				onKeyUp={captureSelection}
-				className="relative min-w-0">
-				{flashNotice ? (
-					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
-						{flashNotice}
-					</div>
-				) : null}
-
-				{selectedAnchor ? (
-						<form
-							ref={composerFormRef}
-							onSubmit={saveNewAnnotation}
-							data-selection-ignore="true"
-							style={{
-							top: `${selectedAnchor.composerTop}px`,
-							left: `${selectedAnchor.composerLeft}px`,
-						}}
-						className="absolute z-40 w-[min(320px,calc(100%-2rem))] rounded-md border border-studio-line bg-studio-canvas p-3 shadow-none backdrop-blur">
-						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
-							Craft note
-						</p>
-						<p className="mt-2 rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
-							{selectedAnchor.quote}
-						</p>
-						<textarea
-							ref={composerTextareaRef}
-							rows={composerText.includes('\n') ? 4 : 3}
-							value={composerText}
-							onChange={(event) => setComposerText(event.target.value)}
-							onKeyDown={handleComposerKeyDown}
-							className="mt-3 w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring"
-							placeholder="Explain the craft choice. Enter saves."
-						/>
-						<label className="mt-3 block">
-							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
-								Category
-							</span>
-							<select
-								value={composerCategory}
-								onChange={(event) => setComposerCategory(event.target.value)}
-								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
-								{exampleCraftCategories.map((category) => (
-									<option key={category} value={category}>
-										{category}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="mt-3 block">
-							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
-								Tags
-							</span>
-							<input
-								value={composerTags}
-								onChange={(event) => setComposerTags(event.target.value)}
-								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
-								placeholder="motif, restraint"
-							/>
-						</label>
-						{composerError ? (
-							<p className="mt-2 text-xs text-amber-800">{composerError}</p>
-						) : null}
-						<div className="mt-3 flex items-center justify-between gap-3">
-							<p className="text-xs text-studio-muted">
-								{isComposerSaving ? 'Saving...' : 'Shift+Enter adds a line.'}
-							</p>
-								<button
-									type="button"
-									onClick={closeInlineComposer}
-									className="text-xs text-studio-muted transition hover:text-studio-ink">
-								Close
-							</button>
-						</div>
-					</form>
-				) : null}
-
-				<div className="example-page-spread example-book-spread">
-					{renderBookPage(currentPages[0], 0)}
-					{renderBookPage(currentPages[1], 1)}
-					{turningPage ? (
-						<div
-							key={turningPage.key}
-							className={`example-book-turning-page example-book-turning-page--${turningPage.direction}`}
-							aria-hidden="true">
-							{renderBookPage(
-								turningPage.page,
-								turningPage.direction === 'next' ? 1 : 0,
-								true,
-							)}
-						</div>
-					) : null}
-				</div>
-				<button
-					type="button"
-					onClick={() => goToSpread(spreadIndex - 1)}
-					disabled={spreadIndex === 0}
-					className="absolute left-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-studio-ink shadow-none transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Previous spread">
-					‹
-				</button>
-				<button
-					type="button"
-					onClick={() => goToSpread(spreadIndex + 1)}
-					disabled={spreadIndex >= totalSpreads - 1}
-					className="absolute right-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-studio-ink shadow-none transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Next spread">
-					›
-				</button>
-				<p className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded border border-ink-900/10 bg-parchment-50/80 px-3 py-1 text-xs uppercase tracking-[0.12em] text-studio-ink/70 shadow-none">
-					Spread {spreadIndex + 1} of {totalSpreads}
-				</p>
-			</main>
-
-			<aside className="space-y-3 xl:sticky xl:top-24 xl:self-start">
-				<div className="surface p-4">
+		<div className="space-y-6">
+			<div className="space-y-3">
+				<details className="border-b border-studio-line pb-4"><summary className="cursor-pointer text-sm text-studio-muted">Publication · {liveStatus}</summary><div className="mt-4 max-w-md">
 					<div className="flex items-start justify-between gap-3">
 						<div>
 							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
@@ -854,7 +636,7 @@ export function TeacherExampleAnnotationWorkspace({
 								? 'Unpublish example'
 								: 'Publish example'}
 					</button>
-				</div>
+				</div></details>
 
 				{errorNotice ? (
 					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
@@ -872,60 +654,14 @@ export function TeacherExampleAnnotationWorkspace({
 					</p>
 				) : null}
 
-				<div className="surface p-4">
-					<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
-						Annotations
-					</p>
-					<p className="mt-1 text-sm text-studio-muted">
-						{sortedItems.length} craft notes
-					</p>
-					{sortedItems.length === 0 ? (
-						<p className="mt-3 text-sm text-studio-muted">
-							Highlight text in the story to add the first note.
-						</p>
-					) : (
-						<ul className="mt-3 max-h-[42vh] space-y-2 overflow-y-auto pr-1">
-							{sortedItems.map((item) => (
-								<li key={item.id}>
-										<button
-											type="button"
-											onClick={() => {
-												closeInlineComposer()
-												setActiveAnnotationId(item.id)
-											}}
-										className={`block w-full rounded-md border px-3 py-3 text-left transition ${
-											activeAnnotationId === item.id
-												? 'border-burgundy-300/45 bg-studio-soft text-studio-ink'
-												: 'border-studio-line bg-studio-canvas text-studio-muted hover:border-studio-line'
-										}`}>
-										<div className="flex flex-wrap items-center gap-2">
-											<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
-												{item.categoryLabel}
-											</p>
-										</div>
-										<p className="mt-2 text-sm italic text-studio-ink/85">
-											{formatQuote(compact(item.anchor.quote, 90))}
-										</p>
-										<p className="mt-2 text-sm leading-relaxed">
-											{compact(item.comment)}
-										</p>
-									</button>
-								</li>
-							))}
-						</ul>
-					)}
-				</div>
-
-				<div className="surface p-4">
-					<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
-						Selected note
-					</p>
-					{activeAnnotation ? (
-						<form onSubmit={saveActiveAnnotation} className="mt-3 space-y-3">
-							<p className="rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm italic leading-relaxed text-studio-muted">
-								{formatQuote(activeAnnotation.anchor.quote)}
-							</p>
-							<textarea
+</div>
+<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-studio-muted">{showNotes ? 'Open a numbered highlight to read or edit its note. Select text to add a note.' : 'Notes are hidden while you focus on the text.'}</p><div className="flex gap-4 text-sm"><button type="button" className="studio-link" aria-pressed={largeText} onClick={()=>setLargeText(value=>!value)}>{largeText?'Standard text':'Larger text'}</button><button type="button" className="studio-link" aria-pressed={!showNotes} onClick={()=>{setShowNotes(value=>!value);setActiveAnnotationId(null);closeInlineComposer()}}>{showNotes?'Focus on the text':'Show notes'}</button></div></div>
+{activeAnnotation && noteAnchor ? <AnchoredNote key={activeAnnotation.id} anchor={noteAnchor} title={`Note ${sortedItems.findIndex(note=>note.id===activeAnnotation.id)+1} · ${activeAnnotation.categoryLabel}`} onClose={()=>setActiveAnnotationId(null)}>
+<p className="mt-4 font-serif italic text-studio-muted">{formatQuote(activeAnnotation.anchor.quote)}</p>
+<p className="mt-4 whitespace-pre-wrap text-base leading-7">{activeAnnotation.comment}</p>
+<details className="mt-5 border-t border-studio-line pt-4"><summary className="studio-link cursor-pointer text-sm">Edit note</summary>
+<form onSubmit={saveActiveAnnotation} className="mt-3 space-y-3" data-selection-ignore="true">
+							<textarea aria-label="Note text"
 								rows={editComment.includes('\n') ? 5 : 4}
 								value={editComment}
 								onChange={(event) => setEditComment(event.target.value)}
@@ -971,15 +707,98 @@ export function TeacherExampleAnnotationWorkspace({
 									Delete
 								</button>
 							</div>
-						</form>
-					) : (
-						<p className="mt-3 text-sm leading-relaxed text-studio-muted">
-							Open a marker or highlight text in the story to work with a craft
-							note.
+						</form></details>
+{sidePanelError ? <p role="alert" className="mt-3 text-sm text-amber-800">{sidePanelError}</p> : null}
+</AnchoredNote> : null}
+<div ref={readingRef} className="example-reading-column" data-large-text={largeText}>
+<ReadingNavigation index={spreadIndex} total={totalSpreads} onChange={goToSpread} />
+			<main
+				ref={mainRef}
+				onMouseUp={captureSelection}
+				onKeyUp={captureSelection}
+				className="relative min-w-0">
+				{flashNotice ? (
+					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
+						{flashNotice}
+					</div>
+				) : null}
+
+				{selectedAnchor ? (
+						<form
+							ref={composerFormRef}
+							onSubmit={saveNewAnnotation}
+							data-selection-ignore="true"
+							style={{
+							top: `${selectedAnchor.composerTop}px`,
+							left: `${selectedAnchor.composerLeft}px`,
+						}}
+						className="absolute z-40 w-[min(320px,calc(100%-2rem))] rounded-md border border-studio-line bg-studio-canvas p-3 shadow-none backdrop-blur">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
+							Craft note
 						</p>
-					)}
-				</div>
-			</aside>
-		</div>
-	)
+						<p className="mt-2 rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
+							{selectedAnchor.quote}
+						</p>
+						<textarea aria-label="New note"
+							ref={composerTextareaRef}
+							rows={composerText.includes('\n') ? 4 : 3}
+							value={composerText}
+							onChange={(event) => setComposerText(event.target.value)}
+							onKeyDown={handleComposerKeyDown}
+							className="mt-3 w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring"
+							placeholder="Explain the craft choice. Enter saves."
+						/>
+						<label className="mt-3 block">
+							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
+								Category
+							</span>
+							<select
+								value={composerCategory}
+								onChange={(event) => setComposerCategory(event.target.value)}
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
+								{exampleCraftCategories.map((category) => (
+									<option key={category} value={category}>
+										{category}
+									</option>
+								))}
+							</select>
+						</label>
+						<label className="mt-3 block">
+							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
+								Tags
+							</span>
+							<input
+								value={composerTags}
+								onChange={(event) => setComposerTags(event.target.value)}
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
+								placeholder="motif, restraint"
+							/>
+						</label>
+						{composerError ? (
+							<p className="mt-2 text-xs text-amber-800">{composerError}</p>
+						) : null}
+						<div className="mt-3 flex items-center justify-between gap-3">
+							<p className="text-xs text-studio-muted">
+								{isComposerSaving ? 'Saving...' : 'Shift+Enter adds a line.'}
+							</p>
+<button type="submit" className="studio-primary" disabled={isComposerSaving}>Save note</button>
+								<button
+									type="button"
+									onClick={closeInlineComposer}
+									className="text-xs text-studio-muted transition hover:text-studio-ink">
+								Close
+							</button>
+						</div>
+					</form>
+				) : null}
+
+				<div className="example-page-spread example-book-spread">
+					{renderBookPage(currentPages[0], 0)}
+</div>
+</main>
+<ReadingNavigation index={spreadIndex} total={totalSpreads} onChange={goToSpread} />
+</div>
+
+</div>
+ )
 }

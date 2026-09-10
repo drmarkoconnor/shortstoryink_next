@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "role": "teacher",
+      "width": 1360,
+      "passed": true
+    },
+    {
+      "role": "writer",
+      "width": 1360,
+      "passed": true
+    },
+    {
+      "role": "teacher",
+      "width": 390,
+      "passed": true
+    },
+    {
+      "role": "writer",
+      "width": 390,
+      "passed": true
+    }
+  ],
+  "errors": []
+}

@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { AnchoredNote, NoteMarker, ReadingNavigation } from '@/components/reading/anchored-note'
 import { usePagedArrowNavigation } from '@/components/prototype/use-paged-arrow-navigation'
 import {
 	bookReadingPageOptions,
@@ -20,11 +21,7 @@ type AnnotationSegment = {
 
 type ExamplePage = ReturnType<typeof paginateManuscript>['pages'][number]
 
-type TurningPage = {
-	key: string
-	direction: 'next' | 'previous'
-	page: ExamplePage | undefined
-}
+
 
 function annotationSegmentForParagraph(
 	anchor: ExampleAnchor,
@@ -77,11 +74,7 @@ function formatQuote(quote: string) {
 	return quote.trim() ? `"${quote.trim()}"` : 'General note'
 }
 
-function markerClass(open: boolean) {
-	return open
-		? 'border-burgundy-400 bg-studio-soft text-studio-ink shadow-none'
-		: 'border-burgundy-300/60 bg-studio-soft text-studio-accent hover:border-burgundy-400 hover:bg-studio-soft'
-}
+
 
 export function ExampleReadingWorkspace({
 	title,
@@ -105,7 +98,9 @@ export function ExampleReadingWorkspace({
 	)
 	const [selectedCategory, setSelectedCategory] = useState('All notes')
 	const [spreadIndex, setSpreadIndex] = useState(0)
-	const [turningPage, setTurningPage] = useState<TurningPage | null>(null)
+ const [noteAnchor, setNoteAnchor] = useState<HTMLElement | null>(null)
+ const readingRef = useRef<HTMLDivElement>(null)
+
 	const [introOpen, setIntroOpen] = useState(Boolean(contentNote))
  const [showNotes, setShowNotes] = useState(true)
  const [largeText, setLargeText] = useState(false)
@@ -188,21 +183,11 @@ export function ExampleReadingWorkspace({
 	}, [paragraphIndexById, paragraphs, sortedItems])
 
 	const totalPages = pagedManuscript.pages.length
-	const totalSpreads = Math.max(1, Math.ceil(totalPages / 2))
+	const totalSpreads = Math.max(1, totalPages)
 	const currentPages = [
-		pagedManuscript.pages[spreadIndex * 2],
-		pagedManuscript.pages[spreadIndex * 2 + 1],
+		pagedManuscript.pages[spreadIndex],
 	]
 
-	useEffect(() => {
-		if (!turningPage) {
-			return
-		}
-
-		const timeout = window.setTimeout(() => setTurningPage(null), 720)
-
-		return () => window.clearTimeout(timeout)
-	}, [turningPage])
 
 	const goToSpread = useCallback(
 		(nextSpread: number) => {
@@ -211,23 +196,11 @@ export function ExampleReadingWorkspace({
 				return
 			}
 
-			const direction = clamped > spreadIndex ? 'next' : 'previous'
-			const sourcePage =
-				direction === 'next'
-					? pagedManuscript.pages[spreadIndex * 2 + 1] ??
-						pagedManuscript.pages[spreadIndex * 2]
-					: pagedManuscript.pages[spreadIndex * 2] ??
-						pagedManuscript.pages[spreadIndex * 2 + 1]
-
-			setTurningPage({
-				key: `${spreadIndex}-${clamped}-${Date.now()}`,
-				direction,
-				page: sourcePage,
-			})
 			setSpreadIndex(clamped)
+            readingRef.current?.scrollIntoView({block: "start"})
 			setHoveredAnnotationId(null)
 		},
-		[pagedManuscript.pages, spreadIndex, totalSpreads],
+		[spreadIndex, totalSpreads],
 	)
 
 	usePagedArrowNavigation({
@@ -236,114 +209,30 @@ export function ExampleReadingWorkspace({
 		onPageChange: goToSpread,
 	})
 
-	const renderParagraphWithAnnotations = (
-		paragraph: { id: string; text: string },
-		blockItems: ExampleAnnotation[],
-	): ReactNode[] => {
-		const { text } = paragraph
-		if (!showNotes || blockItems.length === 0) {
-			return [text]
-		}
-
-		const nodes: ReactNode[] = []
-		let cursor = 0
-
-		for (const item of blockItems) {
-			const segment = annotationSegmentForParagraph(
-				item.anchor,
-				paragraph,
-				paragraphIndexById,
-			)
-			if (!segment) {
-				continue
-			}
-
-			const start = Math.max(cursor, Math.min(segment.startOffset, text.length))
-			const end = Math.max(start, Math.min(segment.endOffset, text.length))
-			if (start > cursor) {
-				nodes.push(text.slice(cursor, start))
-			}
-
-			const markedText = text.slice(start, end)
-			if (markedText) {
-				const isOpen = hoveredAnnotationId === item.id
-				nodes.push(
-					<span
-						key={item.id}
-						className="group relative inline"
-						onMouseEnter={() => setHoveredAnnotationId(item.id)}
-						onMouseLeave={() =>
-							setHoveredAnnotationId((current) =>
-								current === item.id ? null : current,
-							)
-						}>
-						<mark
-							className={`mark-craft rounded px-1 transition ${
-								isOpen ? 'ring-2 ring-burgundy-300/50' : ''
-							}`}>
-							{markedText}
-						</mark>
-						<button
-							type="button"
-							onClick={() => setHoveredAnnotationId(current => current === item.id ? null : item.id)}
-                            onKeyDown={event => { if (event.key === 'Escape') setHoveredAnnotationId(null) }}
-							onBlur={() =>
-								setHoveredAnnotationId((current) =>
-									current === item.id ? null : current,
-								)
-							}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-semibold transition ${markerClass(
-								isOpen,
-							)}`}
-							aria-label={`Open note ${sortedItems.findIndex(note => note.id === item.id) + 1}: ${item.categoryLabel}`}
-							aria-expanded={isOpen}
-							aria-controls={`example-note-${item.id}`}>
-							<span aria-hidden="true">{sortedItems.findIndex(note => note.id === item.id) + 1}</span>
-						</button>
-						<span
-							id={`example-note-${item.id}`}
-							role="note"
-							className={`studio-inline-note absolute left-1/2 top-full z-50 mt-3 w-[min(26rem,calc(100vw-3rem))] -translate-x-1/2 rounded-md border border-burgundy-300/35 bg-studio-canvas px-4 py-4 text-left text-studio-ink shadow-none transition duration-150 ${
-								isOpen
-									? 'pointer-events-auto visible translate-y-0 opacity-100'
-									: 'hidden'
-							}`}>
-							<span
-								className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-studio-soft"
-								aria-hidden="true"
-							/>
-							<span className="flex flex-wrap items-center gap-2">
-								<span className="rounded border border-current/20 px-2 py-0.5 font-sans text-xs uppercase tracking-[0.1em] text-studio-accent">
-									{item.categoryLabel}
-								</span>
-								{item.tags.slice(0, 3).map((tag) => (
-									<span
-										key={tag}
-										className="rounded border border-current/15 px-2 py-0.5 font-sans text-xs uppercase tracking-[0.08em] text-studio-muted">
-										{tag}
-									</span>
-								))}
-							</span>
-							<span className="mt-3 block font-serif text-[16px] italic leading-7 text-studio-ink/82">
-								{formatQuote(item.anchor.quote)}
-							</span>
-							<span className="mt-3 block font-serif text-[18px] leading-8 text-studio-ink">
-								{item.comment}
-							</span>
-						</span>
-					</span>,
-				)
-			}
-
-			cursor = end
-		}
-
-		if (cursor < text.length) {
-			nodes.push(text.slice(cursor))
-		}
-
-		return nodes
-	}
+ const renderParagraphWithAnnotations = (paragraph: {id:string;text:string}, blockItems:ExampleAnnotation[]):ReactNode[] => {
+  if (!showNotes || !blockItems.length) return [paragraph.text]
+  const segments = blockItems.flatMap(item => {
+   const segment = annotationSegmentForParagraph(item.anchor, paragraph, paragraphIndexById)
+   return segment ? [{item,start:Math.max(0,Math.min(segment.startOffset,paragraph.text.length)),end:Math.max(0,Math.min(segment.endOffset,paragraph.text.length))}] : []
+  }).filter(segment=>segment.end>segment.start)
+  const edges = [...new Set([0, paragraph.text.length, ...segments.flatMap(segment=>[segment.start,segment.end])])].sort((a,b)=>a-b)
+  const nodes:ReactNode[]=[]
+  for(let i=0;i<edges.length-1;i++) {
+   const start=edges[i],end=edges[i+1]
+   const covering=segments.filter(segment=>segment.start<=start&&segment.end>=end)
+   const text=paragraph.text.slice(start,end)
+   if(covering.length) {
+    const item=covering.find(segment=>segment.item.id===hoveredAnnotationId)?.item ?? covering[0].item
+    nodes.push(<mark key={`text-${start}`} className={`mark-craft rounded ${covering.some(segment=>segment.item.id===hoveredAnnotationId)?'ring-2 ring-studio-accent/40':''}`} onClick={()=>{
+     if(window.getSelection()?.toString()) return
+     const marker=document.getElementById(`marker-${paragraph.id}-${item.id}`)?.querySelector('button')
+     if(marker) {  setNoteAnchor(marker); setHoveredAnnotationId(current=>current===item.id?null:item.id) }
+    }}>{text}</mark>)
+   } else nodes.push(text)
+   for(const {item} of segments.filter(segment=>segment.end===end)) nodes.push(<span key={item.id} id={`marker-${paragraph.id}-${item.id}`}><NoteMarker number={sortedItems.findIndex(note=>note.id===item.id)+1} category={item.categoryLabel} active={hoveredAnnotationId===item.id} onOpen={anchor=>{ setNoteAnchor(anchor); setHoveredAnnotationId(current=>current===item.id?null:item.id)}} /></span>)
+  }
+  return nodes
+ }
 
 	const renderBookPage = (
 		page: ExamplePage | undefined,
@@ -461,51 +350,22 @@ export function ExampleReadingWorkspace({
 							))}
 						</div>
 					</div>
-					<div className="flex flex-wrap gap-4 text-sm"><button type="button" className="studio-link" aria-pressed={largeText} onClick={() => setLargeText(value => !value)}>{largeText ? 'Standard text' : 'Larger text'}</button><button type="button" className="studio-link" aria-pressed={!showNotes} onClick={() => setShowNotes(value => !value)}>{showNotes ? 'Focus on the text' : 'Show margin notes'}</button></div>
+					<div className="flex flex-wrap gap-4 text-sm"><button type="button" className="studio-link" aria-pressed={largeText} onClick={() => setLargeText(value => !value)}>{largeText ? 'Standard text' : 'Larger text'}</button><button type="button" className="studio-link" aria-pressed={!showNotes} onClick={() => { setShowNotes(value => !value); setHoveredAnnotationId(null) }}>{showNotes ? 'Focus on the text' : 'Show notes'}</button></div>
 				</div>
 			</div>
 
-			<div className={`grid items-start gap-10 ${showNotes ? 'lg:grid-cols-[minmax(0,1fr)_290px]' : 'mx-auto max-w-3xl'}`}>
+			<div ref={readingRef} className="example-reading-column" data-large-text={largeText}>
+<ReadingNavigation index={spreadIndex} total={totalSpreads} onChange={goToSpread} />
+<p className="mt-5 text-sm text-studio-muted">{showNotes ? 'Open a numbered highlight to read its note.' : 'Notes are hidden while you focus on the text.'}</p>
+{showNotes && hoveredAnnotationId && noteAnchor ? (() => { const item = sortedItems.find(note=>note.id===hoveredAnnotationId); return item ? <AnchoredNote anchor={noteAnchor} title={`Note ${sortedItems.indexOf(item)+1} · ${item.categoryLabel}`} onClose={()=>setHoveredAnnotationId(null)}><p className="mt-4 font-serif italic text-studio-muted">{formatQuote(item.anchor.quote)}</p><p className="mt-4 whitespace-pre-wrap text-base leading-7">{item.comment}</p></AnchoredNote> : null })() : null}
    <main className="relative min-w-0">
 				<div
 					className="example-page-spread example-book-spread">
 					{renderBookPage(currentPages[0], 0)}
-					{renderBookPage(currentPages[1], 1)}
-					{turningPage ? (
-						<div
-							key={turningPage.key}
-							className={`example-book-turning-page example-book-turning-page--${turningPage.direction}`}
-							aria-hidden="true">
-							{renderBookPage(
-								turningPage.page,
-								turningPage.direction === 'next' ? 1 : 0,
-								true,
-							)}
-						</div>
-					) : null}
-				</div>
+</div>
+</main>
+<ReadingNavigation index={spreadIndex} total={totalSpreads} onChange={goToSpread} />
 
-				<button
-					type="button"
-					onClick={() => goToSpread(spreadIndex - 1)}
-					disabled={spreadIndex === 0}
-					className="studio-secondary my-4 mr-3"
-					aria-label="Previous section">
-					Previous
-				</button>
-				<button
-					type="button"
-					onClick={() => goToSpread(spreadIndex + 1)}
-					disabled={spreadIndex >= totalSpreads - 1}
-					className="studio-secondary my-4 mr-3"
-					aria-label="Next section">
-					Next
-				</button>
-				<p className="inline-block text-sm text-studio-muted">
-					Section {spreadIndex + 1} of {totalSpreads}
-				</p>
-   </main>
-   {showNotes ? <aside className="border-t border-studio-line pt-6 lg:border-l lg:border-t-0 lg:pl-6"><h2 className="literary-title text-2xl">In the margins</h2><p className="mt-2 text-sm text-studio-muted">Writing choices to notice</p><div className="mt-5 divide-y divide-studio-line">{sortedItems.filter(item => currentPages.some(page => page?.paragraphs.some(paragraph => annotationsByBlock[paragraph.id]?.some(note => note.id === item.id)))).map(item => <div key={item.id} className="py-5"><p className="studio-eyebrow">{sortedItems.findIndex(note => note.id === item.id) + 1}. {item.categoryLabel}</p><p className="mt-3 font-serif text-lg leading-7">{item.comment}</p><button type="button" className="studio-link mt-4" onClick={() => {setHoveredAnnotationId(item.id);document.getElementById(item.anchor.blockId)?.scrollIntoView({block:'center',behavior:'smooth'})}}>See it in the text</button></div>)}</div>{sortedItems.length === 0 ? <p className="mt-5 text-sm text-studio-muted">No notes in this view.</p> : null}</aside> : null}
    </div>
   </section>
 	)
