@@ -52,3 +52,8 @@ Mark approved pushing the reviewed redesign and refreshed walkthrough to Git for
 
 ## 10 September — connected annotation reading
 Mark’s live feedback requested comments attached to highlights and similar teacher/writer experiences. Removed the detached example-note lists; both readers now share anchored popups, numbered markers and section navigation. Teacher setup is collapsed and note editing lives inside the same popup. Fixed new-note failure recovery. Four local desktop/mobile browser runs passed with intercepted requests; see reviews/2026-09-10-anchored-examples/review.md. Authenticated live testing remains with Mark.
+
+## 10 September — selected writing surface
+Mark selected the second of three generated mockups: pale sage writing surface with a clear boundary and sharing controls beneath. Implemented in the writer composer, with consistent surfaces for revision, teacher text fields and the handout editor. The guide now has refreshed captures for the affected steps. Desktop/mobile drafting, recovery, mock submission, revision and handout preview checks passed; see design-qa.md and reviews/2026-09-10-writing-surfaces.
+
+Selected writing-surface release: final production build, type validation, ESLint and all 23 tests passed. Temporary fixture removed before build.

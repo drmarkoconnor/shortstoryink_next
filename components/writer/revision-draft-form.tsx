@@ -92,12 +92,12 @@ export function RevisionDraftForm({
 
 	return (
 		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-			<div className="space-y-4">
+			<div className="space-y-4"><header><h2 className="literary-title text-3xl">Your next draft</h2><p className="mt-3 text-studio-muted">Make room for the next version.</p></header>
 				<label className="block">
 					<span className="mb-2 block text-sm text-studio-muted">
 						Revised body text
 					</span>
-					<div className="folio-page p-5 sm:p-6 lg:min-h-[34rem] lg:p-7">
+					<div className="writing-surface p-5 sm:p-7">
 						<ManuscriptTextarea
 							name="body"
 							required
@@ -105,7 +105,7 @@ export function RevisionDraftForm({
 							value={draft.body}
 							disabled={!recovery.ready || pending}
 							rows={16}
-							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-studio-ink/90 outline-none placeholder:text-studio-ink/45 lg:min-h-[28rem]"
+							className="writing-manuscript"
 							placeholder="Revise your draft here"
 							onValueChange={(body) => recovery.edit({ body })}
 						/>

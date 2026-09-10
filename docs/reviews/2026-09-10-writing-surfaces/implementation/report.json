@@ -1,0 +1,13 @@
+{
+  "report": [
+    {
+      "width": 1487,
+      "passed": true
+    },
+    {
+      "width": 390,
+      "passed": true
+    }
+  ],
+  "errors": []
+}

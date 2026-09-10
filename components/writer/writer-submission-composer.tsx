@@ -117,9 +117,9 @@ export function WriterSubmissionComposer({
 	}, [notice])
 
 	return (
-		<div className="grid items-start gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
-   <header className="lg:col-span-2"><p className="studio-eyebrow">Your writing life</p><h1 className="studio-heading mt-3">Welcome back, {writerName.split(' ')[0]}.</h1><p className="mt-4 text-studio-muted">A little space to read, write and begin again.</p></header>
-   <div className="grid gap-12 lg:col-span-2 lg:grid-cols-[1.2fr_1fr]">
+		<div className="mx-auto max-w-[1200px] space-y-10">
+   <header className=""><p className="studio-eyebrow">Your writing life</p><h1 className="studio-heading mt-3">Welcome back, {writerName.split(' ')[0]}.</h1><p className="mt-4 text-studio-muted">A little space to read, write and begin again.</p></header>
+   <div className="grid gap-12  lg:grid-cols-[1.2fr_1fr]">
    <section className="border-y border-studio-line py-7">
     <p className="studio-eyebrow">On your desk</p><h2 className="literary-title mt-4 text-3xl">{draft.title || 'The next page is yours'}</h2>
     <p className="mt-4 max-w-2xl font-serif text-lg leading-8 text-studio-muted">{draft.body ? draft.body.slice(0, 230) + (draft.body.length > 230 ? '…' : '') : 'Begin with someone, somewhere, under pressure. A sentence is enough to start.'}</p>
@@ -172,22 +172,22 @@ export function WriterSubmissionComposer({
 				</div>
 			) : null}
 
-			<div id="writing-draft" className="scroll-mt-6 space-y-4">
+			<div id="writing-draft" className="scroll-mt-6 space-y-4"><header className="pb-3"><h2 className="literary-title text-4xl">Your draft</h2><p className="mt-3 font-serif text-xl text-studio-muted">A sentence is enough to begin.</p></header>
 				<label className="block">
-					<span className="mb-2 block text-sm text-studio-muted">
-						Your draft
+					<span className="mb-3 block text-xs uppercase tracking-[0.1em] text-studio-muted">
+						Write here
 					</span>
-					<div className="folio-page p-5 sm:p-6 lg:min-h-[34rem] lg:p-7">
+					<div className="writing-surface p-5 sm:p-7">
 						<ManuscriptTextarea
 							name="body"
 							value={draft.body}
 							disabled={!recovery.ready || pending}
 							required
 							form="writer-submit-form"
-							rows={16}
-							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-studio-ink/90 outline-none placeholder:text-studio-ink/45 lg:min-h-[28rem]"
+							rows={12}
+							className="writing-manuscript"
 							placeholder={
-								'Paste or type the piece here as you want it read. Formatting is preserved.\n\nUse Tab to indent dialogue in the standard way.'
+								'Begin here, or paste a piece you have started.'
 							}
 							onValueChange={(body) => recovery.edit({ body })}
 						/>
@@ -212,20 +212,15 @@ export function WriterSubmissionComposer({
 
 				<DraftRecoveryNotice message={recovery.message} download={recovery.download} />
 
-				<SubmissionHistorySelect
-					submissions={submissions}
-					submissionsError={submissionsError}
-					deleteSubmissionAction={deleteSubmissionAction}
-				/>
 			</div>
 
 			<form
 				id="writer-submit-form"
 				action={submit}
-				className="surface p-4 lg:sticky lg:top-6 lg:p-5">
-    <p className="studio-eyebrow">When you are ready</p><h2 className="literary-title mt-3 text-2xl">Share your writing</h2><p className="mt-3 text-sm leading-6 text-studio-muted">{submittedCount} awaiting a read · {inReviewCount} in review · {publishedCount} with feedback</p>
+				className="border-t border-studio-line pt-7">
+    <p className="studio-eyebrow">When you are ready</p><div className="mt-3 flex flex-wrap items-baseline justify-between gap-3"><h2 className="literary-title text-3xl">Share your writing</h2><p className="text-sm leading-6 text-studio-muted">{submittedCount} awaiting a read · {inReviewCount} in review · {publishedCount} with feedback</p></div>
 
-				<div className="mt-5 space-y-3">
+				<div className="mt-5 grid items-end gap-5 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]">
 					<label className="block">
 						<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 						<input
@@ -261,19 +256,23 @@ export function WriterSubmissionComposer({
 									</option>
 								))}
 							</select>
-							<p className="mt-1.5 text-xs leading-5 text-studio-muted">
-								Authorised Basic User submissions are limited to{' '}
-								{abuSubmissionWordLimit.toLocaleString()} words.
-							</p>
 						</label>
 					) : (
 						<div className="rounded-md border border-studio-line bg-studio-canvas px-3 py-2 text-sm text-studio-muted">
 							Default queue
 						</div>
 					)}
+				<button
+					type="submit"
+					disabled={
+						!recovery.ready || pending || isOverAbuLimit || (isWorkshopRequired && !selectedWorkshop)
+					}
+					className="studio-primary w-full md:w-auto md:min-w-[220px]">
+					{pending ? 'Saving…' : isOverAbuLimit ? 'Shorten before submitting' : 'Save submission'}
+				</button>
 				</div>
 
-				<div className="mt-4 space-y-2">
+				<div className="mt-4 space-y-2">{isAbuSelected ? <p className="text-xs text-studio-muted">Authorised Basic User submissions are limited to {abuSubmissionWordLimit.toLocaleString()} words.</p> : null}
 					{notice && (
 						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{notice}
@@ -352,15 +351,14 @@ export function WriterSubmissionComposer({
 					</div>
 				) : null}
 
-				<button
-					type="submit"
-					disabled={
-						!recovery.ready || pending || isOverAbuLimit || (isWorkshopRequired && !selectedWorkshop)
-					}
-					className="studio-primary mt-5 w-full">
-					{pending ? 'Saving…' : isOverAbuLimit ? 'Shorten before submitting' : 'Save submission'}
-				</button>
 			</form>
+<div className="border-t border-studio-line pt-7">
+				<SubmissionHistorySelect
+					submissions={submissions}
+					submissionsError={submissionsError}
+					deleteSubmissionAction={deleteSubmissionAction}
+				/>
+</div>
 		</div>
 	)
 }

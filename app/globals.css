@@ -295,3 +295,14 @@ input, select, textarea { accent-color: #496859; }
 .example-reading-column mark { cursor:pointer; }
 
 .example-reading-column[data-large-text="true"] .example-book-page__content p { font-size:22px; line-height:1.9; }
+
+/* A consistent invitation to write: pale sage, perceptible edge, clear focus. */
+.writing-surface { background:#f0f3ec; border:1px solid #7c8e80; border-radius:4px; transition:border-color .15s, box-shadow .15s; }
+.writing-surface:focus-within { border-color:#496859; box-shadow:0 0 0 2px #496859; }
+textarea.writing-manuscript { display:block; width:100%; min-height:25rem; resize:vertical; border:0; background:transparent; color:#263b34; font-family:'Iowan Old Style',Palatino,Georgia,serif; font-size:19px; line-height:1.8; outline:none; }
+textarea.writing-manuscript::placeholder, textarea:not(:disabled):not([readonly])::placeholder { color:#637067; }
+textarea:not(.writing-manuscript):not(:disabled):not([readonly]) { background-color:#f0f3ec; border-color:#7c8e80; }
+textarea:not(.writing-manuscript):focus-visible { outline:2px solid #496859; outline-offset:2px; }
+.writing-surface .tiptap-spike { max-width:65ch; margin-inline:auto; }
+@media (min-width:1024px) { textarea.writing-manuscript { padding-right:max(0px,calc(100% - 65ch)); } }
+@media print { .writing-surface { border:0; background:white; box-shadow:none; } }

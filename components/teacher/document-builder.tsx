@@ -1560,7 +1560,7 @@ export function DocumentBuilder({
 								{title.trim() || 'Untitled document'}
 							</h1>
 						</div>
-						<div className={`document-builder-controls ${isPreview ? 'hidden' : 'block'}`}><EditorContent editor={editor} /></div>
+						<div className={`document-builder-controls ${isPreview ? 'hidden' : 'block'}`}><p className="mb-3 mt-6 text-xs uppercase tracking-[0.1em] text-studio-muted">Write and edit here</p><div className="writing-surface px-5 sm:px-7"><EditorContent editor={editor} /></div></div>
       <div className={isPreview ? "mt-2" : "hidden print:block"}>
 							{(editorJson.content ?? []).map((node, index) =>
 								renderPrintNode(node, index),

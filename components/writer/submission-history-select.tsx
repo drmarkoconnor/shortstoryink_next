@@ -58,7 +58,7 @@ export function SubmissionHistorySelect({
 	}
 
 	return (
-		<section className="surface p-4 lg:p-5">
+		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
 					<h2 className="literary-title text-2xl text-studio-ink">

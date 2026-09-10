@@ -26,13 +26,13 @@ export const guideImages = {
   },
   "draft-filled": {
     "src": "/guide/new-writers/current/draft-filled.webp",
-    "width": 1360,
-    "height": 900,
-    "alt": "A fictional draft beside its title, group and submission controls"
+    "width": 1487,
+    "height": 1058,
+    "alt": "A fictional draft above its title, group and submission controls"
   },
   "submission-saved": {
     "src": "/guide/new-writers/current/submission-saved.webp",
-    "width": 448,
+    "width": 449,
     "height": 292,
     "alt": "Submission confirmation"
   },
@@ -56,8 +56,8 @@ export const guideImages = {
   },
   "revision": {
     "src": "/guide/new-writers/current/revision.webp",
-    "width": 1360,
-    "height": 900,
+    "width": 1487,
+    "height": 1058,
     "alt": "The revision workspace with source and next-version labels"
   },
   "version-history": {
@@ -80,8 +80,8 @@ export const guideImages = {
   },
   "handout": {
     "src": "/guide/new-writers/current/handout.webp",
-    "width": 1360,
-    "height": 900,
+    "width": 1487,
+    "height": 1058,
     "alt": "The illustrated handout editor"
   }
 } as const

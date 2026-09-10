@@ -1,0 +1,18 @@
+import {chromium} from 'playwright';import fs from 'node:fs/promises';import assert from 'node:assert/strict';
+const root='/Users/moc/repos/all_things_coding/2026/shortstoryink_next';const out=root+'/docs/reviews/2026-09-10-writing-surfaces/implementation';await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/Users/moc/Library/Caches/ms-playwright/chromium-1223/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',headless:true});const errors=[];const report=[];
+for(const width of [1487,390]) {
+const page=await browser.newPage({viewport:{width,height:1058},locale:'en-GB'});page.on('pageerror',e=>errors.push(e.message));await page.route('**/api/**',r=>r.fulfill({status:403,contentType:'application/json',body:'{"error":"Local example"}'}));
+await page.goto('http://127.0.0.1:3000/qa-local-redesign?view=writer',{waitUntil:'networkidle'});const input=page.locator('textarea[name=body]');await input.waitFor();
+await page.locator('#writing-draft').evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:out+`/writer-${width}-empty.png`,style:'nextjs-portal{display:none}'});
+await input.focus();await page.screenshot({path:out+`/writer-${width}-focus.png`,style:'nextjs-portal{display:none}'});
+assert.equal(await input.evaluate(el=>getComputedStyle(el.parentElement).backgroundColor),'rgb(240, 243, 236)');
+const body='Eleanor chose the bench furthest from the bandstand.\n\nShe folded the paper bag twice, though there was nothing in it that could spill.';await input.fill(body);
+await page.locator('input[name=title]').fill('The paper bag');await page.waitForTimeout(800);await page.reload({waitUntil:'networkidle'});assert.equal(await input.inputValue(),body);assert.equal(await page.locator('input[name=title]').inputValue(),'The paper bag');
+await page.locator('#writing-draft').evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:out+`/writer-${width}-filled.png`,style:'nextjs-portal{display:none}'});
+const draftBox=await page.locator('#writing-draft').boundingBox(),formBox=await page.locator('#writer-submit-form').boundingBox();assert.ok(formBox.y>=draftBox.y+draftBox.height);
+await page.getByRole('button',{name:'Save submission',exact:true}).click();await page.getByRole('heading',{name:'Well done.'}).waitFor();
+await page.locator('div.fixed').last().locator(':scope > div').screenshot({path:out+`/submission-saved-${width}.png`,style:'nextjs-portal{display:none}'});
+for(const view of ['revision','builder']) {await page.goto('http://127.0.0.1:3000/qa-local-redesign?view='+view,{waitUntil:'networkidle'});await page.screenshot({path:out+`/${view}-${width}.png`,style:'nextjs-portal{display:none}'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);if(view==='builder'){await page.getByRole('button',{name:'Preview',exact:true}).click();assert.equal(await page.locator('.writing-surface:visible').count(),0);}}
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);report.push({width,passed:true});await page.close();}
+await browser.close();await fs.writeFile(out+'/report.json',JSON.stringify({report,errors},null,2));assert.deepEqual(errors,[]);console.log('Desktop and mobile writing, recovery, submission, revision and handout checks passed');
