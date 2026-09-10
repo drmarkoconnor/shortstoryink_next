@@ -2,7 +2,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { illustrations } from '@/lib/illustrations/catalog'
+import { settingIllustrations as illustrations } from '@/lib/illustrations/catalog'
 export function SceneExplorer() {
  const [sceneId, setSceneId] = useState('park')
  const [visible, setVisible] = useState(true)

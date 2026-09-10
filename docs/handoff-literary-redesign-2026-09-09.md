@@ -57,3 +57,6 @@ Mark’s live feedback requested comments attached to highlights and similar tea
 Mark selected the second of three generated mockups: pale sage writing surface with a clear boundary and sharing controls beneath. Implemented in the writer composer, with consistent surfaces for revision, teacher text fields and the handout editor. The guide now has refreshed captures for the affected steps. Desktop/mobile drafting, recovery, mock submission, revision and handout preview checks passed; see design-qa.md and reviews/2026-09-10-writing-surfaces.
 
 Selected writing-surface release: final production build, type validation, ESLint and all 23 tests passed. Temporary fixture removed before build.
+
+## 10 September — writing-theme illustration collection
+Added all thirteen themes requested by Mark in the existing pen-and-watercolour style. The handout picker now contains nineteen illustrations with collection filtering, search and persistent insert controls. Original reading-room settings are unchanged. All 23 tests, targeted lint and desktop/mobile browser insertion checks passed. Review and screenshots: reviews/2026-09-10-writing-theme-illustrations/review.md. Authenticated live saving remains for Mark’s live check.

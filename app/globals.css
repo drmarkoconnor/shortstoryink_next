@@ -306,3 +306,5 @@ textarea:not(.writing-manuscript):focus-visible { outline:2px solid #496859; out
 .writing-surface .tiptap-spike { max-width:65ch; margin-inline:auto; }
 @media (min-width:1024px) { textarea.writing-manuscript { padding-right:max(0px,calc(100% - 65ch)); } }
 @media print { .writing-surface { border:0; background:white; box-shadow:none; } }
+
+.studio-picker[open] { display:flex; flex-direction:column; height:min(850px,90dvh); overflow:hidden; }
