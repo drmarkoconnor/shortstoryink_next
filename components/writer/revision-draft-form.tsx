@@ -94,7 +94,7 @@ export function RevisionDraftForm({
 		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
 			<div className="space-y-4">
 				<label className="block">
-					<span className="mb-2 block text-sm text-silver-100">
+					<span className="mb-2 block text-sm text-studio-muted">
 						Revised body text
 					</span>
 					<div className="folio-page p-5 sm:p-6 lg:min-h-[34rem] lg:p-7">
@@ -105,20 +105,20 @@ export function RevisionDraftForm({
 							value={draft.body}
 							disabled={!recovery.ready || pending}
 							rows={16}
-							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-ink-900/90 outline-none placeholder:text-ink-900/45 lg:min-h-[28rem]"
+							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-studio-ink/90 outline-none placeholder:text-studio-ink/45 lg:min-h-[28rem]"
 							placeholder="Revise your draft here"
 							onValueChange={(body) => recovery.edit({ body })}
 						/>
 					</div>
 					<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-						<p className={isOverAbuLimit ? 'text-amber-100' : 'text-silver-200'}>
+						<p className={isOverAbuLimit ? 'text-amber-800' : 'text-studio-muted'}>
 							{wordCount.toLocaleString()} words
 							{isAbuRevision
 								? ` - ${Math.max(remainingWords, 0).toLocaleString()} remaining for Authorised Basic User`
 								: ''}
 						</p>
 						{isOverAbuLimit ? (
-							<p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs text-amber-100">
+							<p className="rounded border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs text-amber-800">
 								Please shorten this revision before submitting.
 							</p>
 						) : null}
@@ -130,10 +130,10 @@ export function RevisionDraftForm({
 				<section ref={historySectionRef} className="surface p-4 lg:p-5">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div>
-							<h2 className="literary-title text-xl text-parchment-100">
+							<h2 className="literary-title text-xl text-studio-ink">
 								Version history
 							</h2>
-							<p className="mt-1 text-sm text-silver-300">
+							<p className="mt-1 text-sm text-studio-muted">
 								Published feedback stays preserved for each version.
 							</p>
 						</div>
@@ -148,7 +148,7 @@ export function RevisionDraftForm({
 									return nextValue
 								})
 							}}
-							className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-white/10 hover:text-parchment-100"
+							className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-sm text-studio-muted transition hover:bg-studio-tint hover:text-studio-ink"
 							aria-expanded={isHistoryOpen}>
 							{isHistoryOpen ? 'Collapse' : 'Show'}
 						</button>
@@ -159,34 +159,34 @@ export function RevisionDraftForm({
 							{revisionHistory.map((item) => (
 								<li
 									key={item.id}
-									className={`rounded-2xl border p-3 ${
+									className={`rounded-md border p-3 ${
 										item.id === currentSubmissionId
 											? 'border-accent-300/40 bg-accent-300/10'
-											: 'border-white/10 bg-ink-900/35'
+											: 'border-studio-line bg-studio-canvas'
 									}`}>
 									<div className="flex flex-wrap items-center justify-between gap-2">
-										<p className="text-xs uppercase tracking-[0.11em] text-accent-300">
+										<p className="text-xs uppercase tracking-[0.11em] text-studio-accent">
 											v{item.version}
 										</p>
-										<p className="text-xs text-silver-300">
-											{new Date(item.createdAt).toLocaleDateString()}
+										<p className="text-xs text-studio-muted">
+											{new Date(item.createdAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' })}
 										</p>
 									</div>
-									<p className="mt-1 text-sm text-parchment-100">
+									<p className="mt-1 text-sm text-studio-ink">
 										{statusLabel(item.status)}
 									</p>
 									<div className="mt-3 flex flex-wrap gap-2 text-xs">
 										{item.status === 'feedback_published' ? (
 											<Link
 												href={`/app/writer/feedback/${item.id}`}
-												className="text-accent-200 hover:text-accent-100">
+												className="text-studio-accent hover:text-studio-accent">
 												Open feedback
 											</Link>
 										) : (
-											<p className="text-silver-300">Awaiting feedback</p>
+											<p className="text-studio-muted">Awaiting feedback</p>
 										)}
 										{item.id === currentSubmissionId ? (
-											<p className="rounded-full border border-accent-300/50 bg-accent-300/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-accent-100">
+											<p className="rounded border border-accent-300/50 bg-accent-300/10 px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-accent">
 												Current source
 											</p>
 										) : null}
@@ -195,7 +195,7 @@ export function RevisionDraftForm({
 							))}
 						</ul>
 					) : (
-						<p className="mt-3 text-sm text-silver-300">
+						<p className="mt-3 text-sm text-studio-muted">
 							{revisionHistory.length} versions in this chain.
 						</p>
 					)}
@@ -208,29 +208,29 @@ export function RevisionDraftForm({
 				className="surface p-4 lg:sticky lg:top-6 lg:p-5">
 				<div className="mb-4 flex items-start justify-between gap-3">
 					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 							Revision workspace
 						</p>
-						<h1 className="literary-title mt-2 text-2xl text-parchment-100">
+						<h1 className="literary-title mt-2 text-2xl text-studio-ink">
 							{title}
 						</h1>
 					</div>
 					<Link
 						href={`/app/writer/feedback/${currentSubmissionId}`}
-						className="text-xs text-accent-200 hover:text-accent-100">
+						className="text-xs text-studio-accent hover:text-studio-accent">
 						Back to feedback
 					</Link>
 				</div>
 
-				<div className="grid grid-cols-2 gap-2 text-center text-[11px] text-silver-100">
-					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
-						<p className="text-lg font-semibold text-parchment-100">
+				<div className="grid grid-cols-2 gap-2 text-center text-xs text-studio-muted">
+					<div className="rounded-md border border-studio-line bg-studio-tint px-2 py-2">
+						<p className="text-lg font-semibold text-studio-ink">
 							v{sourceVersion}
 						</p>
 						<p className="mt-0.5 uppercase tracking-[0.08em]">Source</p>
 					</div>
-					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
-						<p className="text-lg font-semibold text-parchment-100">
+					<div className="rounded-md border border-studio-line bg-studio-tint px-2 py-2">
+						<p className="text-lg font-semibold text-studio-ink">
 							v{nextVersion}
 						</p>
 						<p className="mt-0.5 uppercase tracking-[0.08em]">Next</p>
@@ -239,53 +239,53 @@ export function RevisionDraftForm({
 
 				<div className="mt-5 space-y-3">
 					<label className="block">
-						<span className="mb-1.5 block text-sm text-silver-100">Title</span>
+						<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 						<input
 							name="title"
 							required
 							value={draft.title}
 							onChange={(event) => recovery.edit({ title: event.target.value })}
 							disabled={!recovery.ready || pending}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 							placeholder="Draft title"
 						/>
 					</label>
 
-					<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-2 text-sm text-silver-100">
-						<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+					<div className="rounded-md border border-studio-line bg-studio-canvas px-3 py-2 text-sm text-studio-muted">
+						<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Published source
 						</p>
 						<p className="mt-1">
-							v{sourceVersion} - {new Date(sourceCreatedAt).toLocaleString()}
+							v{sourceVersion} - {new Date(sourceCreatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
 					</div>
 
-					<p className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-2 text-sm text-silver-100">
+					<p className="rounded-md border border-studio-line bg-studio-canvas px-3 py-2 text-sm text-studio-muted">
 						Current status: {statusLabel(status)}.
 					</p>
 
-					<p className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-2 text-sm text-silver-100">
+					<p className="rounded-md border border-studio-line bg-studio-canvas px-3 py-2 text-sm text-studio-muted">
 						Next review state: submitted for teacher review.
 					</p>
 
 					{blockedReason ? (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{blockedReason}
 						</p>
 					) : null}
 					{isOverAbuLimit ? (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							This revision is over the current Authorised Basic User limit.
 						</p>
 					) : null}
 					{notice ? (
-						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{notice}
 						</p>
 					) : null}
-					{saveError && <p role="alert" className="text-sm text-amber-100">{saveError}</p>}
+					{saveError && <p role="alert" className="text-sm text-amber-800">{saveError}</p>}
 					{errorNotice ? (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{errorNotice}
 						</p>
 					) : null}
@@ -294,7 +294,7 @@ export function RevisionDraftForm({
 				<button
 					type="submit"
 					disabled={isSubmitDisabled}
-					className="mt-5 w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:border-white/15 disabled:bg-white/5 disabled:text-silver-400">
+					className="studio-primary mt-5 w-full">
 					{pending ? 'Saving…' : 'Submit revision'}
 				</button>
 			</form>

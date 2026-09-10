@@ -143,13 +143,13 @@ export default async function TeacherExamplesPage({
 	}
 
 	return (
-		<section className="space-y-5">
-			<div className="surface p-5 lg:p-6">
+		<section className="space-y-8">
+			<div className="studio-page-header">
 				<div>
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Annotated examples
 					</p>
-					<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+					<h1 className="studio-heading mt-3">
 						Close-reading library
 					</h1>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -161,12 +161,12 @@ export default async function TeacherExamplesPage({
 			</div>
 
 			{notice ? (
-				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 					{notice}
 				</p>
 			) : null}
 			{errorNotice || loadError ? (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					{errorNotice ?? loadError}
 				</p>
 			) : null}
@@ -175,7 +175,7 @@ export default async function TeacherExamplesPage({
 				<div className="space-y-3">
 					{examples.length === 0 && !loadError ? (
 						<div className="surface p-5 lg:p-6">
-							<h2 className="literary-title text-2xl text-parchment-100">
+							<h2 className="literary-title text-2xl text-studio-ink">
 								No examples yet
 							</h2>
 							<p className="muted mt-3 text-sm leading-relaxed">
@@ -187,23 +187,23 @@ export default async function TeacherExamplesPage({
 					{examples.map((example) => (
 						<article
 							key={example.id}
-							className="rounded-2xl border border-white/12 bg-white/[0.04] p-5">
+							className="rounded-md border border-studio-line bg-studio-tint p-5">
 							<div className="flex flex-wrap items-center justify-between gap-2">
-								<p className="text-xs uppercase tracking-[0.12em] text-accent-200">
+								<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 									{example.status ?? 'draft'}
 								</p>
-								<p className="text-xs text-silver-300">
+								<p className="text-xs text-studio-muted">
 									{annotationCounts[example.id] ?? 0} notes
 								</p>
 							</div>
-							<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+							<h2 className="literary-title mt-2 text-2xl text-studio-ink">
 								{example.title}
 							</h2>
-							<p className="mt-1 text-sm text-silver-200">
+							<p className="mt-1 text-sm text-studio-muted">
 								{example.author_name || 'Unknown author'} {' · '}
 								{example.copyright_status ?? 'teacher-owned'}
 							</p>
-							<p className="mt-3 line-clamp-2 text-sm leading-relaxed text-silver-100">
+							<p className="mt-3 line-clamp-2 text-sm leading-relaxed text-studio-muted">
 								{example.editorial_note ||
 									'No editorial introduction has been added yet.'}
 							</p>
@@ -212,14 +212,14 @@ export default async function TeacherExamplesPage({
 									{(example.craft_tags ?? []).slice(0, 4).map((tag) => (
 										<span
 											key={tag}
-											className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-200">
+											className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 											{tag}
 										</span>
 									))}
 								</div>
 								<Link
 									href={`/app/teacher/examples/${example.id}`}
-									className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:text-parchment-100">
+									className="rounded border border-studio-line px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Open
 								</Link>
 							</div>
@@ -228,37 +228,37 @@ export default async function TeacherExamplesPage({
 				</div>
 
 				<form action={createExampleAction} className="surface p-5 lg:p-6">
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Paste another story
 					</p>
 					<div className="mt-4 space-y-3">
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">Title</span>
+							<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 							<input
 								name="title"
 								required
 								placeholder="Story title"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Author
 							</span>
 							<input
 								name="authorName"
 								placeholder="Author name"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Copyright status
 							</span>
 							<select
 								name="copyrightStatus"
 								defaultValue="teacher-owned"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink">
 								<option value="teacher-owned">Teacher-owned</option>
 								<option value="public-domain">Public domain</option>
 								<option value="licensed">Licensed</option>
@@ -266,49 +266,49 @@ export default async function TeacherExamplesPage({
 							</select>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Source label
 							</span>
 							<input
 								name="sourceLabel"
 								placeholder="Project Gutenberg, own story, anthology..."
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Editorial introduction
 							</span>
 							<textarea
 								name="editorialNote"
 								rows={4}
 								placeholder="What should readers notice before they begin?"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Content note
 							</span>
 							<textarea
 								name="contentNote"
 								rows={3}
 								placeholder="Optional content note"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Craft tags
 							</span>
 							<input
 								name="craftTags"
 								placeholder="pacing, ending, point of view"
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Story text
 							</span>
 							<textarea
@@ -316,13 +316,13 @@ export default async function TeacherExamplesPage({
 								required
 								rows={12}
 								placeholder="Paste the full story text here. Blank lines become paragraphs for annotation."
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 font-serif text-[16px] leading-7 text-parchment-100 placeholder:text-silver-400"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 font-serif text-[16px] leading-7 text-studio-ink placeholder:text-studio-muted"
 							/>
 						</label>
 					</div>
 					<button
 						type="submit"
-						className="mt-4 w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+						className="studio-primary mt-4 w-full">
 						Create draft from pasted story
 					</button>
 				</form>

@@ -32,7 +32,7 @@ function formatShortDate(value: string) {
 	if (Number.isNaN(parsed.getTime())) {
 		return ''
 	}
-	return parsed.toLocaleDateString(undefined, {
+	return parsed.toLocaleDateString('en-GB', { timeZone: 'Europe/London',
 		day: '2-digit',
 		month: 'short',
 		year: '2-digit',
@@ -106,28 +106,28 @@ export function FeedbackMemoryWorkbench({
 
 	return (
 		<div className="space-y-4">
-			<section className="surface p-3">
+			<section className="surface p-5 sm:p-6">
 				<div className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(12rem,0.8fr)_minmax(12rem,0.8fr)]">
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Search
 						</span>
 						<input
 							type="search"
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 							placeholder="Comment, quote, story, writer"
 						/>
 					</label>
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Writer
 						</span>
 						<select
 							value={writerFilter}
 							onChange={(event) => setWriterFilter(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">All writers</option>
 							{writers.map((writer) => (
 								<option key={writer.id} value={writer.id}>
@@ -137,13 +137,13 @@ export function FeedbackMemoryWorkbench({
 						</select>
 					</label>
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Category
 						</span>
 						<select
 							value={categoryFilter}
 							onChange={(event) => setCategoryFilter(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">All categories</option>
 							<option value="Uncategorised">Uncategorised</option>
 							{fixedFeedbackCategories.map((category) => (
@@ -154,8 +154,8 @@ export function FeedbackMemoryWorkbench({
 						</select>
 					</label>
 				</div>
-				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
-					<p className="text-xs text-silver-300">
+				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-studio-line pt-3">
+					<p className="text-xs text-studio-muted">
 						{filteredEntries.length} shown from {entries.length} saved comments.
 						{focusedWriter ? ` ${focusedWriter} in focus.` : ''}
 					</p>
@@ -166,7 +166,7 @@ export function FeedbackMemoryWorkbench({
 							setWriterFilter('')
 							setCategoryFilter('')
 						}}
-						className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Clear filters
 					</button>
 				</div>
@@ -174,49 +174,49 @@ export function FeedbackMemoryWorkbench({
 
 			{filteredEntries.length === 0 ? (
 				<section className="surface p-6">
-					<p className="text-sm text-silver-300">No feedback memory matches.</p>
+					<p className="text-sm text-studio-muted">No feedback memory matches.</p>
 				</section>
 			) : (
 				<section className="grid gap-3 lg:grid-cols-2">
 					{filteredEntries.map((entry) => (
 						<article
 							key={entry.id}
-							className="surface p-4 transition hover:border-white/20">
+							className="surface p-4 transition hover:border-studio-line">
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div className="min-w-0">
 									<div className="flex flex-wrap items-center gap-1.5">
-										<span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-200">
+										<span className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 											{entry.categoryLabel}
 										</span>
-										<span className="text-[10px] uppercase tracking-[0.08em] text-silver-400">
+										<span className="text-xs uppercase tracking-[0.08em] text-studio-muted">
 											{formatShortDate(entry.createdAt)}
 										</span>
 										{entry.version ? (
-											<span className="text-[10px] uppercase tracking-[0.08em] text-silver-400">
+											<span className="text-xs uppercase tracking-[0.08em] text-studio-muted">
 												v{entry.version}
 											</span>
 										) : null}
 									</div>
-									<h2 className="mt-2 truncate text-base font-semibold text-parchment-100">
+									<h2 className="mt-2 truncate text-base font-semibold text-studio-ink">
 										{entry.writerLabel}
 									</h2>
-									<p className="mt-0.5 truncate text-xs text-silver-300">
+									<p className="mt-0.5 truncate text-xs text-studio-muted">
 										{entry.submissionTitle} / {statusLabel(entry.status)}
 									</p>
 								</div>
 								<button
 									type="button"
 									onClick={() => setWriterFilter(entry.writerId)}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Writer
 								</button>
 							</div>
 							{entry.quote ? (
-								<p className="mt-3 border-l border-accent-300/35 pl-3 text-sm italic leading-relaxed text-parchment-100/90">
+								<p className="mt-3 border-l border-accent-300/35 pl-3 text-sm italic leading-relaxed text-studio-ink/90">
 									{compactPreview(entry.quote, 220)}
 								</p>
 							) : null}
-							<p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-silver-100">
+							<p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-studio-muted">
 								{compactPreview(entry.comment, 340)}
 							</p>
 							{entry.tags.length > 0 ? (
@@ -224,7 +224,7 @@ export function FeedbackMemoryWorkbench({
 									{entry.tags.map((tag) => (
 										<span
 											key={tag}
-											className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+											className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 											{tag}
 										</span>
 									))}
@@ -236,7 +236,7 @@ export function FeedbackMemoryWorkbench({
 									onClick={() => {
 										void copyMemory(entry)
 									}}
-									className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+									className="rounded border border-accent-300/35 bg-accent-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
 									{copiedId === entry.id ? 'Copied' : 'Copy comment'}
 								</button>
 								<button
@@ -244,12 +244,12 @@ export function FeedbackMemoryWorkbench({
 									onClick={() => {
 										void copyMemory(entry, true)
 									}}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Copy quote
 								</button>
 								<Link
 									href={`/app/workshop/${entry.submissionId}?focus=feedback:${entry.id}`}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Open
 								</Link>
 							</div>

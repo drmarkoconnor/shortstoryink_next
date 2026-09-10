@@ -1,3 +1,4 @@
+import { IllustrationFigure } from '@/components/illustrations/illustration-figure'
 import type { JSONContent } from '@tiptap/core'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -132,26 +133,27 @@ function renderListItem(node: JSONContent, index: number) {
 }
 
 function renderDocumentNode(node: JSONContent, index: number) {
+ if (node.type === 'studioIllustration') return <IllustrationFigure key={index} attrs={node.attrs} />
 	if (node.type === 'heading') {
 		const level = Number(node.attrs?.level ?? 2)
 		const heading = renderInlineContent(node.content)
 
 		if (level === 1) {
 			return (
-				<h1 key={index} className="literary-title mt-7 text-4xl text-ink-900">
+				<h1 key={index} className="literary-title mt-7 text-4xl text-studio-ink">
 					{heading}
 				</h1>
 			)
 		}
 		if (level === 2) {
 			return (
-				<h2 key={index} className="literary-title mt-6 text-2xl text-ink-900">
+				<h2 key={index} className="literary-title mt-6 text-2xl text-studio-ink">
 					{heading}
 				</h2>
 			)
 		}
 		return (
-			<h3 key={index} className="mt-5 text-lg font-semibold text-ink-900">
+			<h3 key={index} className="mt-5 text-lg font-semibold text-studio-ink">
 				{heading}
 			</h3>
 		)
@@ -161,7 +163,7 @@ function renderDocumentNode(node: JSONContent, index: number) {
 		return (
 			<ul
 				key={index}
-				className="mt-3 list-disc space-y-1 pl-5 text-[15px] leading-7 text-ink-900/86">
+				className="mt-3 list-disc space-y-1 pl-5 text-[15px] leading-7 text-studio-ink">
 				{(node.content ?? []).map(renderListItem)}
 			</ul>
 		)
@@ -171,7 +173,7 @@ function renderDocumentNode(node: JSONContent, index: number) {
 		return (
 			<ol
 				key={index}
-				className="mt-3 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-ink-900/86">
+				className="mt-3 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-studio-ink">
 				{(node.content ?? []).map(renderListItem)}
 			</ol>
 		)
@@ -181,7 +183,7 @@ function renderDocumentNode(node: JSONContent, index: number) {
 		return (
 			<blockquote
 				key={index}
-				className="mt-4 border-l-2 border-accent-700/35 px-4 py-2 text-[15px] leading-7 text-ink-900/78">
+				className="mt-4 border-l-2 border-accent-700/35 px-4 py-2 text-[15px] leading-7 text-studio-muted">
 				{(node.content ?? []).map((child, childIndex) => (
 					<p key={childIndex}>{renderInlineContent(child.content)}</p>
 				))}
@@ -203,7 +205,7 @@ function renderDocumentNode(node: JSONContent, index: number) {
 						className="absolute -left-4 -top-3 font-serif text-5xl leading-none text-accent-700/40">
 						&ldquo;
 					</span>
-					<p className="whitespace-pre-wrap font-serif text-[17px] italic leading-8 text-ink-900/88">
+					<p className="whitespace-pre-wrap font-serif text-[17px] italic leading-8 text-studio-ink">
 						{attrs.text}
 					</p>
 					<span
@@ -213,12 +215,12 @@ function renderDocumentNode(node: JSONContent, index: number) {
 					</span>
 				</div>
 				{attribution ? (
-					<p className="mt-1 text-[11px] uppercase tracking-[0.1em] text-ink-900/45">
+					<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-muted">
 						{attribution}
 					</p>
 				) : null}
 				{attrs.includeNote && attrs.note ? (
-					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-ink-900/72">
+					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-studio-muted">
 						{attrs.note}
 					</p>
 				) : null}
@@ -230,7 +232,7 @@ function renderDocumentNode(node: JSONContent, index: number) {
 		return (
 			<p
 				key={index}
-				className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-ink-900/86">
+				className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-studio-ink">
 				{renderInlineContent(node.content)}
 			</p>
 		)
@@ -326,11 +328,11 @@ export default async function WriterDocumentPage({
 			<div className="print-controls flex flex-wrap items-center justify-between gap-3">
 				<Link
 					href="/app/writer/documents"
-					className="rounded-full border border-white/15 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/25 hover:text-parchment-100">
+					className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 					Back to materials
 				</Link>
 				<div className="flex flex-wrap items-center justify-end gap-3">
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						{documentType}
 					</p>
 					<PrintAction filename={printFilename(document.title)} />
@@ -338,18 +340,18 @@ export default async function WriterDocumentPage({
 			</div>
 
 			<article className="print-shell folio-page mx-auto max-w-3xl p-6 sm:p-8 lg:p-10">
-				<div className="print-page-footer hidden text-[11px] uppercase tracking-[0.16em] text-ink-900/42 print:flex">
+				<div className="print-page-footer hidden text-xs uppercase tracking-[0.16em] text-studio-muted print:flex">
 					<span>shortstory.ink</span>
 					<span className="print-page-number" />
 				</div>
 				<header className="border-b border-ink-900/10 pb-5">
-					<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
+					<p className="text-xs uppercase tracking-[0.16em] text-studio-muted">
 						shortstory.ink teaching document
 					</p>
-					<p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-ink-900/45">
+					<p className="mt-3 text-xs uppercase tracking-[0.12em] text-studio-muted">
 						{documentType}
 					</p>
-					<h1 className="literary-title mt-2 text-4xl text-ink-900">
+					<h1 className="literary-title mt-2 text-4xl text-studio-ink">
 						{document.title}
 					</h1>
 				</header>

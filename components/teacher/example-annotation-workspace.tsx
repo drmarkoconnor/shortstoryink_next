@@ -114,8 +114,8 @@ function markClass(active: boolean) {
 
 function markerClass(active: boolean) {
 	return active
-		? 'border-burgundy-200 bg-burgundy-300 text-parchment-100'
-		: 'border-burgundy-300/55 bg-burgundy-500/18 text-burgundy-100'
+		? 'border-burgundy-200 bg-studio-soft text-studio-ink'
+		: 'border-burgundy-300/55 bg-studio-soft text-studio-accent'
 }
 
 function compact(value: string, limit = 130) {
@@ -407,7 +407,7 @@ export function TeacherExampleAnnotationWorkspace({
 										current === item.id ? null : item.id,
 									)
 							}}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-medium transition ${markerClass(
+							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-medium transition ${markerClass(
 								isActive,
 							)}`}
 							aria-label="Open example annotation">
@@ -663,17 +663,17 @@ export function TeacherExampleAnnotationWorkspace({
 										id={omitIds ? undefined : paragraph.id}
 										className={
 											isSceneBreak
-												? 'text-center font-serif text-[19px] tracking-[0.22em] text-ink-900/60'
-												: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-ink-900/90 xl:text-[19px] xl:leading-9'
+												? 'text-center font-serif text-[19px] tracking-[0.22em] text-studio-ink/60'
+												: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-studio-ink/90 xl:text-[19px] xl:leading-9'
 										}>
 										{isSceneBreak
 											? '***'
 											: renderParagraphWithAnnotations(paragraph, blockItems)}
 									</p>
 									{shouldShowActiveBlockItem ? (
-										<div className="rounded-2xl border border-burgundy-300/35 bg-ink-950 px-4 py-3 text-sm text-parchment-100 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+										<div className="rounded-md border border-burgundy-300/35 bg-studio-canvas px-4 py-3 text-sm text-studio-ink shadow-none">
 											<div className="flex flex-wrap items-center justify-between gap-2">
-												<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+												<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 													{activeBlockItem.categoryLabel}
 												</p>
 												<button
@@ -683,7 +683,7 @@ export function TeacherExampleAnnotationWorkspace({
 													Close
 												</button>
 											</div>
-											<p className="mt-2 font-serif italic text-parchment-100/85">
+											<p className="mt-2 font-serif italic text-studio-ink/85">
 												{formatQuote(activeBlockItem.anchor.quote)}
 											</p>
 											<p className="mt-3 leading-relaxed">
@@ -707,7 +707,7 @@ export function TeacherExampleAnnotationWorkspace({
 				onKeyUp={captureSelection}
 				className="relative min-w-0">
 				{flashNotice ? (
-					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded-full border border-emerald-300/40 bg-ink-950/95 px-3 py-1.5 text-xs text-emerald-100 shadow-lg">
+					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
 						{flashNotice}
 					</div>
 				) : null}
@@ -721,11 +721,11 @@ export function TeacherExampleAnnotationWorkspace({
 							top: `${selectedAnchor.composerTop}px`,
 							left: `${selectedAnchor.composerLeft}px`,
 						}}
-						className="absolute z-40 w-[min(320px,calc(100%-2rem))] rounded-2xl border border-white/12 bg-ink-950/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						className="absolute z-40 w-[min(320px,calc(100%-2rem))] rounded-md border border-studio-line bg-studio-canvas p-3 shadow-none backdrop-blur">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Craft note
 						</p>
-						<p className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+						<p className="mt-2 rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
 							{selectedAnchor.quote}
 						</p>
 						<textarea
@@ -734,17 +734,17 @@ export function TeacherExampleAnnotationWorkspace({
 							value={composerText}
 							onChange={(event) => setComposerText(event.target.value)}
 							onKeyDown={handleComposerKeyDown}
-							className="mt-3 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+							className="mt-3 w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring"
 							placeholder="Explain the craft choice. Enter saves."
 						/>
 						<label className="mt-3 block">
-							<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Category
 							</span>
 							<select
 								value={composerCategory}
 								onChange={(event) => setComposerCategory(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 								{exampleCraftCategories.map((category) => (
 									<option key={category} value={category}>
 										{category}
@@ -753,27 +753,27 @@ export function TeacherExampleAnnotationWorkspace({
 							</select>
 						</label>
 						<label className="mt-3 block">
-							<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Tags
 							</span>
 							<input
 								value={composerTags}
 								onChange={(event) => setComposerTags(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 								placeholder="motif, restraint"
 							/>
 						</label>
 						{composerError ? (
-							<p className="mt-2 text-xs text-amber-100">{composerError}</p>
+							<p className="mt-2 text-xs text-amber-800">{composerError}</p>
 						) : null}
 						<div className="mt-3 flex items-center justify-between gap-3">
-							<p className="text-[11px] text-silver-300">
+							<p className="text-xs text-studio-muted">
 								{isComposerSaving ? 'Saving...' : 'Shift+Enter adds a line.'}
 							</p>
 								<button
 									type="button"
 									onClick={closeInlineComposer}
-									className="text-[11px] text-silver-200 transition hover:text-parchment-100">
+									className="text-xs text-studio-muted transition hover:text-studio-ink">
 								Close
 							</button>
 						</div>
@@ -800,7 +800,7 @@ export function TeacherExampleAnnotationWorkspace({
 					type="button"
 					onClick={() => goToSpread(spreadIndex - 1)}
 					disabled={spreadIndex === 0}
-					className="absolute left-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
+					className="absolute left-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-studio-ink shadow-none transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
 					aria-label="Previous spread">
 					‹
 				</button>
@@ -808,11 +808,11 @@ export function TeacherExampleAnnotationWorkspace({
 					type="button"
 					onClick={() => goToSpread(spreadIndex + 1)}
 					disabled={spreadIndex >= totalSpreads - 1}
-					className="absolute right-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
+					className="absolute right-3 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-studio-ink shadow-none transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
 					aria-label="Next spread">
 					›
 				</button>
-				<p className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full border border-ink-900/10 bg-parchment-50/80 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-ink-900/70 shadow-[0_8px_20px_rgba(0,0,0,0.14)]">
+				<p className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded border border-ink-900/10 bg-parchment-50/80 px-3 py-1 text-xs uppercase tracking-[0.12em] text-studio-ink/70 shadow-none">
 					Spread {spreadIndex + 1} of {totalSpreads}
 				</p>
 			</main>
@@ -821,20 +821,20 @@ export function TeacherExampleAnnotationWorkspace({
 				<div className="surface p-4">
 					<div className="flex items-start justify-between gap-3">
 						<div>
-							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Publication
 							</p>
-							<p className="mt-1 text-sm text-silver-200">
+							<p className="mt-1 text-sm text-studio-muted">
 								{liveStatus === 'published'
 									? 'Visible to writers in enabled groups.'
 									: 'Private draft. Writers cannot see it yet.'}
 							</p>
 						</div>
 						<span
-							className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${
+							className={`rounded border px-2.5 py-1 text-xs uppercase tracking-[0.1em] ${
 								liveStatus === 'published'
-									? 'border-emerald-300/40 bg-emerald-300/12 text-emerald-100'
-									: 'border-white/15 bg-white/6 text-silver-200'
+									? 'border-emerald-300/40 bg-emerald-300/12 text-emerald-800'
+									: 'border-studio-line bg-studio-tint text-studio-muted'
 							}`}>
 							{liveStatus}
 						</span>
@@ -847,7 +847,7 @@ export function TeacherExampleAnnotationWorkspace({
 								liveStatus === 'published' ? 'draft' : 'published',
 							)
 						}
-						className="mt-4 w-full rounded-full border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-60">
+						className="mt-4 w-full rounded border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-800 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-60">
 						{isPublishing
 							? 'Saving...'
 							: liveStatus === 'published'
@@ -857,30 +857,30 @@ export function TeacherExampleAnnotationWorkspace({
 				</div>
 
 				{errorNotice ? (
-					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 						{errorNotice}
 					</p>
 				) : null}
 				{sidePanelError ? (
-					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 						{sidePanelError}
 					</p>
 				) : null}
 				{sidePanelNotice ? (
-					<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+					<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 						{sidePanelNotice}
 					</p>
 				) : null}
 
 				<div className="surface p-4">
-					<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Annotations
 					</p>
-					<p className="mt-1 text-sm text-silver-200">
+					<p className="mt-1 text-sm text-studio-muted">
 						{sortedItems.length} craft notes
 					</p>
 					{sortedItems.length === 0 ? (
-						<p className="mt-3 text-sm text-silver-300">
+						<p className="mt-3 text-sm text-studio-muted">
 							Highlight text in the story to add the first note.
 						</p>
 					) : (
@@ -893,17 +893,17 @@ export function TeacherExampleAnnotationWorkspace({
 												closeInlineComposer()
 												setActiveAnnotationId(item.id)
 											}}
-										className={`block w-full rounded-xl border px-3 py-3 text-left transition ${
+										className={`block w-full rounded-md border px-3 py-3 text-left transition ${
 											activeAnnotationId === item.id
-												? 'border-burgundy-300/45 bg-burgundy-500/18 text-parchment-100'
-												: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+												? 'border-burgundy-300/45 bg-studio-soft text-studio-ink'
+												: 'border-studio-line bg-studio-canvas text-studio-muted hover:border-studio-line'
 										}`}>
 										<div className="flex flex-wrap items-center gap-2">
-											<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+											<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 												{item.categoryLabel}
 											</p>
 										</div>
-										<p className="mt-2 text-sm italic text-parchment-100/85">
+										<p className="mt-2 text-sm italic text-studio-ink/85">
 											{formatQuote(compact(item.anchor.quote, 90))}
 										</p>
 										<p className="mt-2 text-sm leading-relaxed">
@@ -917,28 +917,28 @@ export function TeacherExampleAnnotationWorkspace({
 				</div>
 
 				<div className="surface p-4">
-					<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Selected note
 					</p>
 					{activeAnnotation ? (
 						<form onSubmit={saveActiveAnnotation} className="mt-3 space-y-3">
-							<p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm italic leading-relaxed text-silver-100">
+							<p className="rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm italic leading-relaxed text-studio-muted">
 								{formatQuote(activeAnnotation.anchor.quote)}
 							</p>
 							<textarea
 								rows={editComment.includes('\n') ? 5 : 4}
 								value={editComment}
 								onChange={(event) => setEditComment(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 							/>
 							<label className="block">
-								<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Category
 								</span>
 								<select
 									value={editCategory}
 									onChange={(event) => setEditCategory(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									{exampleCraftCategories.map((category) => (
 										<option key={category} value={category}>
 											{category}
@@ -947,33 +947,33 @@ export function TeacherExampleAnnotationWorkspace({
 								</select>
 							</label>
 							<label className="block">
-								<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Tags
 								</span>
 								<input
 									value={editTags}
 									onChange={(event) => setEditTags(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 								/>
 							</label>
 							<div className="flex flex-wrap items-center gap-2">
 								<button
 									type="submit"
 									disabled={isPanelSaving}
-									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+									className="studio-primary">
 									{isPanelSaving ? 'Saving...' : 'Save'}
 								</button>
 								<button
 									type="button"
 									disabled={isPanelSaving}
 									onClick={deleteActiveAnnotation}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-amber-200/40 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-60">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-amber-200/40 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60">
 									Delete
 								</button>
 							</div>
 						</form>
 					) : (
-						<p className="mt-3 text-sm leading-relaxed text-silver-200">
+						<p className="mt-3 text-sm leading-relaxed text-studio-muted">
 							Open a marker or highlight text in the story to work with a craft
 							note.
 						</p>

@@ -157,7 +157,7 @@ function formatShortDate(value: string) {
 		return ''
 	}
 
-	return parsed.toLocaleDateString(undefined, {
+	return parsed.toLocaleDateString('en-GB', { timeZone: 'Europe/London',
 		day: '2-digit',
 		month: 'short',
 		year: '2-digit',
@@ -1290,10 +1290,10 @@ export function SnippetLibrary({
 
 	return (
 		<div className="space-y-3">
-			<section className="surface p-3">
-				<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.5fr)_repeat(7,minmax(0,1fr))]">
+			<section className="surface p-5 sm:p-6">
+				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Search
 						</span>
 						<input
@@ -1304,13 +1304,13 @@ export function SnippetLibrary({
 								clearMessages()
 								setSearchQuery(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 							placeholder="Text, note, author, source"
 						/>
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Status
 						</span>
 						<select
@@ -1319,7 +1319,7 @@ export function SnippetLibrary({
 								clearMessages()
 								setStatusFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Any status</option>
 							{snippetStatuses.map((status) => (
 								<option key={status} value={status}>
@@ -1330,7 +1330,7 @@ export function SnippetLibrary({
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Use
 						</span>
 						<select
@@ -1339,7 +1339,7 @@ export function SnippetLibrary({
 								clearMessages()
 								setUseFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Any use</option>
 							{snippetUseFlags.map((flag) => (
 								<option key={flag} value={flag}>
@@ -1350,7 +1350,7 @@ export function SnippetLibrary({
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Category
 						</span>
 						<select
@@ -1359,7 +1359,7 @@ export function SnippetLibrary({
 								clearMessages()
 								setCategoryFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Any category</option>
 							<option value="uncategorised">
 								Uncategorised ({categoryCounts.Uncategorised})
@@ -1373,7 +1373,7 @@ export function SnippetLibrary({
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Source
 						</span>
 						<select
@@ -1382,7 +1382,7 @@ export function SnippetLibrary({
 								clearMessages()
 								setSourceFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Any source</option>
 							<option value="external">External ({sourceCounts.external})</option>
 							<option value="submission">
@@ -1398,7 +1398,7 @@ export function SnippetLibrary({
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Note
 						</span>
 						<select
@@ -1407,7 +1407,7 @@ export function SnippetLibrary({
 								clearMessages()
 								setNoteFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Any note</option>
 							<option value="with-note">With ({noteCounts.withNote})</option>
 							<option value="without-note">
@@ -1417,7 +1417,7 @@ export function SnippetLibrary({
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Tag
 						</span>
 						<input
@@ -1427,19 +1427,19 @@ export function SnippetLibrary({
 								clearMessages()
 								setTagFilter(event.target.value)
 							}}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 							placeholder="Tag contains"
 						/>
 					</label>
 
 					<label className="block">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Sort
 						</span>
 						<select
 							value={sortMode}
 							onChange={(event) => setSortMode(event.target.value as SortMode)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="status">Best first</option>
 							<option value="recent">Newest</option>
 							<option value="oldest">Oldest</option>
@@ -1449,13 +1449,13 @@ export function SnippetLibrary({
 					</label>
 				</div>
 
-				<div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
-					<p className="text-xs text-silver-300">
+				<div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-studio-line pt-2">
+					<p className="text-xs text-studio-muted">
 						<span
 							title={loadLimitTitle(snippets.length, teacherSnippetLibraryLimit)}
 							className={
 								isNearSnippetLoadLimit
-									? 'text-amber-100 underline decoration-amber-200/50 decoration-dotted underline-offset-4'
+									? 'text-amber-800 underline decoration-amber-200/50 decoration-dotted underline-offset-4'
 									: 'underline decoration-white/20 decoration-dotted underline-offset-4'
 							}>
 							{snippets.length} / {teacherSnippetLibraryLimit}
@@ -1470,7 +1470,7 @@ export function SnippetLibrary({
 								void runAiTriage()
 							}}
 							disabled={isTriaging || aiTargetSnippets.length === 0}
-							className="rounded-full border border-accent-300/50 bg-accent-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-300/20 disabled:cursor-not-allowed disabled:opacity-50">
+							className="rounded border border-accent-300/50 bg-accent-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-ink transition hover:bg-accent-300/20 disabled:cursor-not-allowed disabled:opacity-50">
 							{isTriaging
 								? 'AI triaging...'
 								: `AI triage (${aiTargetSnippets.length})`}
@@ -1482,7 +1482,7 @@ export function SnippetLibrary({
 									void runAiTriage(lastFailedTriageIds)
 								}}
 								disabled={isTriaging}
-								className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-amber-100 transition hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:opacity-50">
+								className="rounded border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-amber-800 transition hover:bg-amber-300/15 disabled:cursor-not-allowed disabled:opacity-50">
 								Try again
 							</button>
 						) : null}
@@ -1493,7 +1493,7 @@ export function SnippetLibrary({
 									setAiSuggestions({})
 									setSelectedAiSuggestionIds([])
 								}}
-								className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Clear AI
 							</button>
 						) : null}
@@ -1501,7 +1501,7 @@ export function SnippetLibrary({
 							type="button"
 							onClick={toggleAllVisibleSelections}
 							disabled={visibleSnippetIds.length === 0 || isBulkDeleting}
-							className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-50">
+							className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink disabled:cursor-not-allowed disabled:opacity-50">
 							{allVisibleSelected ? 'Clear shown' : 'Select shown'}
 						</button>
 						<button
@@ -1517,7 +1517,7 @@ export function SnippetLibrary({
 								setFocusedTableSnippetIds([])
 								clearMessages()
 							}}
-							className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+							className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 							Clear filters
 						</button>
 					</div>
@@ -1526,17 +1526,17 @@ export function SnippetLibrary({
 
 			{selectedVisibleSnippetIds.length > 0 ? (
 				<section className="surface flex flex-wrap items-end gap-2 p-3">
-					<p className="mr-1 min-w-[8rem] text-xs uppercase tracking-[0.1em] text-silver-300">
+					<p className="mr-1 min-w-[8rem] text-xs uppercase tracking-[0.1em] text-studio-muted">
 						{selectedVisibleSnippetIds.length} selected
 					</p>
 					<label className="min-w-[11rem] flex-1">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Set category
 						</span>
 						<select
 							value={bulkCategory}
 							onChange={(event) => setBulkCategory(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Leave category</option>
 							<option value="Uncategorised">Uncategorised</option>
 							{fixedSnippetCategories.map((category) => (
@@ -1547,13 +1547,13 @@ export function SnippetLibrary({
 						</select>
 					</label>
 					<label className="min-w-[10rem] flex-1">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Set status
 						</span>
 						<select
 							value={bulkStatus}
 							onChange={(event) => setBulkStatus(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">Leave status</option>
 							{snippetStatuses.map((status) => (
 								<option key={status} value={status}>
@@ -1563,13 +1563,13 @@ export function SnippetLibrary({
 						</select>
 					</label>
 					<label className="min-w-[10rem] flex-1">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Add use
 						</span>
 						<select
 							value={bulkUseFlag}
 							onChange={(event) => setBulkUseFlag(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100">
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink">
 							<option value="">No new use</option>
 							{snippetUseFlags.map((flag) => (
 								<option key={flag} value={flag}>
@@ -1579,14 +1579,14 @@ export function SnippetLibrary({
 						</select>
 					</label>
 					<label className="min-w-[12rem] flex-[1.4]">
-						<span className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Add tags
 						</span>
 						<input
 							type="text"
 							value={bulkTags}
 							onChange={(event) => setBulkTags(event.target.value)}
-							className="mt-1 w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-sm text-parchment-100"
+							className="mt-1 w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-sm text-studio-ink"
 							placeholder="opening, dialogue"
 						/>
 					</label>
@@ -1596,7 +1596,7 @@ export function SnippetLibrary({
 							void applyBulkUpdate()
 						}}
 						disabled={isBulkSaving || isBulkDeleting}
-						className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+						className="studio-primary">
 						{isBulkSaving ? 'Applying...' : 'Apply'}
 					</button>
 					<button
@@ -1605,7 +1605,7 @@ export function SnippetLibrary({
 							void deleteSelectedSnippets()
 						}}
 						disabled={isBulkDeleting || isBulkSaving}
-						className="rounded-full border border-amber-200/30 px-4 py-2 text-xs uppercase tracking-[0.1em] text-amber-100 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-60">
+						className="rounded border border-amber-200/30 px-4 py-2 text-xs uppercase tracking-[0.1em] text-amber-800 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-60">
 						{isBulkDeleting ? 'Deleting...' : 'Delete'}
 					</button>
 				</section>
@@ -1615,10 +1615,10 @@ export function SnippetLibrary({
 				<section className="surface space-y-3 p-3">
 					<div className="flex flex-wrap items-center justify-between gap-2">
 						<div>
-							<p className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 								AI Suggestions Review
 							</p>
-							<p className="mt-1 text-sm text-parchment-100">
+							<p className="mt-1 text-sm text-studio-ink">
 								{aiSuggestionEntries.length} suggestions ready.{' '}
 								{selectedAiSuggestionCount} selected to apply.
 							</p>
@@ -1627,13 +1627,13 @@ export function SnippetLibrary({
 							<button
 								type="button"
 								onClick={toggleAllAiSuggestionSelections}
-								className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								{allAiSuggestionsSelected ? 'Untick all' : 'Tick all'}
 							</button>
 							<button
 								type="button"
 								onClick={showAiSuggestionsInTable}
-								className="rounded-full border border-white/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Show in table
 							</button>
 							<button
@@ -1645,7 +1645,7 @@ export function SnippetLibrary({
 									savingSnippetId === 'ai-apply' ||
 									selectedAiSuggestionCount === 0
 								}
-								className="rounded-full border border-emerald-300/40 bg-emerald-300/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-50">
+								className="rounded border border-emerald-300/40 bg-emerald-300/10 px-4 py-1.5 text-xs uppercase tracking-[0.1em] text-emerald-800 transition hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-50">
 								{savingSnippetId === 'ai-apply'
 									? 'Applying...'
 									: `Apply selected (${selectedAiSuggestionCount})`}
@@ -1659,7 +1659,7 @@ export function SnippetLibrary({
 									deletingSnippetId === 'ai-bulk' ||
 									selectedAiSuggestionCount === 0
 								}
-								className="rounded-full border border-amber-200/30 px-4 py-1.5 text-[10px] uppercase tracking-[0.1em] text-amber-100 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-50">
+								className="rounded border border-amber-200/30 px-4 py-1.5 text-xs uppercase tracking-[0.1em] text-amber-800 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-50">
 								{deletingSnippetId === 'ai-bulk'
 									? 'Deleting...'
 									: `Delete selected (${selectedAiSuggestionCount})`}
@@ -1683,7 +1683,7 @@ export function SnippetLibrary({
 									className={
 										isSelected
 											? 'block rounded-lg border border-accent-300/45 bg-accent-300/10 p-3'
-											: 'block rounded-lg border border-white/10 bg-white/[0.03] p-3'
+											: 'block rounded-lg border border-studio-line bg-studio-tint p-3'
 									}>
 									<div className="flex items-start gap-3">
 										<label className="mt-1 flex">
@@ -1691,39 +1691,39 @@ export function SnippetLibrary({
 												type="checkbox"
 												checked={isSelected}
 												onChange={() => toggleAiSuggestionSelection(suggestion.id)}
-												className="h-4 w-4 rounded border-white/20 bg-ink-900 accent-burgundy-400"
+												className="h-4 w-4 rounded border-studio-line bg-studio-paper accent-burgundy-400"
 												aria-label="Select AI suggestion"
 											/>
 										</label>
 										<div className="min-w-0 flex-1">
 											<div className="flex flex-wrap items-center gap-1.5">
-												<span className="rounded-full border border-accent-300/35 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent-100">
+												<span className="rounded border border-accent-300/35 px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-accent">
 													AI: {statusLabel}
 												</span>
 												{suggestedCategory !== 'Uncategorised' ? (
-													<span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-200">
+													<span className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 														{suggestedCategory}
 													</span>
 												) : null}
 												{suggestion.useFlags.slice(0, 2).map((flag) => (
 													<span
 														key={flag}
-														className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+														className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 														{snippetUseFlagLabels[flag]}
 													</span>
 												))}
-												<span className="text-[10px] uppercase tracking-[0.08em] text-silver-400">
+												<span className="text-xs uppercase tracking-[0.08em] text-studio-muted">
 													{suggestion.confidence} confidence
 												</span>
 											</div>
-											<p className="mt-2 line-clamp-2 text-sm leading-snug text-parchment-100">
+											<p className="mt-2 line-clamp-2 text-sm leading-snug text-studio-ink">
 												{compactPreview(snippet.text, 220)}
 											</p>
-											<p className="mt-1 text-xs leading-relaxed text-accent-100">
+											<p className="mt-1 text-xs leading-relaxed text-studio-accent">
 												{suggestion.reason}
 											</p>
 											{suggestion.tags.length > 0 ? (
-												<p className="mt-1 text-[11px] text-silver-300">
+												<p className="mt-1 text-xs text-studio-muted">
 													Tags: {suggestion.tags.join(', ')}
 												</p>
 											) : null}
@@ -1735,7 +1735,7 @@ export function SnippetLibrary({
 														void deleteAiReviewedSnippet(snippet)
 													}}
 													disabled={deletingSnippetId === snippet.id}
-													className="rounded-full border border-amber-200/30 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-amber-100 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-50">
+													className="rounded border border-amber-200/30 px-2.5 py-1 text-xs uppercase tracking-[0.1em] text-amber-800 transition hover:bg-amber-200/10 disabled:cursor-not-allowed disabled:opacity-50">
 													{deletingSnippetId === snippet.id ? 'Deleting...' : 'Delete'}
 												</button>
 											</div>
@@ -1749,12 +1749,12 @@ export function SnippetLibrary({
 			) : null}
 
 			{notice ? (
-				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 					{notice}
 				</p>
 			) : null}
 			{error ? (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					{error}
 				</p>
 			) : null}
@@ -1766,14 +1766,14 @@ export function SnippetLibrary({
 						: ''
 				}>
 					<main ref={tableSectionRef} className="surface overflow-hidden">
-						<div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+						<div className="flex flex-wrap items-center justify-between gap-2 border-b border-studio-line px-3 py-2">
+							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 								{focusedTableSnippetIds.length > 0
 									? 'AI reviewed rows'
 									: 'Library rows'}
 							</p>
 							<div className="flex flex-wrap items-center gap-2">
-								<p className="text-xs text-silver-300">
+								<p className="text-xs text-studio-muted">
 									Click a text cell to edit. Best first uses favourite, ready, then
 									reviewed.
 								</p>
@@ -1781,7 +1781,7 @@ export function SnippetLibrary({
 									<button
 										type="button"
 										onClick={() => setFocusedTableSnippetIds([])}
-										className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+										className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 										Show all
 									</button>
 								) : null}
@@ -1789,7 +1789,7 @@ export function SnippetLibrary({
 						</div>
 
 					{filteredSnippets.length === 0 ? (
-						<p className="px-3 py-6 text-sm text-silver-300">
+						<p className="px-3 py-6 text-sm text-studio-muted">
 							No snippets match these filters.
 						</p>
 					) : (
@@ -1806,8 +1806,8 @@ export function SnippetLibrary({
 									<col className="w-[70px]" />
 									<col className="w-[86px]" />
 								</colgroup>
-								<thead className="sticky top-0 z-10 bg-ink-950/95 text-[10px] uppercase tracking-[0.1em] text-silver-300 backdrop-blur">
-									<tr className="border-b border-white/10">
+								<thead className="sticky top-0 z-10 bg-studio-canvas text-xs uppercase tracking-[0.1em] text-studio-muted backdrop-blur">
+									<tr className="border-b border-studio-line">
 										<th className="px-2 py-2">
 											<span className="sr-only">Select</span>
 										</th>
@@ -1834,15 +1834,15 @@ export function SnippetLibrary({
 												key={snippet.id}
 												className={
 													isActive
-														? 'bg-burgundy-500/14 text-parchment-100'
-														: 'text-silver-200 transition hover:bg-white/[0.04]'
+														? 'bg-studio-soft text-studio-ink'
+														: 'text-studio-muted transition hover:bg-studio-tint'
 												}>
 												<td className="px-2 py-2 align-top">
 													<input
 														type="checkbox"
 														checked={isSelected}
 														onChange={() => toggleSnippetSelection(snippet.id)}
-														className="h-4 w-4 rounded border-white/20 bg-ink-900 accent-burgundy-400"
+														className="h-4 w-4 rounded border-studio-line bg-studio-paper accent-burgundy-400"
 														aria-label="Select snippet"
 													/>
 												</td>
@@ -1850,11 +1850,11 @@ export function SnippetLibrary({
 													<button
 														type="button"
 														onClick={() => openSnippet(snippet)}
-														className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/30 hover:text-parchment-100">
+														className="rounded border border-studio-line px-2 py-0.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 														{snippetStatusLabels[snippet.status]}
 													</button>
 													{aiSuggestion ? (
-														<span className="mt-1 block rounded-full border border-accent-300/35 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent-100">
+														<span className="mt-1 block rounded border border-accent-300/35 px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-accent">
 															AI: {snippetStatusLabels[aiSuggestion.recommendedStatus]}
 														</span>
 													) : null}
@@ -1865,32 +1865,32 @@ export function SnippetLibrary({
 															snippet.useFlags.slice(0, 2).map((flag) => (
 																<span
 																	key={flag}
-																	className="rounded-full border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+																	className="rounded border border-studio-line px-1.5 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 																	{snippetUseFlagLabels[flag]}
 																</span>
 															))
 														) : (
-															<span className="text-xs text-silver-500">-</span>
+															<span className="text-xs text-studio-muted">-</span>
 														)}
 														{snippet.useFlags.length > 2 ? (
-															<span className="text-xs text-silver-400">
+															<span className="text-xs text-studio-muted">
 																+{snippet.useFlags.length - 2}
 															</span>
 														) : null}
 														{aiSuggestion?.useFlags.length ? (
-															<span className="rounded-full border border-accent-300/35 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent-100">
+															<span className="rounded border border-accent-300/35 px-1.5 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-accent">
 																AI: {snippetUseFlagLabels[aiSuggestion.useFlags[0]]}
 															</span>
 														) : null}
 													</div>
 												</td>
 												<td className="px-2 py-2 align-top">
-													<span className="line-clamp-2 text-xs text-silver-300">
+													<span className="line-clamp-2 text-xs text-studio-muted">
 														{snippet.categoryLabel}
 													</span>
 													{aiSuggestion?.categoryLabel &&
 													aiSuggestion.categoryLabel !== 'Uncategorised' ? (
-														<span className="mt-1 block rounded-full border border-accent-300/35 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent-100">
+														<span className="mt-1 block rounded border border-accent-300/35 px-1.5 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-accent">
 															AI: {aiSuggestion.categoryLabel}
 														</span>
 													) : null}
@@ -1899,13 +1899,13 @@ export function SnippetLibrary({
 													<button
 														type="button"
 														onClick={() => openSnippet(snippet)}
-														className="block w-full text-left text-sm leading-snug text-parchment-100 transition hover:text-white">
+														className="block w-full text-left text-sm leading-snug text-studio-ink transition hover:text-studio-accent">
 														<span className="line-clamp-2">
 															{compactPreview(snippet.text)}
 														</span>
 													</button>
 													{aiSuggestion ? (
-														<p className="mt-1 line-clamp-2 text-xs leading-snug text-accent-100">
+														<p className="mt-1 line-clamp-2 text-xs leading-snug text-studio-accent">
 															{aiSuggestion.recommendFavourite
 																? 'Favourite: '
 																: 'AI: '}
@@ -1913,13 +1913,13 @@ export function SnippetLibrary({
 														</p>
 													) : null}
 													{isSaving ? (
-														<span className="mt-1 block text-[10px] uppercase tracking-[0.1em] text-accent-200">
+														<span className="mt-1 block text-xs uppercase tracking-[0.1em] text-studio-accent">
 															Saving
 														</span>
 													) : null}
 												</td>
 												<td className="px-2 py-2 align-top">
-													<span className="line-clamp-2 text-xs text-silver-300">
+													<span className="line-clamp-2 text-xs text-studio-muted">
 														{source || sourceTypeLabel(snippet.sourceType)}
 													</span>
 												</td>
@@ -1929,27 +1929,27 @@ export function SnippetLibrary({
 															snippet.tags.slice(0, 2).map((tag) => (
 																<span
 																	key={tag}
-																	className="rounded-full border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+																	className="rounded border border-studio-line px-1.5 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 																	{tag}
 																</span>
 															))
 														) : (
-															<span className="text-xs text-silver-500">-</span>
+															<span className="text-xs text-studio-muted">-</span>
 														)}
 														{snippet.tags.length > 2 ? (
-															<span className="text-xs text-silver-400">
+															<span className="text-xs text-studio-muted">
 																+{snippet.tags.length - 2}
 															</span>
 														) : null}
 													</div>
 												</td>
 												<td className="px-2 py-2 align-top">
-													<span className="text-xs text-silver-300">
+													<span className="text-xs text-studio-muted">
 														{snippet.note.trim() ? 'Yes' : '-'}
 													</span>
 												</td>
 												<td className="px-2 py-2 align-top">
-													<span className="text-xs text-silver-400">
+													<span className="text-xs text-studio-muted">
 														{formatShortDate(snippet.createdAt)}
 													</span>
 												</td>
@@ -1966,24 +1966,24 @@ export function SnippetLibrary({
 					<aside className="surface space-y-3 p-3 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
 						<div className="flex items-start justify-between gap-2">
 							<div>
-								<p className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Inspector
 								</p>
-								<h2 className="mt-1 text-lg font-semibold text-parchment-100">
+								<h2 className="mt-1 text-lg font-semibold text-studio-ink">
 									Edit snippet
 								</h2>
 							</div>
 							<button
 								type="button"
 								onClick={closeActiveSnippet}
-								className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Close
 							</button>
 						</div>
 
 						<form onSubmit={saveSnippet} className="space-y-3">
 							<label className="block">
-								<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Text
 								</span>
 								<textarea
@@ -1993,13 +1993,13 @@ export function SnippetLibrary({
 										clearMessages()
 										setDraftText(event.target.value)
 									}}
-									className="w-full rounded-lg border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 								/>
 							</label>
 
 							<div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
 								<label className="block">
-									<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+									<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Category
 									</span>
 									<select
@@ -2008,7 +2008,7 @@ export function SnippetLibrary({
 											clearMessages()
 											setDraftCategory(event.target.value)
 										}}
-										className="w-full rounded-lg border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+										className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 										<option value="">Uncategorised</option>
 										{fixedSnippetCategories.map((category) => (
 											<option key={category} value={category}>
@@ -2019,7 +2019,7 @@ export function SnippetLibrary({
 								</label>
 
 								<label className="block">
-									<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+									<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Status
 									</span>
 									<select
@@ -2028,7 +2028,7 @@ export function SnippetLibrary({
 											clearMessages()
 											setDraftStatus(normalizeSnippetStatus(event.target.value))
 										}}
-										className="w-full rounded-lg border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+										className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 										{snippetStatuses.map((status) => (
 											<option key={status} value={status}>
 												{snippetStatusLabels[status]}
@@ -2039,7 +2039,7 @@ export function SnippetLibrary({
 							</div>
 
 							<fieldset>
-								<legend className="mb-1 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<legend className="mb-1 text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Teaching use
 								</legend>
 								<div className="flex flex-wrap gap-1.5">
@@ -2052,8 +2052,8 @@ export function SnippetLibrary({
 												onClick={() => toggleDraftUseFlag(flag)}
 												className={
 													isActive
-														? 'rounded-full border border-accent-300/70 bg-accent-300/20 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-parchment-100'
-														: 'rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-300 transition hover:border-white/25 hover:text-parchment-100'
+														? 'rounded border border-accent-300/70 bg-accent-300/20 px-2.5 py-1 text-xs uppercase tracking-[0.1em] text-studio-ink'
+														: 'rounded border border-studio-line px-2.5 py-1 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:border-studio-line hover:text-studio-ink'
 												}>
 												{snippetUseFlagLabels[flag]}
 											</button>
@@ -2063,7 +2063,7 @@ export function SnippetLibrary({
 							</fieldset>
 
 							<label className="block">
-								<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Tags
 								</span>
 								<input
@@ -2073,13 +2073,13 @@ export function SnippetLibrary({
 										clearMessages()
 										setDraftTags(event.target.value)
 									}}
-									className="w-full rounded-lg border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 									placeholder="image, opening, dialogue"
 								/>
 							</label>
 
 							<label className="block">
-								<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Private note
 								</span>
 								<textarea
@@ -2089,16 +2089,16 @@ export function SnippetLibrary({
 										clearMessages()
 										setDraftNote(event.target.value)
 									}}
-									className="w-full rounded-lg border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 									placeholder="Why this might be useful"
 								/>
 							</label>
 
-							<div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 text-xs leading-relaxed text-silver-300">
-								<p className="uppercase tracking-[0.1em] text-silver-400">
+							<div className="rounded-lg border border-studio-line bg-studio-tint p-2 text-xs leading-relaxed text-studio-muted">
+								<p className="uppercase tracking-[0.1em] text-studio-muted">
 									Source
 								</p>
-								<p className="mt-1 text-parchment-100">
+								<p className="mt-1 text-studio-ink">
 									{sourceSummary(activeSnippet) ||
 										sourceTypeLabel(activeSnippet.sourceType)}
 								</p>
@@ -2106,7 +2106,7 @@ export function SnippetLibrary({
 									{activeSnippet.sourceSubmissionId ? (
 										<Link
 											href={`/app/workshop/${activeSnippet.sourceSubmissionId}`}
-											className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+											className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 											View source
 										</Link>
 									) : null}
@@ -2115,7 +2115,7 @@ export function SnippetLibrary({
 											href={activeSnippet.sourceUrl}
 											target="_blank"
 											rel="noreferrer"
-											className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+											className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 											Open source
 										</a>
 									) : null}
@@ -2126,7 +2126,7 @@ export function SnippetLibrary({
 								<button
 									type="submit"
 									disabled={savingSnippetId === activeSnippet.id}
-									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+									className="studio-primary">
 									{savingSnippetId === activeSnippet.id ? 'Saving...' : 'Save'}
 								</button>
 								<button
@@ -2135,11 +2135,11 @@ export function SnippetLibrary({
 									onClick={() => {
 										void deleteSnippet(activeSnippet)
 									}}
-									className="rounded-full border border-white/15 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-300 transition hover:border-amber-200/40 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-60">
+									className="rounded border border-studio-line px-3 py-2 text-sm text-studio-muted transition hover:border-amber-200/40 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60">
 									{deletingSnippetId === activeSnippet.id ? 'Deleting...' : 'Delete'}
 								</button>
 								{hasActiveDraftChanges ? (
-									<p className="text-xs text-amber-100">Unsaved changes</p>
+									<p className="text-xs text-amber-800">Unsaved changes</p>
 								) : null}
 							</div>
 						</form>

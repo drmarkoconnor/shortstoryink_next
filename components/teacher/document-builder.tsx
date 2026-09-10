@@ -3,6 +3,9 @@
 import { mergeAttributes, Node, type JSONContent } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
+import { StudioIllustrationNode } from '@/components/illustrations/illustration-node'
+import { IllustrationFigure } from '@/components/illustrations/illustration-figure'
+import { IllustrationPicker } from '@/components/illustrations/illustration-picker'
 import StarterKit from '@tiptap/starter-kit'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
@@ -530,11 +533,12 @@ function renderListItem(node: JSONContent, index: number) {
 }
 
 function renderPrintNode(node: JSONContent, index: number) {
+ if (node.type === 'studioIllustration') return <IllustrationFigure key={index} attrs={node.attrs} />
 	if (node.type === 'heading') {
 		const level = Number(node.attrs?.level ?? 2)
 		if (level === 1) {
 			return (
-				<h1 key={index} className="literary-title mt-7 text-4xl text-ink-900">
+				<h1 key={index} className="literary-title mt-7 text-4xl text-studio-ink sm:text-5xl">
 					{renderInlineContent(node.content)}
 				</h1>
 			)
@@ -545,13 +549,13 @@ function renderPrintNode(node: JSONContent, index: number) {
 					key={index}
 					id={documentSectionDomId(index)}
 					data-document-section-index={index}
-					className="literary-title mt-6 scroll-mt-24 text-2xl text-ink-900">
+					className="literary-title mt-6 scroll-mt-24 text-2xl text-studio-ink">
 					{renderInlineContent(node.content)}
 				</h2>
 			)
 		}
 		return (
-			<h3 key={index} className="mt-5 text-lg font-semibold text-ink-900">
+			<h3 key={index} className="mt-5 text-lg font-semibold text-studio-ink">
 				{renderInlineContent(node.content)}
 			</h3>
 		)
@@ -559,7 +563,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 	if (node.type === 'bulletList') {
 		return (
-			<ul key={index} className="mt-3 list-disc space-y-1 pl-5 text-[15px] leading-7 text-ink-900/86">
+			<ul key={index} className="mt-3 list-disc space-y-1 pl-5 text-[15px] leading-7 text-studio-ink/86">
 				{(node.content ?? []).map(renderListItem)}
 			</ul>
 		)
@@ -567,7 +571,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 	if (node.type === 'orderedList') {
 		return (
-			<ol key={index} className="mt-3 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-ink-900/86">
+			<ol key={index} className="mt-3 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-studio-ink/86">
 				{(node.content ?? []).map(renderListItem)}
 			</ol>
 		)
@@ -575,7 +579,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 	if (node.type === 'blockquote') {
 		return (
-			<blockquote key={index} className="mt-4 border-l-2 border-accent-700/35 px-4 py-2 text-[15px] leading-7 text-ink-900/78">
+			<blockquote key={index} className="mt-4 border-l-2 border-accent-700/35 px-4 py-2 text-[15px] leading-7 text-studio-ink/78">
 				{(node.content ?? []).map((child, childIndex) => (
 					<p key={childIndex}>{renderInlineContent(child.content)}</p>
 				))}
@@ -597,7 +601,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 						className="absolute -left-4 -top-3 font-serif text-5xl leading-none text-accent-700/40">
 						&ldquo;
 					</span>
-					<p className="whitespace-pre-wrap font-serif text-[17px] italic leading-8 text-ink-900/88">
+					<p className="whitespace-pre-wrap font-serif text-[17px] italic leading-8 text-studio-ink/88">
 						{attrs.text}
 					</p>
 					<span
@@ -607,12 +611,12 @@ function renderPrintNode(node: JSONContent, index: number) {
 					</span>
 				</div>
 				{attribution ? (
-					<p className="mt-1 text-[11px] uppercase tracking-[0.1em] text-ink-900/45">
+					<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-ink/45">
 						{attribution}
 					</p>
 				) : null}
 				{attrs.includeNote && attrs.note ? (
-					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-ink-900/72">
+					<p className="mt-3 border-l border-ink-900/15 pl-3 text-[14px] leading-6 text-studio-ink/72">
 						{attrs.note}
 					</p>
 				) : null}
@@ -622,7 +626,7 @@ function renderPrintNode(node: JSONContent, index: number) {
 
 	if (node.type === 'paragraph') {
 		return (
-			<p key={index} className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-ink-900/86">
+			<p key={index} className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-studio-ink/86">
 				{renderInlineContent(node.content)}
 			</p>
 		)
@@ -632,19 +636,25 @@ function renderPrintNode(node: JSONContent, index: number) {
 }
 
 export function DocumentBuilder({
+	initialDocumentId,
 	initialSnippets,
 	initialLibraryItems,
 	initialDocuments,
 	initialGroups,
 	persistenceNotice,
 }: {
+	initialDocumentId?: string
 	initialSnippets: BuilderSnippet[]
 	initialLibraryItems: BuilderLibraryItem[]
 	initialDocuments: SavedTeachingDocument[]
 	initialGroups: TeacherDocumentGroup[]
 	persistenceNotice?: string | null
 }) {
-	const previewRef = useRef<HTMLElement | null>(null)
+	const startingDocument = initialDocuments.find(item => item.id === initialDocumentId)
+	const [selectedIllustration, setSelectedIllustration] = useState<Record<string, string> | null>(null)
+ const [illustrationPickerOpen, setIllustrationPickerOpen] = useState(false)
+ const [isPreview, setIsPreview] = useState(false)
+ const previewRef = useRef<HTMLElement | null>(null)
 	const lastSavedDocumentSignature = useRef('')
 	const availabilityAutosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(
 		null,
@@ -653,14 +663,14 @@ export function DocumentBuilder({
 	const [libraryItems, setLibraryItems] = useState(initialLibraryItems)
 	const [groups, setGroups] = useState(initialGroups)
 	const [documents, setDocuments] = useState(initialDocuments)
-	const [documentId, setDocumentId] = useState<string | null>(null)
-	const [title, setTitle] = useState('Workshop notes')
+	const [documentId, setDocumentId] = useState<string | null>(startingDocument?.id ?? null)
+	const [title, setTitle] = useState(startingDocument?.title ?? 'Workshop notes')
 	const [documentType, setDocumentType] = useState<TeachingDocumentType>(
-		defaultDocumentType,
+		startingDocument?.documentType ?? defaultDocumentType,
 	)
-	const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
+	const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(startingDocument?.groupIds ?? [])
 	const [availabilitySaveRevision, setAvailabilitySaveRevision] = useState(0)
-	const [editorJson, setEditorJson] = useState<JSONContent>(initialContent)
+	const [editorJson, setEditorJson] = useState<JSONContent>(startingDocument?.content ?? initialContent)
 	const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false)
 	const [isSnippetModalOpen, setIsSnippetModalOpen] = useState(false)
 	const [includeSnippetNotes, setIncludeSnippetNotes] = useState(true)
@@ -696,23 +706,26 @@ export function DocumentBuilder({
 				strike: false,
 			}),
 			SnippetExampleNode,
+   StudioIllustrationNode,
 		],
 		content: editorJson,
 		immediatelyRender: false,
 		editorProps: {
 			attributes: {
 				class:
-					'tiptap-spike min-h-[520px] rounded-2xl border border-white/10 bg-ink-950 px-4 py-4 text-parchment-100 outline-none',
+					'tiptap-spike min-h-[520px] py-6 text-studio-ink outline-none',
 			},
 		},
 		onUpdate({ editor: activeEditor }) {
 			setEditorJson(activeEditor.getJSON())
 			setSelectedSnippet(selectedSnippetFromEditor(activeEditor))
+   setSelectedIllustration(activeEditor.isActive('studioIllustration') ? activeEditor.getAttributes('studioIllustration') : null)
 			setNotice(null)
 			setError(null)
 		},
 		onSelectionUpdate({ editor: activeEditor }) {
 			setSelectedSnippet(selectedSnippetFromEditor(activeEditor))
+   setSelectedIllustration(activeEditor.isActive('studioIllustration') ? activeEditor.getAttributes('studioIllustration') : null)
 		},
 	})
 
@@ -888,13 +901,13 @@ export function DocumentBuilder({
 	)
 
 	const buttonClass = (active = false) =>
-		`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition ${
+		`rounded border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition ${
 			active
-				? 'border-accent-300/60 bg-accent-300/20 text-parchment-100'
-				: 'border-white/15 text-silver-200 hover:border-white/25 hover:text-parchment-100'
+				? 'border-accent-300/60 bg-accent-300/20 text-studio-ink'
+				: 'border-studio-line text-studio-muted hover:border-studio-line hover:text-studio-ink'
 		}`
 	const utilityButtonClass =
-		'rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/15 disabled:hover:text-silver-200'
+		'rounded border border-studio-line px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:border-studio-line hover:text-studio-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-studio-line disabled:hover:text-studio-muted'
 
 	const clearMessages = useCallback(() => {
 		setNotice(null)
@@ -1397,10 +1410,11 @@ export function DocumentBuilder({
 
 	return (
 		<div className="space-y-4">
-			<section className="document-builder-controls surface p-4">
-				<div className="grid gap-3 xl:grid-cols-[minmax(220px,1fr)_210px_260px_minmax(220px,0.9fr)_auto] xl:items-end">
+			<section className="document-builder-controls border-y border-studio-line py-5">
+				<div className="flex flex-wrap items-start justify-between gap-4">
+     <details className="min-w-0 flex-1"><summary className="cursor-pointer py-2 text-sm text-studio-muted">Document settings · title, saved documents and sharing</summary><div className="mt-4 grid gap-4 sm:grid-cols-2">
 					<label className="block">
-						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Document title
 						</span>
 						<input
@@ -1409,11 +1423,11 @@ export function DocumentBuilder({
 								clearMessages()
 								setTitle(event.target.value)
 							}}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						/>
 					</label>
 					<label className="block">
-						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Document type
 						</span>
 						<select
@@ -1421,7 +1435,7 @@ export function DocumentBuilder({
 							onChange={(event) =>
 								setDocumentType(normalizeDocumentType(event.target.value))
 							}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 							{teachingDocumentTypes.map((type) => (
 								<option key={type} value={type}>
 									{type}
@@ -1430,13 +1444,13 @@ export function DocumentBuilder({
 						</select>
 					</label>
 					<label className="block">
-						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Load saved
 						</span>
 						<select
 							value={documentId ?? ''}
 							onChange={(event) => loadDocument(event.target.value)}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 							<option value="">New document</option>
 							{documentsByType.map((group) => (
 								<optgroup key={group.type} label={group.type}>
@@ -1451,10 +1465,10 @@ export function DocumentBuilder({
 					</label>
 					<div>
 						<div className="mb-1 flex items-center justify-between gap-2">
-							<span className="block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							<span className="block text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Available to
 							</span>
-							<span className="text-[11px] text-silver-400">
+							<span className="text-xs text-studio-muted">
 								{selectedGroupIds.length
 									? `${selectedGroupIds.length} group${
 											selectedGroupIds.length === 1 ? '' : 's'
@@ -1462,12 +1476,12 @@ export function DocumentBuilder({
 									: 'No group'}
 							</span>
 						</div>
-						<div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-xl border border-white/15 bg-ink-900 px-2 py-2">
+						<div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-md border border-studio-line bg-studio-canvas px-2 py-2">
 							{groups.length ? (
 								groups.map((group) => (
 									<label
 										key={group.id}
-										className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-1 text-[11px] text-silver-100">
+										className="inline-flex items-center gap-1.5 rounded border border-studio-line px-2 py-1 text-xs text-studio-muted">
 										<input
 											type="checkbox"
 											checked={selectedGroupIds.includes(group.id)}
@@ -1478,24 +1492,26 @@ export function DocumentBuilder({
 									</label>
 								))
 							) : (
-								<p className="text-xs text-silver-400">
+								<p className="text-xs text-studio-muted">
 									No groups available yet.
 								</p>
 							)}
 						</div>
 					</div>
-					<div className="flex flex-wrap gap-2 xl:justify-end">
+					</div></details>
+     <div className="flex flex-wrap gap-2 xl:justify-end">
 						<button type="button" onClick={newDocument} className={buttonClass()}>
 							New
 						</button>
-						<button type="button" onClick={printDocument} className={buttonClass()}>
+						<button type="button" className="studio-primary" onClick={() => setIsPreview(value => !value)}>{isPreview ? 'Edit document' : 'Preview'}</button>
+      <button type="button" onClick={printDocument} className={buttonClass()}>
 							Print
 						</button>
 						<button
 							type="button"
 							onClick={deleteDocument}
 							disabled={!documentId || isSaving}
-							className="rounded-full border border-rose-300/35 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-rose-100 transition hover:border-rose-200/55 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40">
+							className="rounded border border-rose-300/35 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-rose-800 transition hover:border-rose-200/55 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40">
 							Delete
 						</button>
 						<button
@@ -1504,7 +1520,7 @@ export function DocumentBuilder({
 								void saveDocument()
 							}}
 							disabled={isSaving}
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+							className="studio-secondary">
 							{isSaving ? 'Saving...' : 'Save'}
 						</button>
 					</div>
@@ -1512,17 +1528,17 @@ export function DocumentBuilder({
 				{persistenceNotice || notice || error ? (
 					<div className="mt-3 grid gap-2 lg:grid-cols-3">
 						{persistenceNotice ? (
-							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 								{persistenceNotice}
 							</p>
 						) : null}
 						{notice ? (
-							<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+							<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 								{notice}
 							</p>
 						) : null}
 						{error ? (
-							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 								{error}
 							</p>
 						) : null}
@@ -1530,23 +1546,22 @@ export function DocumentBuilder({
 				) : null}
 			</section>
 
-			<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]">
+			<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_290px]">
 				<main className="min-w-0 space-y-4">
 					<article
 						ref={previewRef}
-						className="document-print print-shell rounded-[28px] bg-parchment-50 px-6 py-8 text-ink-900 shadow-[0_20px_60px_rgba(0,0,0,0.18)] lg:px-10">
+						className="document-print print-shell border-t border-studio-line bg-studio-canvas px-1 py-8 text-studio-ink sm:px-8 lg:px-12">
 						<div className="border-b border-ink-900/10 pb-5">
-							<p className="text-xs uppercase tracking-[0.16em] text-ink-900/45">
-								shortstory.ink teaching document
-							</p>
-							<p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-ink-900/45">
+
+							<p className="mt-3 text-xs uppercase tracking-[0.12em] text-studio-ink/45">
 								{documentType}
 							</p>
-							<h1 className="literary-title mt-2 text-4xl text-ink-900">
+							<h1 className="literary-title mt-2 text-4xl text-studio-ink sm:text-5xl">
 								{title.trim() || 'Untitled document'}
 							</h1>
 						</div>
-						<div className="mt-2">
+						<div className={`document-builder-controls ${isPreview ? 'hidden' : 'block'}`}><EditorContent editor={editor} /></div>
+      <div className={isPreview ? "mt-2" : "hidden print:block"}>
 							{(editorJson.content ?? []).map((node, index) =>
 								renderPrintNode(node, index),
 							)}
@@ -1555,19 +1570,23 @@ export function DocumentBuilder({
 				</main>
 
 				<aside className="document-builder-controls min-w-0 space-y-4">
-					<section className="surface p-3 lg:p-4">
-						<div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_132px]">
+					<section className="border-l border-studio-line pl-5">
+						<div className="grid items-start gap-3">
 							<div className="min-w-0">
-								<EditorContent editor={editor} />
+								<h2 className="literary-title text-2xl">From your commonplace</h2><p className="mt-2 text-sm leading-6 text-studio-muted">Bring a saved passage into this lesson.</p>
+        <div className="mt-5 divide-y divide-studio-line">{snippets.slice(0, 3).map(snippet => <div key={snippet.id} className="py-4"><p className="studio-eyebrow">{categoryForSnippet(snippet)}</p><p className="mt-2 line-clamp-3 font-serif text-lg leading-7">{snippet.text}</p><button type="button" className="studio-link mt-3" onClick={() => insertSnippet(snippet)}>Add to handout</button></div>)}</div>
+        <button type="button" className="studio-link my-3" onClick={() => setIsSnippetModalOpen(true)}>Find a saved passage</button>
+        <button type="button" className="studio-secondary mt-4 w-full" onClick={() => setIllustrationPickerOpen(true)}>Choose illustration</button>
+        {selectedIllustration ? <button type="button" className="studio-link mt-3 text-sm" onClick={() => editor?.chain().focus().deleteSelection().run()}>Remove selected illustration</button> : null}
 							</div>
 
-							<div className="space-y-3">
+							<details className="space-y-3"><summary className="cursor-pointer py-3 text-sm text-studio-muted">Formatting &amp; structure</summary>
 								<div>
 									<div className="flex items-center justify-between gap-2">
-										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+										<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 											Outline
 										</p>
-										<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-silver-300">
+										<span className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.08em] text-studio-muted">
 											H2
 										</span>
 									</div>
@@ -1578,12 +1597,12 @@ export function DocumentBuilder({
 													<button
 														type="button"
 														onClick={() => goToSection(section)}
-														className={`block w-full rounded-lg border px-2 py-1.5 text-left text-[11px] leading-snug transition ${
+														className={`block w-full rounded-lg border px-2 py-1.5 text-left text-xs leading-snug transition ${
 															activeSectionTopLevelIndex === section.topLevelIndex
-																? 'border-accent-300/45 bg-accent-300/12 text-parchment-100'
-																: 'border-white/10 bg-white/5 text-silver-200 hover:border-white/20 hover:text-parchment-100'
+																? 'border-accent-300/45 bg-accent-300/12 text-studio-ink'
+																: 'border-studio-line bg-studio-tint text-studio-muted hover:border-studio-line hover:text-studio-ink'
 														}`}>
-														<span className="mr-1.5 text-silver-400">
+														<span className="mr-1.5 text-studio-muted">
 															{index + 1}.
 														</span>
 														{section.title}
@@ -1592,17 +1611,17 @@ export function DocumentBuilder({
 											))}
 										</ol>
 									) : (
-										<p className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-silver-300">
+										<p className="mt-2 rounded-lg border border-studio-line bg-studio-tint px-2 py-1.5 text-xs text-studio-muted">
 											No H2 yet
 										</p>
 									)}
 								</div>
 
 								<div>
-									<p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-silver-300">
+									<p className="mb-2 text-xs uppercase tracking-[0.12em] text-studio-muted">
 										Tools
 									</p>
-									<div className="grid gap-1.5">
+									<div className="grid grid-cols-2 gap-1.5">
 									<button
 										type="button"
 										onClick={() => editor?.chain().focus().undo().run()}
@@ -1635,13 +1654,13 @@ export function DocumentBuilder({
 									<button
 										type="button"
 										onClick={() => setIsSnippetModalOpen(true)}
-										className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+										className="rounded border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
 										Insert snippet
 									</button>
 									<button
 										type="button"
 										onClick={() => setIsLibraryModalOpen(true)}
-										className="rounded-full border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+										className="rounded border border-accent-300/45 bg-accent-300/12 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
 										Insert library
 									</button>
 									<button
@@ -1655,13 +1674,13 @@ export function DocumentBuilder({
 										type="button"
 										onClick={() => editor?.chain().focus().toggleBold().run()}
 										className={buttonClass(editor?.isActive('bold'))}>
-										B
+										Bold
 									</button>
 									<button
 										type="button"
 										onClick={() => editor?.chain().focus().toggleItalic().run()}
 										className={buttonClass(editor?.isActive('italic'))}>
-										I
+										Italic
 									</button>
 									<button
 										type="button"
@@ -1707,29 +1726,40 @@ export function DocumentBuilder({
 									</button>
 								</div>
 							</div>
-						</div>
+						</details>
 						</div>
 					</section>
 				</aside>
 			</div>
 
+   {illustrationPickerOpen ? <IllustrationPicker
+    initial={selectedIllustration ?? undefined}
+    onClose={() => setIllustrationPickerOpen(false)}
+    onChoose={attrs => {
+     if (editor?.isActive('studioIllustration')) editor.chain().focus().updateAttributes('studioIllustration', attrs).run()
+     else editor?.chain().focus().insertContent({type:'studioIllustration', attrs}).run()
+     setIllustrationPickerOpen(false)
+     setIsPreview(false)
+    }}
+   /> : null}
+
 			{isLibraryModalOpen ? (
-				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
-					<div className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
-						<div className="border-b border-white/10 p-4">
+				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-black/25 px-4 py-10 backdrop-blur-sm">
+					<div className="max-h-[82vh] w-full max-w-3xl overflow-hidden rounded-md border border-studio-line bg-studio-canvas shadow-none">
+						<div className="border-b border-studio-line p-4">
 							<div className="flex items-start justify-between gap-3">
 								<div>
-									<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Teaching Library
 									</p>
-									<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+									<h2 className="literary-title mt-1 text-2xl text-studio-ink">
 										Insert library item
 									</h2>
 								</div>
 								<button
 									type="button"
 									onClick={() => setIsLibraryModalOpen(false)}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Close
 								</button>
 							</div>
@@ -1738,13 +1768,13 @@ export function DocumentBuilder({
 									type="search"
 									value={librarySearch}
 									onChange={(event) => setLibrarySearch(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 									placeholder="Search notes, examples, references"
 								/>
 								<select
 									value={libraryTypeFilter}
 									onChange={(event) => setLibraryTypeFilter(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									<option value="">All types</option>
 									<option value="note">Notes</option>
 									<option value="example">Examples</option>
@@ -1755,7 +1785,7 @@ export function DocumentBuilder({
 									onChange={(event) =>
 										setLibraryCategoryFilter(event.target.value)
 									}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									<option value="">All categories</option>
 									{libraryCategories.map((category) => (
 										<option key={category} value={category}>
@@ -1765,7 +1795,7 @@ export function DocumentBuilder({
 									</select>
 								</div>
 								<div className="mt-3 flex flex-wrap items-center gap-2">
-									<span className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Examples insert as
 									</span>
 									<button
@@ -1784,7 +1814,7 @@ export function DocumentBuilder({
 							</div>
 						<div className="max-h-[56vh] overflow-y-auto p-4">
 							{filteredLibraryItems.length === 0 ? (
-								<p className="text-sm text-silver-300">No library items found.</p>
+								<p className="text-sm text-studio-muted">No library items found.</p>
 							) : (
 								<ul className="space-y-2">
 									{filteredLibraryItems.map((item) => (
@@ -1792,28 +1822,28 @@ export function DocumentBuilder({
 											<button
 												type="button"
 												onClick={() => insertLibraryItem(item)}
-												className="block w-full rounded-xl border border-white/10 bg-ink-950/70 px-3 py-3 text-left transition hover:border-accent-300/35 hover:bg-accent-300/8">
+												className="block w-full rounded-md border border-studio-line bg-black/25 px-3 py-3 text-left transition hover:border-accent-300/35 hover:bg-accent-300/8">
 												<span className="flex flex-wrap items-center gap-2">
-													<span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
+													<span className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 														{item.type}
 													</span>
-													<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-300">
+													<span className="rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 														{item.categoryLabel}
 													</span>
 													{item.type === 'reference' && item.referenceType ? (
-														<span className="text-[11px] uppercase tracking-[0.1em] text-silver-400">
+														<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 															{item.referenceType}
 														</span>
 													) : null}
 												</span>
-												<span className="mt-2 block text-sm font-semibold text-parchment-100">
+												<span className="mt-2 block text-sm font-semibold text-studio-ink">
 													{item.title}
 												</span>
-												<span className="mt-1 block text-sm leading-relaxed text-silver-200">
+												<span className="mt-1 block text-sm leading-relaxed text-studio-muted">
 													{compactPreview(item.body)}
 												</span>
 												{item.type === 'reference' && item.url ? (
-													<span className="mt-2 block truncate text-[11px] text-silver-400">
+													<span className="mt-2 block truncate text-xs text-studio-muted">
 														{item.url}
 													</span>
 												) : null}
@@ -1828,22 +1858,22 @@ export function DocumentBuilder({
 			) : null}
 
 			{isSnippetModalOpen ? (
-				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
-					<div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
-						<div className="border-b border-white/10 p-4">
+				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-black/25 px-4 py-10 backdrop-blur-sm">
+					<div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-md border border-studio-line bg-studio-canvas shadow-none">
+						<div className="border-b border-studio-line p-4">
 							<div className="flex items-start justify-between gap-3">
 								<div>
-									<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Snippet Library
 									</p>
-									<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+									<h2 className="literary-title mt-1 text-2xl text-studio-ink">
 										Insert snippet
 									</h2>
 								</div>
 								<button
 									type="button"
 									onClick={() => setIsSnippetModalOpen(false)}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Close
 								</button>
 							</div>
@@ -1852,13 +1882,13 @@ export function DocumentBuilder({
 										type="search"
 										value={snippetSearch}
 										onChange={(event) => setSnippetSearch(event.target.value)}
-										className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+										className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 										placeholder="Search text, note, author, source, tag"
 									/>
 									<select
 										value={snippetCategory}
 									onChange={(event) => setSnippetCategory(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									<option value="">All snippets ({snippets.length})</option>
 									<option value="uncategorised">
 										Uncategorised ({categoryCounts.Uncategorised})
@@ -1871,7 +1901,7 @@ export function DocumentBuilder({
 									</select>
 								</div>
 								<div className="mt-3 flex flex-wrap items-center gap-2">
-									<span className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									<span className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Insert as
 									</span>
 									<button
@@ -1888,7 +1918,7 @@ export function DocumentBuilder({
 									</button>
 								</div>
 								{snippetInsertionStyle === 'quoted' ? (
-									<label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+									<label className="mt-3 inline-flex items-center gap-2 rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-muted">
 										<input
 											type="checkbox"
 											checked={includeSnippetNotes}
@@ -1903,7 +1933,7 @@ export function DocumentBuilder({
 						</div>
 						<div className="max-h-[56vh] overflow-y-auto p-4">
 							{filteredSnippets.length === 0 ? (
-								<p className="text-sm text-silver-300">No snippets found.</p>
+								<p className="text-sm text-studio-muted">No snippets found.</p>
 							) : (
 								<ul className="space-y-2">
 									{filteredSnippets.map((snippet) => {
@@ -1913,15 +1943,15 @@ export function DocumentBuilder({
 												<button
 													type="button"
 													onClick={() => insertSnippet(snippet)}
-													className="block w-full rounded-xl border border-white/10 bg-ink-950/70 px-3 py-3 text-left transition hover:border-accent-300/35 hover:bg-accent-300/8">
-													<span className="inline-flex rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
+													className="block w-full rounded-md border border-studio-line bg-black/25 px-3 py-3 text-left transition hover:border-accent-300/35 hover:bg-accent-300/8">
+													<span className="inline-flex rounded border border-studio-line px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 														{categoryForSnippet(snippet)}
 													</span>
-													<span className="mt-2 block text-sm leading-relaxed text-parchment-100">
+													<span className="mt-2 block text-sm leading-relaxed text-studio-ink">
 														{compactPreview(snippet.text)}
 													</span>
 													{attribution ? (
-														<span className="mt-2 block text-[11px] uppercase tracking-[0.08em] text-silver-400">
+														<span className="mt-2 block text-xs uppercase tracking-[0.08em] text-studio-muted">
 															{attribution}
 														</span>
 													) : null}
@@ -1937,50 +1967,50 @@ export function DocumentBuilder({
 			) : null}
 
 			{editingSnippet ? (
-				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-ink-950/80 px-4 py-10 backdrop-blur-sm">
-					<div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-ink-900 shadow-glow">
-						<div className="border-b border-white/10 p-4">
+				<div className="document-builder-controls fixed inset-0 z-50 flex items-start justify-center bg-black/25 px-4 py-10 backdrop-blur-sm">
+					<div className="w-full max-w-2xl rounded-md border border-studio-line bg-studio-canvas shadow-none">
+						<div className="border-b border-studio-line p-4">
 							<div className="flex items-start justify-between gap-3">
 								<div>
-									<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+									<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Handout-only edit
 									</p>
-									<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+									<h2 className="literary-title mt-1 text-2xl text-studio-ink">
 										Adjust inserted snippet
 									</h2>
 								</div>
 								<button
 									type="button"
 									onClick={() => setEditingSnippet(null)}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Close
 								</button>
 							</div>
 						</div>
 						<div className="space-y-4 p-4">
 							<label className="block">
-								<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Snippet text
 								</span>
 								<textarea
 									value={snippetTextDraft}
 									onChange={(event) => setSnippetTextDraft(event.target.value)}
 									rows={8}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-3 text-sm leading-6 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-3 text-sm leading-6 text-studio-ink outline-none ring-accent-400 transition focus:ring"
 								/>
 							</label>
 							<label className="block">
-								<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Teacher note
 								</span>
 								<textarea
 									value={snippetNoteDraft}
 									onChange={(event) => setSnippetNoteDraft(event.target.value)}
 									rows={4}
-									className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-3 text-sm leading-6 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-3 text-sm leading-6 text-studio-ink outline-none ring-accent-400 transition focus:ring"
 								/>
 							</label>
-							<label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+							<label className="inline-flex items-center gap-2 rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-muted">
 								<input
 									type="checkbox"
 									checked={snippetIncludeNoteDraft}
@@ -2001,7 +2031,7 @@ export function DocumentBuilder({
 								<button
 									type="button"
 									onClick={updateEditedSnippet}
-									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+									className="studio-primary">
 									Update snippet
 								</button>
 							</div>

@@ -1,0 +1,37 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs/promises';
+const root='/Users/moc/repos/all_things_coding/2026/shortstoryink_next';
+const out=root+'/docs/reviews/2026-09-10-harmony/guide-captures';
+await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/Users/moc/Library/Caches/ms-playwright/chromium-1223/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',headless:true});
+const context=await browser.newContext({viewport:{width:1360,height:900},deviceScaleFactor:1,locale:'en-GB'});
+const page=await context.newPage(); const errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+// No fixture operation can reach an application write endpoint.
+await context.route('**/api/**',route=>route.fulfill({status:403,contentType:'application/json',body:'{"error":"Local screenshot fixture"}'}));
+async function go(path){await page.goto('http://127.0.0.1:3000'+path,{waitUntil:'networkidle'});await page.evaluate(()=>document.fonts.ready);}
+async function shot(name,locator=page){await locator.screenshot({path:out+'/'+name+'.png',style:'nextjs-portal { display: none !important; }',animations:'disabled'});console.log('captured',name);}
+await go('/');await shot('home');
+await go('/auth/sign-up');await shot('sign-up',page.locator('main'));
+await go('/auth/sign-in');await shot('sign-in',page.locator('main'));
+await go('/auth/confirm-email');await shot('confirm-email',page.locator('main'));
+await go('/qa-local-redesign?view=writer');
+console.log('writer controls',await page.locator('input,textarea,select').evaluateAll(nodes=>nodes.map(n=>({name:n.name,type:n.type}))));
+await page.locator('#writing-draft').scrollIntoViewIfNeeded();await shot('draft-empty');
+await page.locator('textarea[name=body]').fill('Eleanor chose the bench furthest from the bandstand. She set the paper bag beside her and folded its top twice, although there was nothing in it that could spill.\n\nAcross the path, a boy was teaching his younger sister to whistle. Every failed attempt made him laugh. Eleanor watched the little girl’s hands, clenched around the stems of three daisies.\n\nHe had said four o’clock. The clock above the café had stopped at twenty past two, as it always did, but Eleanor had already checked her watch six times.');
+await page.locator('input[name=title]').fill('The paper bag');
+await page.locator('input[name=title]').blur();await shot('draft-filled');
+await page.getByRole('button',{name:'Save submission',exact:true}).click();
+await page.getByRole('heading',{name:'Well done.'}).waitFor();await shot('submission-saved',page.locator('div.fixed').last().locator(':scope > div'));
+await go('/qa-local-redesign?view=feedback');await shot('feedback-overview');
+await page.getByRole('button',{name:'Character comment',exact:true}).click();
+await page.getByRole('note').evaluate(el=>el.scrollIntoView({block:'center'}));await shot('feedback-note');
+await page.getByRole('button',{name:'Start a new revision',exact:true}).click();await shot('start-revision');
+await go('/qa-local-redesign?view=revision');await shot('revision');
+await page.getByRole('button',{name:'Show',exact:true}).click();await page.waitForTimeout(250);await shot('version-history',page.locator('section').filter({has:page.getByText('Version history',{exact:true})}));
+await go('/qa-local-redesign?view=review');await shot('teacher-review');
+await page.getByRole('button',{name:'Publish to writer',exact:true}).click();await shot('teacher-publish',page.locator('div.fixed').last().locator(':scope > div'));
+await go('/qa-local-redesign?view=builder');await shot('handout');
+console.log('pageErrors',JSON.stringify(errors));
+await browser.close();
+if(errors.length)process.exitCode=1;

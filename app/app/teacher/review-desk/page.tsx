@@ -86,12 +86,12 @@ function statusLabel(status: string) {
 
 function statusClass(status: string) {
 	if (status === 'submitted') {
-		return 'border-accent-300/45 bg-accent-300/10 text-accent-100'
+		return 'border-accent-300/45 bg-accent-300/10 text-studio-accent'
 	}
 	if (status === 'in_review') {
-		return 'border-burgundy-300/50 bg-burgundy-500/20 text-parchment-100'
+		return 'border-burgundy-300/50 bg-studio-soft text-studio-ink'
 	}
-	return 'border-white/10 bg-white/5 text-silver-200'
+	return 'border-studio-line bg-studio-tint text-studio-muted'
 }
 
 function rootSubmissionId(item: {
@@ -368,45 +368,45 @@ export default async function TeacherReviewDeskPage({
 		return (
 			<Link
 				href={`/app/workshop/${item.id}`}
-				className={`block rounded-xl border px-3 py-3 transition hover:border-burgundy-300/50 hover:bg-ink-900/60 ${
+				className={`block rounded-md border px-3 py-3 transition hover:border-burgundy-300/50 hover:bg-studio-canvas ${
 					options?.oldest
 						? 'border-accent-300/40 bg-accent-300/10'
-						: 'border-white/10 bg-ink-900/40'
+						: 'border-studio-line bg-studio-canvas'
 				}`}>
 				<div className="flex flex-wrap items-start justify-between gap-2">
 					<div>
-						<p className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${statusClass(item.status)}`}>
+						<p className={`inline-flex rounded border px-2 py-0.5 text-xs uppercase tracking-[0.1em] ${statusClass(item.status)}`}>
 							{statusLabel(item.status)}
 						</p>
 						{options?.oldest ? (
-							<p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-accent-200">
+							<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-accent">
 								Waiting the longest
 							</p>
 						) : null}
 					</div>
-					<p className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
+					<p className="rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 						v{item.version ?? 1}
 					</p>
 				</div>
-				<p className="mt-2 text-sm font-medium text-parchment-100">
+				<p className="mt-2 text-sm font-medium text-studio-ink">
 					{item.title}
 				</p>
-				<p className="mt-1 text-xs text-silver-300">
+				<p className="mt-1 text-xs text-studio-muted">
 					{item.writerLabel} {' · '}
 					{formatQueueDate(item.createdAt)}
 				</p>
 				{item.version && item.version > 1 ? (
-					<p className="mt-2 inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-silver-200">
+					<p className="mt-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Revision
 					</p>
 				) : null}
 				{item.status === 'in_review' ? (
-					<p className="mt-2 inline-flex rounded-full border border-burgundy-300/30 bg-burgundy-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-burgundy-100">
+					<p className="mt-2 inline-flex rounded border border-burgundy-300/30 bg-studio-soft px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-accent">
 						{item.feedbackDraftCount ?? 0} draft comments
 					</p>
 				) : null}
 				{item.newerRevisionId ? (
-					<p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-2.5 py-1.5 text-xs leading-relaxed text-amber-100">
+					<p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-2.5 py-1.5 text-xs leading-relaxed text-amber-800">
 						Newer v{item.newerRevisionVersion} exists ({statusLabel(
 							item.newerRevisionStatus ?? '',
 						)}).
@@ -419,64 +419,65 @@ export default async function TeacherReviewDeskPage({
 	return (
 		<section className="space-y-5">
 			<MenuTabs tabs={teacherTabs} active="/app/teacher/review-desk" />
+            <header className="studio-page-header"><p className="studio-eyebrow">Read. Respond. Encourage.</p><h1 className="studio-heading mt-3">The review queue</h1><p className="mt-4 text-studio-muted">A clear place for each piece, from its first reading to published feedback.</p></header>
 
 			{notice ? (
-				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 					{notice}
 				</p>
 			) : null}
 			{errorNotice ? (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					{errorNotice}
 				</p>
 			) : null}
 
-			<div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+			<div className="grid gap-8 xl:grid-cols-[300px_minmax(0,1fr)]">
 				<aside className="space-y-3">
 					<ProtoCard title="Editorial queue" meta={`${queue.length} active`}>
-						<div className="mb-3 grid grid-cols-3 gap-1.5 text-xs text-silver-300">
-							<div className="rounded-xl border border-white/10 bg-ink-900/35 px-2.5 py-2">
-								<p className="text-[10px] uppercase tracking-[0.08em] leading-tight">
+						<div className="mb-3 grid grid-cols-3 gap-1.5 text-xs text-studio-muted">
+							<div className="rounded-md border border-studio-line bg-studio-canvas px-2.5 py-2">
+								<p className="text-xs uppercase tracking-[0.08em] leading-tight">
 									Waiting
 								</p>
-								<p className="mt-1 text-base text-parchment-100 sm:text-lg">
+								<p className="mt-1 text-base text-studio-ink sm:text-lg">
 									{awaitingCount}
 								</p>
 							</div>
-							<div className="rounded-xl border border-white/10 bg-ink-900/35 px-2.5 py-2">
-								<p className="text-[10px] uppercase tracking-[0.08em] leading-tight">
+							<div className="rounded-md border border-studio-line bg-studio-canvas px-2.5 py-2">
+								<p className="text-xs uppercase tracking-[0.08em] leading-tight">
 									In review
 								</p>
-								<p className="mt-1 text-base text-parchment-100 sm:text-lg">
+								<p className="mt-1 text-base text-studio-ink sm:text-lg">
 									{inReviewCount}
 								</p>
 							</div>
-							<div className="rounded-xl border border-white/10 bg-ink-900/35 px-2.5 py-2">
-								<p className="text-[10px] uppercase tracking-[0.08em] leading-tight">
+							<div className="rounded-md border border-studio-line bg-studio-canvas px-2.5 py-2">
+								<p className="text-xs uppercase tracking-[0.08em] leading-tight">
 									Published
 								</p>
-								<p className="mt-1 text-base text-parchment-100 sm:text-lg">
+								<p className="mt-1 text-base text-studio-ink sm:text-lg">
 									{publishedCount}
 								</p>
 							</div>
 						</div>
 						{queueError ? (
-							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 								Unable to load queue: {queueError}
 							</p>
 						) : queue.length === 0 ? (
-							<p className="text-sm text-silver-300">
+							<p className="text-sm text-studio-muted">
 								No submissions are waiting for review.
 							</p>
 						) : (
 							<div className="space-y-4">
 								{waitingQueue.length > 0 ? (
-									<section className="rounded-xl border border-accent-300/25 bg-accent-300/10 p-3">
+									<section className="rounded-md border border-accent-300/25 bg-accent-300/10 p-3">
 										<div className="flex flex-wrap items-center justify-between gap-2">
-											<p className="text-[11px] uppercase tracking-[0.12em] text-accent-300">
+											<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 												Waiting
 											</p>
-											<p className="text-[10px] uppercase tracking-[0.1em] text-accent-100">
+											<p className="text-xs uppercase tracking-[0.1em] text-studio-accent">
 												Waiting the longest first
 											</p>
 										</div>
@@ -486,7 +487,7 @@ export default async function TeacherReviewDeskPage({
 											<select
 												name="submissionId"
 												defaultValue={oldestWaitingSubmission?.id ?? ''}
-												className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring">
+												className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring">
 												{waitingQueue.map((item, index) => (
 													<option key={item.id} value={item.id}>
 														{index === 0 ? 'Waiting the longest - ' : ''}
@@ -500,7 +501,7 @@ export default async function TeacherReviewDeskPage({
 											</select>
 											<button
 												type="submit"
-												className="w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+												className="studio-primary w-full">
 												Open selected
 											</button>
 										</form>
@@ -508,7 +509,7 @@ export default async function TeacherReviewDeskPage({
 								) : null}
 								{inReviewQueue.length > 0 ? (
 									<section>
-										<p className="mb-2 text-[11px] uppercase tracking-[0.12em] text-burgundy-200">
+										<p className="mb-2 text-xs uppercase tracking-[0.12em] text-studio-accent">
 											In review
 										</p>
 										<ul className="space-y-1.5">
@@ -521,11 +522,11 @@ export default async function TeacherReviewDeskPage({
 							</div>
 						)}
 						{removableQueue.length > 0 ? (
-							<section className="mt-4 rounded-xl border border-rose-300/20 bg-rose-300/8 p-3">
-								<p className="text-[11px] uppercase tracking-[0.12em] text-rose-100">
+							<section className="mt-4 rounded-md border border-rose-300/20 bg-rose-300/8 p-3">
+								<p className="text-xs uppercase tracking-[0.12em] text-rose-800">
 									Queue cleanup
 								</p>
-								<p className="mt-1 text-xs leading-relaxed text-silver-300">
+								<p className="mt-1 text-xs leading-relaxed text-studio-muted">
 									Remove accidental duplicates before feedback has been added.
 								</p>
 								<form
@@ -534,7 +535,7 @@ export default async function TeacherReviewDeskPage({
 									<select
 										name="submissionId"
 										defaultValue={removableQueue[0]?.id ?? ''}
-										className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-rose-300 transition focus:ring">
+										className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-rose-300 transition focus:ring">
 										{removableQueue.map((item) => (
 											<option key={item.id} value={item.id}>
 												{statusLabel(item.status)} - v{item.version ?? 1} -{' '}
@@ -549,14 +550,14 @@ export default async function TeacherReviewDeskPage({
 					</ProtoCard>
 
 					<ProtoCard title="Desk guide" meta="Operational note">
-						<p className="text-sm text-silver-200">
+						<p className="text-sm text-studio-muted">
 							Waiting pieces have not yet had a teacher response. In review
 							pieces already have notes started but are not yet published.
 						</p>
 						{oldestWaitingSubmission ? (
 							<Link
 								href={`/app/workshop/${oldestWaitingSubmission.id}`}
-							className="mt-3 inline-block text-xs text-accent-200 hover:text-accent-100">
+							className="mt-3 inline-block text-xs text-studio-accent hover:text-studio-accent">
 								Open the piece waiting the longest
 							</Link>
 						) : null}
@@ -564,10 +565,10 @@ export default async function TeacherReviewDeskPage({
 				</aside>
 
 				<main className="surface p-6 lg:p-8">
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Workshop review desk
 					</p>
-					<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+					<h2 className="literary-title mt-2 text-2xl text-studio-ink">
 						The next piece to read is kept at the front
 					</h2>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -576,11 +577,11 @@ export default async function TeacherReviewDeskPage({
 						page.
 					</p>
 					{inReviewQueue.length > 0 ? (
-						<div className="mt-5 rounded-2xl border border-burgundy-300/25 bg-burgundy-500/10 p-4">
-							<p className="text-[11px] uppercase tracking-[0.12em] text-burgundy-100">
+						<div className="mt-5 rounded-md border border-burgundy-300/25 bg-studio-soft p-4">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 								Drafts in progress
 							</p>
-							<p className="mt-2 text-sm leading-relaxed text-silver-100">
+							<p className="mt-2 text-sm leading-relaxed text-studio-muted">
 								{inReviewQueue.length} draft
 								{inReviewQueue.length === 1 ? '' : 's'} currently have
 								unpublished feedback in progress.
@@ -590,40 +591,40 @@ export default async function TeacherReviewDeskPage({
 					{oldestWaitingSubmission ? (
 						<Link
 							href={`/app/workshop/${oldestWaitingSubmission.id}`}
-							className="mt-5 block rounded-2xl border border-accent-300/30 bg-accent-300/10 p-5 transition hover:border-accent-300/50 hover:bg-accent-300/15">
-							<p className="text-[11px] uppercase tracking-[0.12em] text-accent-200">
+							className="mt-5 block rounded-md border border-accent-300/30 bg-accent-300/10 p-5 transition hover:border-accent-300/50 hover:bg-accent-300/15">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 								Waiting the longest
 							</p>
-							<h3 className="literary-title mt-2 text-2xl text-parchment-100">
+							<h3 className="literary-title mt-2 text-2xl text-studio-ink">
 								{oldestWaitingSubmission.title}
 							</h3>
-							<p className="mt-2 text-sm text-silver-200">
+							<p className="mt-2 text-sm text-studio-muted">
 								{oldestWaitingSubmission.writerLabel} {' · '} v
 								{oldestWaitingSubmission.version ?? 1} {' · '}
 								{formatQueueDate(oldestWaitingSubmission.createdAt)}
 							</p>
 							{oldestWaitingSubmission.newerRevisionId ? (
-								<p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+								<p className="mt-3 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 									Newer v{oldestWaitingSubmission.newerRevisionVersion} exists.
 								</p>
 							) : null}
 						</Link>
 					) : inReviewQueue.length > 0 ? (
-						<p className="mt-5 rounded-2xl border border-white/10 bg-ink-900/35 p-5 text-sm text-silver-200">
+						<p className="mt-5 rounded-md border border-studio-line bg-studio-canvas p-5 text-sm text-studio-muted">
 							No waiting pieces. Continue the drafts already in review.
 						</p>
 					) : (
-						<p className="mt-5 rounded-2xl border border-white/10 bg-ink-900/35 p-5 text-sm text-silver-200">
+						<p className="mt-5 rounded-md border border-studio-line bg-studio-canvas p-5 text-sm text-studio-muted">
 							Queue currently clear.
 						</p>
 					)}
 					{hasNewerRevisionFlags ? (
-						<p className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
+						<p className="mt-4 rounded-md border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-800">
 							Some queued items have a newer revision in the same chain. Open the
 							latest version before publishing feedback where possible.
 						</p>
 					) : null}
-					<p className="mt-2 text-xs text-silver-300">
+					<p className="mt-2 text-xs text-studio-muted">
 						Data mode: {schemaMode}
 					</p>
 				</main>

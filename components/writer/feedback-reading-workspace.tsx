@@ -119,32 +119,32 @@ function markerClass(kind: FeedbackKind, active: boolean) {
 	if (kind === 'structure') {
 		return active
 			? 'border-accent-300 bg-accent-300 text-ink-950'
-			: 'border-accent-300/55 bg-accent-300/18 text-accent-100'
+			: 'border-accent-300/55 bg-accent-300/18 text-studio-accent'
 	}
 	if (kind === 'typo') {
 		return active
 			? 'border-silver-300 bg-silver-300 text-ink-950'
-			: 'border-silver-300/55 bg-silver-300/16 text-silver-100'
+			: 'border-silver-300/55 bg-silver-300/16 text-studio-muted'
 	}
 	return active
-		? 'border-burgundy-200 bg-burgundy-300 text-parchment-100'
-		: 'border-burgundy-300/55 bg-burgundy-500/18 text-burgundy-100'
+		? 'border-burgundy-200 bg-studio-soft text-studio-ink'
+		: 'border-burgundy-300/55 bg-studio-soft text-studio-accent'
 }
 
 function inlineCardClass(kind: FeedbackKind) {
 	if (kind === 'structure') {
-		return 'border-accent-300/35 bg-ink-950 text-accent-50'
+		return 'border-accent-300/35 bg-studio-canvas text-studio-accent'
 	}
 	if (kind === 'typo') {
-		return 'border-silver-300/35 bg-ink-950 text-silver-100'
+		return 'border-silver-300/35 bg-studio-canvas text-studio-muted'
 	}
-	return 'border-burgundy-300/35 bg-ink-950 text-parchment-100'
+	return 'border-burgundy-300/35 bg-studio-canvas text-studio-ink'
 }
 
 function cutMarkClass(active: boolean) {
 	return active
-		? 'bg-transparent text-ink-900/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
-		: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
+		? 'bg-transparent text-studio-ink/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
+		: 'bg-transparent text-studio-ink/58 line-through decoration-2 decoration-ink-900/30'
 }
 
 function feedbackSegmentForParagraph(
@@ -451,7 +451,7 @@ export function WriterFeedbackReadingWorkspace({
 									current === item.id ? null : current,
 								)
 							}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-semibold transition ${markerClass(
+							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-semibold transition ${markerClass(
 								kind,
 								isActive,
 							)}`}
@@ -464,14 +464,14 @@ export function WriterFeedbackReadingWorkspace({
 							<span
 								id={`finished-piece-note-${item.id}`}
 								role="note"
-								className={`absolute left-1/2 top-full z-50 mt-3 w-[min(26rem,calc(100vw-3rem))] -translate-x-1/2 rounded-2xl border px-4 py-4 text-left shadow-[0_18px_48px_rgba(0,0,0,0.34)] ${inlineCardClass(
+								className={`studio-inline-note absolute left-1/2 top-full z-50 mt-3 w-[min(26rem,calc(100vw-3rem))] -translate-x-1/2 rounded-md border px-4 py-4 text-left shadow-none ${inlineCardClass(
 									effectiveComment.kind,
 								)}`}>
 								<span
-									className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-burgundy-300/75"
+									className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-studio-soft"
 									aria-hidden="true"
 								/>
-								<span className="rounded-full border border-current/20 px-2 py-0.5 font-sans text-[11px] uppercase tracking-[0.1em]">
+								<span className="rounded border border-current/20 px-2 py-0.5 font-sans text-xs uppercase tracking-[0.1em]">
 									{effectiveComment.label}
 								</span>
 								<span className="mt-3 block font-serif text-[16px] italic leading-7 text-current/82">
@@ -507,31 +507,31 @@ export function WriterFeedbackReadingWorkspace({
 			}`}>
 			{!page ? null : page.kind === 'overview' ? (
 				<div className="example-book-page__content max-w-[56ch] space-y-5">
-					<p className="text-[11px] uppercase tracking-[0.16em] text-ink-900/50">
+					<p className="text-xs uppercase tracking-[0.16em] text-studio-ink/50">
 						Editorial letter
 					</p>
 					<div>
-						<h1 className="literary-title text-4xl leading-tight text-ink-900">
+						<h1 className="literary-title text-4xl leading-tight text-studio-ink">
 							{title}
 						</h1>
-						<p className="mt-3 text-sm uppercase tracking-[0.12em] text-ink-900/50">
+						<p className="mt-3 text-sm uppercase tracking-[0.12em] text-studio-ink/50">
 							Version {version} {' · '} {status.replaceAll('_', ' ')} {' · '}
-							{new Date(createdAt).toLocaleDateString()}
+							{new Date(createdAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
 					</div>
 					<div className="border-l border-burgundy-300/45 pl-5">
-						<p className="font-serif text-[21px] leading-9 text-ink-900/88">
+						<p className="font-serif text-[21px] leading-9 text-studio-ink/88">
 							{summary?.trim() ||
 								'Your teacher has returned this piece with comments in the manuscript.'}
 						</p>
 					</div>
 					{publishedAt ? (
-						<p className="text-sm leading-6 text-ink-900/58">
-							Published {new Date(publishedAt).toLocaleDateString()}.
+						<p className="text-sm leading-6 text-studio-ink/58">
+							Published {new Date(publishedAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' })}.
 						</p>
 					) : null}
 					{hasLaterVersion ? (
-						<div className="rounded-2xl border border-accent-400/30 bg-accent-300/15 px-4 py-3 text-sm leading-6 text-ink-900/72">
+						<div className="rounded-md border border-accent-400/30 bg-accent-300/15 px-4 py-3 text-sm leading-6 text-studio-ink/72">
 							<p>
 								A later version exists: version {laterVersion.version} (
 								{laterVersion.status.replaceAll('_', ' ')}).
@@ -539,15 +539,15 @@ export function WriterFeedbackReadingWorkspace({
 							{canOpenLaterFinishedPiece ? (
 								<Link
 									href={`/app/writer/feedback/${laterVersion.id}`}
-									className="mt-2 inline-flex text-xs uppercase tracking-[0.1em] text-burgundy-500 hover:text-burgundy-400">
+									className="mt-2 inline-flex text-xs uppercase tracking-[0.1em] text-studio-accent hover:text-studio-accent">
 									Open later finished piece
 								</Link>
 							) : null}
 						</div>
 					) : null}
-					<div className="rounded-2xl border border-ink-900/10 bg-white/45 px-4 py-3 text-sm leading-6 text-ink-900/64">
+					<div className="rounded-md border border-ink-900/10 bg-studio-tint px-4 py-3 text-sm leading-6 text-studio-ink/64">
 						<p>
-							The manuscript begins on the facing page. {modeLabel(commentMode)} are
+							The manuscript begins on the following section. {modeLabel(commentMode)} are
 							shown in place; quick fixes are hidden until you choose that filter.
 						</p>
 						<p className="mt-2">
@@ -570,8 +570,8 @@ export function WriterFeedbackReadingWorkspace({
 								id={omitIds ? undefined : paragraph.id}
 								className={
 									isSceneBreak
-										? 'text-center font-serif text-[19px] tracking-[0.22em] text-ink-900/60'
-										: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-ink-900/90 xl:text-[19px] xl:leading-9'
+										? 'text-center font-serif text-[19px] tracking-[0.22em] text-studio-ink/60'
+										: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-studio-ink/90 xl:text-[19px] xl:leading-9'
 								}>
 								{isSceneBreak ? '***' : renderParagraph(paragraph)}
 							</p>
@@ -583,25 +583,24 @@ export function WriterFeedbackReadingWorkspace({
 	)
 
 	return (
-		<section className="relative left-1/2 w-[min(calc(100vw-2rem),92rem)] -translate-x-1/2 space-y-3">
+		<section className="mx-auto max-w-5xl space-y-6 studio-reading-page">
 			<header className="surface overflow-hidden p-0">
-				<div className="relative bg-ink-950">
-					<div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_12%,rgba(207,184,124,0.2),transparent_26%),linear-gradient(135deg,rgba(17,24,39,0.96),rgba(44,28,34,0.9))]" />
+				<div className="relative bg-studio-canvas">
 					<div className="relative flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
 						<div className="flex min-w-0 items-center gap-3">
 							<Link
 								href="/app/writer/feedback"
-								className="shrink-0 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:bg-white/12">
+								className="shrink-0 rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:bg-studio-tint">
 								Back
 							</Link>
 							<div className="min-w-0">
-								<p className="text-[11px] uppercase tracking-[0.14em] text-accent-200">
+								<p className="text-xs uppercase tracking-[0.14em] text-studio-accent">
 									Finished piece
 								</p>
-								<h1 className="literary-title truncate text-2xl leading-tight text-parchment-100 lg:text-3xl">
+								<h1 className="literary-title text-3xl leading-tight text-studio-ink lg:text-4xl">
 									{title}
 								</h1>
-								<p className="truncate font-serif text-sm text-silver-100">
+								<p className="truncate font-serif text-sm text-studio-muted">
 									Version {version} {' · '} {visibleFeedback.length} notes in view
 								</p>
 							</div>
@@ -609,17 +608,17 @@ export function WriterFeedbackReadingWorkspace({
 						<div className="flex flex-wrap items-center gap-2 text-xs">
 							<Link
 								href="/app/writer"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Write
 							</Link>
 							<Link
 								href="/app/writer/feedback"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Finished pieces
 							</Link>
 							<Link
 								href="/app/writer/examples"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Examples
 							</Link>
 						</div>
@@ -639,16 +638,16 @@ export function WriterFeedbackReadingWorkspace({
 									setActiveCommentId(null)
 									setHoveredCommentId(null)
 								}}
-								className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition ${
+								className={`rounded border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition ${
 									commentMode === mode
-										? 'border-accent-300 bg-accent-300/18 text-accent-50'
-										: 'border-white/15 bg-white/6 text-silver-200 hover:border-white/25 hover:text-parchment-100'
+										? 'border-accent-300 bg-accent-300/18 text-studio-accent'
+										: 'border-studio-line bg-studio-tint text-studio-muted hover:border-studio-line hover:text-studio-ink'
 								}`}>
 								{modeLabel(mode)}
 							</button>
 						))}
 					</div>
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						{visibleFeedback.length} shown / {feedback.length} total
 					</p>
 				</div>
@@ -676,20 +675,20 @@ export function WriterFeedbackReadingWorkspace({
 					type="button"
 					onClick={() => goToSpread(spreadIndex - 1)}
 					disabled={spreadIndex === 0}
-					className="absolute left-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Previous spread">
-					‹
+					className="studio-secondary my-4 mr-3"
+					aria-label="Previous section">
+					Previous
 				</button>
 				<button
 					type="button"
 					onClick={() => goToSpread(spreadIndex + 1)}
 					disabled={spreadIndex >= totalSpreads - 1}
-					className="absolute right-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Next spread">
-					›
+					className="studio-secondary my-4 mr-3"
+					aria-label="Next section">
+					Next
 				</button>
-				<p className="absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full border border-ink-900/10 bg-parchment-50/80 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-ink-900/70 shadow-[0_8px_20px_rgba(0,0,0,0.14)]">
-					Spread {spreadIndex + 1} of {totalSpreads}
+				<p className="inline-block text-sm text-studio-muted">
+					Section {spreadIndex + 1} of {totalSpreads}
 				</p>
 			</main>
 		</section>

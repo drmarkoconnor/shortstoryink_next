@@ -1,3 +1,4 @@
+import { AuthFrame } from '@/components/layout/auth-frame'
 import { SignInPanel } from '@/components/auth/sign-in-panel'
 import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 
@@ -15,12 +16,12 @@ export default async function SignInPage({
 	const postSignInPath = safeRedirectPath(toMessage(params.next))
 
 	return (
-		<main className="mx-auto flex min-h-screen w-full max-w-lg items-center px-6 py-16">
+		<AuthFrame>
 			<SignInPanel
 				configError={configError}
 				callbackError={params.error === 'callback'}
 				postSignInPath={postSignInPath}
 			/>
-		</main>
+		</AuthFrame>
 	)
 }

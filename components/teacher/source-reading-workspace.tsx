@@ -744,7 +744,7 @@ export function SourceReadingWorkspace() {
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
 			<main ref={mainRef} className="relative min-w-0">
 				{notice ? (
-					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded-full border border-emerald-300/40 bg-ink-950/95 px-3 py-1.5 text-xs text-emerald-100 shadow-lg">
+					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
 						{notice}
 					</div>
 				) : null}
@@ -754,21 +754,21 @@ export function SourceReadingWorkspace() {
 							top: `${selectedPassage.composerTop}px`,
 							left: `${selectedPassage.composerLeft}px`,
 						}}
-						className="absolute z-40 w-[min(330px,calc(100%-2rem))] rounded-2xl border border-white/12 bg-ink-950/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						className="absolute z-40 w-[min(330px,calc(100%-2rem))] rounded-md border border-studio-line bg-studio-canvas p-3 shadow-none backdrop-blur">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Source snippet
 						</p>
-						<p className="mt-2 max-h-24 overflow-y-auto rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+						<p className="mt-2 max-h-24 overflow-y-auto rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
 							{selectedPassage.quote}
 						</p>
 						<label className="mt-3 block">
-							<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+							<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Category
 							</span>
 							<select
 								value={categoryLabel}
 								onChange={(event) => setCategoryLabel(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 								<option value="">Uncategorised</option>
 								{fixedFeedbackCategories.map((category) => (
 									<option key={category} value={category}>
@@ -780,17 +780,17 @@ export function SourceReadingWorkspace() {
 						<input
 							value={tags}
 							onChange={(event) => setTags(event.target.value)}
-							className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+							className="mt-2 w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 							placeholder="Tags, comma separated"
 						/>
 						<textarea
 							value={note}
 							onChange={(event) => setNote(event.target.value)}
 							rows={2}
-							className="mt-2 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+							className="mt-2 w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 							placeholder="Optional teacher note"
 						/>
-						{error ? <p className="mt-2 text-xs text-amber-100">{error}</p> : null}
+						{error ? <p className="mt-2 text-xs text-amber-800">{error}</p> : null}
 						<div className="mt-3 flex flex-wrap items-center justify-between gap-2">
 							<button
 								type="button"
@@ -798,14 +798,14 @@ export function SourceReadingWorkspace() {
 								onClick={() => {
 									void saveSelectedSnippet()
 								}}
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+								className="studio-primary">
 								{isSaving ? 'Saving...' : 'Save as snippet'}
 							</button>
 							<button
 								type="button"
 								disabled={isSaving}
 								onClick={() => setSelectedPassage(null)}
-								className="text-[11px] uppercase tracking-[0.1em] text-silver-300 transition hover:text-parchment-100">
+								className="text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:text-studio-ink">
 								Close
 							</button>
 						</div>
@@ -822,19 +822,19 @@ export function SourceReadingWorkspace() {
 							eyebrow="Source reading"
 							footer={
 								<div className="flex flex-wrap items-center justify-between gap-3">
-									<p className="text-xs uppercase tracking-[0.12em] text-ink-900/45">
+									<p className="text-xs uppercase tracking-[0.12em] text-studio-ink/45">
 										{paragraphs.length} paragraphs
 									</p>
 									<button
 										type="button"
 										onClick={clearSourceText}
-										className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white">
+										className="rounded border border-ink-900/15 bg-studio-tint px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-ink/75 transition hover:bg-white">
 										Clear source text
 									</button>
 								</div>
 							}>
 							{paragraphs.length === 0 ? (
-								<p className="text-ink-900/55">
+								<p className="text-studio-ink/55">
 									Paste a longer passage in the right-hand panel, then select text here
 									to save teaching snippets.
 								</p>
@@ -858,47 +858,47 @@ export function SourceReadingWorkspace() {
 				<section className="surface space-y-3 p-4">
 					<div className="flex items-center justify-between gap-3">
 						<div>
-							<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 								Reading session
 							</p>
-							<p className="mt-1 text-sm text-parchment-100">
+							<p className="mt-1 text-sm text-studio-ink">
 								{savedSnippets.length === 1
 									? '1 snippet saved'
 									: `${savedSnippets.length} snippets saved`}
 							</p>
 						</div>
-						<span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+						<span className="rounded border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-sm font-semibold text-emerald-800">
 							{savedSnippets.length}
 						</span>
 					</div>
 					{notice ? (
-						<p className="rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-50">
+						<p className="rounded-md border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{notice}
 						</p>
 					) : null}
 					{error && !selectedPassage ? (
-						<p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
+						<p className="rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{error}
 						</p>
 					) : null}
 					{hasRestoredSession ? (
-						<p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-100">
+						<p className="rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-muted">
 							Restored source text from this browser session.
 						</p>
 					) : null}
 					{sourceText.trim() ? (
-						<div className="rounded-2xl border border-white/10 bg-ink-950/45 p-3">
-							<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						<div className="rounded-md border border-studio-line bg-studio-canvas p-3">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 								Loaded source
 							</p>
-							<p className="mt-1 text-sm font-semibold text-parchment-100">
+							<p className="mt-1 text-sm font-semibold text-studio-ink">
 								{title.trim() || loadedFileName || 'Untitled source'}
 							</p>
-							<p className="mt-1 text-xs text-silver-300">
+							<p className="mt-1 text-xs text-studio-muted">
 								{[author.trim(), source.trim()].filter(Boolean).join(' / ') ||
 									'Metadata not set'}
 							</p>
-							<div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
+							<div className="mt-2 flex flex-wrap gap-2 text-xs uppercase tracking-[0.08em] text-studio-muted">
 								<span>{formatNumber(loadedSourceWordCount)} words</span>
 								<span>{formatNumber(paragraphs.length)} paragraphs</span>
 							</div>
@@ -907,7 +907,7 @@ export function SourceReadingWorkspace() {
 									href={sourceUrl}
 									target="_blank"
 									rel="noreferrer"
-									className="mt-2 block truncate text-xs text-accent-100 underline-offset-4 hover:underline">
+									className="mt-2 block truncate text-xs text-studio-accent underline-offset-4 hover:underline">
 									{sourceUrl}
 								</a>
 							) : null}
@@ -917,10 +917,10 @@ export function SourceReadingWorkspace() {
 						<div className="flex items-center justify-between gap-3">
 							<label
 								htmlFor="source-reader-search"
-								className="text-xs uppercase tracking-[0.12em] text-silver-300">
+								className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 								Search text
 							</label>
-							<span className="text-xs text-silver-300">
+							<span className="text-xs text-studio-muted">
 								{sourceSearchQuery.trim()
 									? `${sourceSearchMatches.length} matches`
 									: 'No search'}
@@ -935,19 +935,19 @@ export function SourceReadingWorkspace() {
 									setActiveSourceMatchIndex(0)
 								}}
 								disabled={!sourceText.trim()}
-								className="min-w-0 flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 disabled:cursor-not-allowed disabled:opacity-55"
+								className="min-w-0 flex-1 rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink disabled:cursor-not-allowed disabled:opacity-55"
 								placeholder="Find in loaded text"
 							/>
 							<button
 								type="button"
 								onClick={clearSourceSearch}
 								disabled={!sourceSearchQuery}
-								className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+								className="rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-ink transition hover:bg-studio-tint disabled:cursor-not-allowed disabled:opacity-55">
 								Clear
 							</button>
 						</div>
 						<div className="flex items-center justify-between gap-2">
-							<p className="text-xs text-silver-300">
+							<p className="text-xs text-studio-muted">
 								{sourceSearchMatches.length
 									? `${activeSourceMatchIndex + 1} of ${sourceSearchMatches.length}`
 									: 'Case-insensitive plain text search'}
@@ -957,14 +957,14 @@ export function SourceReadingWorkspace() {
 									type="button"
 									onClick={goToPreviousSourceMatch}
 									disabled={!sourceSearchMatches.length}
-									className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+									className="rounded border border-studio-line bg-studio-tint px-3 py-1 text-sm text-studio-ink transition hover:bg-studio-tint disabled:cursor-not-allowed disabled:opacity-55">
 									Previous
 								</button>
 								<button
 									type="button"
 									onClick={goToNextSourceMatch}
 									disabled={!sourceSearchMatches.length}
-									className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.08em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-55">
+									className="rounded border border-studio-line bg-studio-tint px-3 py-1 text-sm text-studio-ink transition hover:bg-studio-tint disabled:cursor-not-allowed disabled:opacity-55">
 									Next
 								</button>
 							</div>
@@ -973,45 +973,45 @@ export function SourceReadingWorkspace() {
 				</section>
 
 				<section className="surface space-y-3 p-4">
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Source metadata
 					</p>
 					<input
 						value={author}
 						onChange={(event) => setAuthor(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Author"
 					/>
 					<input
 						value={title}
 						onChange={(event) => setTitle(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Title"
 					/>
 					<input
 						value={source}
 						onChange={(event) => setSource(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Source / collection"
 					/>
 					<input
 						type="url"
 						value={sourceUrl}
 						onChange={(event) => setSourceUrl(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Source URL"
 					/>
 					<input
 						value={sourceSection}
 						onChange={(event) => setSourceSection(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Chapter / section"
 					/>
 					<textarea
 						value={licenceNote}
 						onChange={(event) => setLicenceNote(event.target.value)}
 						rows={3}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 						placeholder="Licence / source note"
 					/>
 				</section>
@@ -1019,33 +1019,33 @@ export function SourceReadingWorkspace() {
 				<section className="surface space-y-3 p-4">
 					<div>
 						<div className="mb-2 flex items-center justify-between gap-3">
-							<span className="text-xs uppercase tracking-[0.12em] text-silver-300">
+							<span className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 								Source text
 							</span>
 							<span className="flex flex-wrap justify-end gap-2">
 								<button
 									type="button"
 									onClick={() => setIsFinderOpen((current) => !current)}
-									className="rounded-full border border-accent-300/40 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-300/20">
+									className="rounded border border-accent-300/40 bg-accent-300/10 px-3 py-1 text-xs uppercase tracking-[0.1em] text-studio-ink transition hover:bg-accent-300/20">
 									Find text
 								</button>
 								<button
 									type="button"
 									disabled={isLoadingFile}
 									onClick={() => fileInputRef.current?.click()}
-									className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60">
+									className="rounded border border-studio-line bg-studio-tint px-3 py-1 text-sm text-studio-ink transition hover:bg-studio-tint disabled:cursor-not-allowed disabled:opacity-60">
 									{isLoadingFile ? 'Loading...' : 'Load text file'}
 								</button>
 							</span>
 						</div>
 						{isFinderOpen ? (
-							<div className="mb-3 rounded-2xl border border-white/10 bg-ink-950/45 p-3">
+							<div className="mb-3 rounded-md border border-studio-line bg-studio-canvas p-3">
 								<form onSubmit={searchGutendex} className="space-y-2">
 									<div className="flex gap-2">
 										<input
 											value={gutendexQuery}
 											onChange={(event) => setGutendexQuery(event.target.value)}
-											className="min-w-0 flex-1 rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+											className="min-w-0 flex-1 rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 											placeholder="Author, title, keyword"
 										/>
 										<select
@@ -1053,7 +1053,7 @@ export function SourceReadingWorkspace() {
 											onChange={(event) =>
 												setGutendexLanguage(event.target.value)
 											}
-											className="w-24 rounded-xl border border-white/15 bg-ink-900 px-2 py-2 text-sm text-parchment-100">
+											className="w-24 rounded border border-studio-line bg-studio-paper px-2 py-2.5 text-sm text-studio-ink">
 											<option value="en">English</option>
 											<option value="">Any</option>
 										</select>
@@ -1061,19 +1061,19 @@ export function SourceReadingWorkspace() {
 									<button
 										type="submit"
 										disabled={isSearchingGutendex}
-										className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60">
+										className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-sm text-studio-ink transition hover:bg-studio-tint disabled:cursor-not-allowed disabled:opacity-60">
 										{isSearchingGutendex ? 'Searching...' : 'Search Gutendex'}
 									</button>
 								</form>
 								{gutendexMessage ? (
-									<p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
+									<p className="mt-3 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 										{gutendexMessage}
 										{gutendexDiagnosticUrl ? (
 											<a
 												href={gutendexDiagnosticUrl}
 												target="_blank"
 												rel="noreferrer"
-												className="mt-2 block text-xs text-amber-100 underline-offset-4 hover:underline">
+												className="mt-2 block text-xs text-amber-800 underline-offset-4 hover:underline">
 												Open Gutendex query
 											</a>
 										) : null}
@@ -1081,37 +1081,37 @@ export function SourceReadingWorkspace() {
 								) : null}
 								{gutendexResults.length ? (
 									<div className="mt-3 space-y-2">
-										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+										<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 											{formatNumber(gutendexCount)} matches
 										</p>
 										{gutendexResults.map((result) => (
 											<div
 												key={result.id}
-												className="rounded-xl border border-white/10 bg-ink-900/65 p-3">
+												className="rounded-md border border-studio-line bg-studio-canvas p-3">
 												<div className="flex items-start justify-between gap-3">
 													<div className="min-w-0">
-														<p className="text-sm font-semibold text-parchment-100">
+														<p className="text-sm font-semibold text-studio-ink">
 															{result.title}
 														</p>
-														<p className="mt-1 text-xs text-silver-300">
+														<p className="mt-1 text-xs text-studio-muted">
 															{sourceAuthorLabel(result.authors)}
 														</p>
-														<p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
+														<p className="mt-2 text-xs uppercase tracking-[0.08em] text-studio-muted">
 															#{result.id} / {result.languages.join(', ') || 'language unknown'} /{' '}
 															{formatNumber(result.downloadCount)} downloads
 														</p>
 													</div>
 													<span
-														className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] ${
+														className={`shrink-0 rounded border px-2 py-0.5 text-xs uppercase tracking-[0.08em] ${
 															result.hasPlainText
-																? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-100'
-																: 'border-white/10 bg-white/5 text-silver-300'
+																? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-800'
+																: 'border-studio-line bg-studio-tint text-studio-muted'
 														}`}>
 														{result.hasPlainText ? 'Plain text' : 'No text'}
 													</span>
 												</div>
 												{result.subjects.length ? (
-													<p className="mt-2 line-clamp-2 text-xs text-silver-300">
+													<p className="mt-2 line-clamp-2 text-xs text-studio-muted">
 														{result.subjects.join(' / ')}
 													</p>
 												) : null}
@@ -1121,7 +1121,7 @@ export function SourceReadingWorkspace() {
 													onClick={() => {
 														void loadGutendexResult(result)
 													}}
-													className="mt-3 rounded-full border border-accent-300/40 bg-accent-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-300/20 disabled:cursor-not-allowed disabled:opacity-60">
+													className="mt-3 rounded border border-accent-300/40 bg-accent-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-ink transition hover:bg-accent-300/20 disabled:cursor-not-allowed disabled:opacity-60">
 													{isLoadingGutendexText && activeGutendexId === result.id
 														? 'Loading...'
 														: result.hasPlainText
@@ -1147,7 +1147,7 @@ export function SourceReadingWorkspace() {
 							Source text
 						</label>
 						{loadedFileName ? (
-							<p className="mb-2 text-xs text-silver-300">
+							<p className="mb-2 text-xs text-studio-muted">
 								Loaded: {loadedFileName}
 							</p>
 						) : null}
@@ -1160,7 +1160,7 @@ export function SourceReadingWorkspace() {
 								setLoadedFileName('')
 							}}
 							rows={10}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm leading-relaxed text-parchment-100"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm leading-relaxed text-studio-ink"
 							placeholder="Paste the longer passage for this reading session"
 						/>
 					</div>
@@ -1171,37 +1171,37 @@ export function SourceReadingWorkspace() {
 						type="button"
 						onClick={() => setIsSnippetListOpen((current) => !current)}
 						className="flex w-full items-center justify-between gap-3 text-left">
-						<span className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<span className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Session snippets
 						</span>
-						<span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-silver-300">
+						<span className="rounded border border-studio-line px-2 py-0.5 text-xs text-studio-muted">
 							{savedSnippets.length}
 						</span>
 					</button>
 					{isSnippetListOpen ? (
 						<div className="mt-3 space-y-2">
 							{savedSnippets.length === 0 ? (
-								<p className="text-sm text-silver-300">
+								<p className="text-sm text-studio-muted">
 									Snippets saved from this passage will appear here.
 								</p>
 							) : (
 								savedSnippets.map((snippet) => (
 									<div
 										key={snippet.id}
-										className="rounded-xl border border-white/10 bg-ink-950/55 px-3 py-3">
-										<p className="text-[10px] uppercase tracking-[0.1em] text-silver-300">
+										className="rounded-md border border-studio-line bg-studio-canvas px-3 py-3">
+										<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 											{snippet.categoryLabel}
 										</p>
-										<p className="mt-2 text-sm leading-relaxed text-parchment-100">
+										<p className="mt-2 text-sm leading-relaxed text-studio-ink">
 											{compactPreview(snippet.text)}
 										</p>
-										<p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-silver-400">
+										<p className="mt-2 text-xs uppercase tracking-[0.08em] text-studio-muted">
 											{[snippet.sourceLabel, snippet.sourceTitle]
 												.filter(Boolean)
 												.join(', ')}
 										</p>
 										{snippet.tags.length ? (
-											<p className="mt-1 text-xs text-silver-300">
+											<p className="mt-1 text-xs text-studio-muted">
 												{snippet.tags.join(', ')}
 											</p>
 										) : null}
@@ -1210,7 +1210,7 @@ export function SourceReadingWorkspace() {
 											onClick={() => {
 												void deleteSnippet(snippet.id)
 											}}
-											className="mt-2 text-[11px] uppercase tracking-[0.1em] text-silver-400 transition hover:text-amber-100">
+											className="mt-2 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:text-amber-800">
 											Delete
 										</button>
 									</div>

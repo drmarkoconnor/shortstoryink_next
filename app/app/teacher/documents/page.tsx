@@ -230,7 +230,8 @@ function groupIdsFromBody(body: unknown) {
 		: []
 }
 
-export default async function TeacherDocumentsPage() {
+export default async function TeacherDocumentsPage({searchParams}: {searchParams?: Promise<{document?:string}>}) {
+ const params = searchParams ? await searchParams : {}
 	const profile = await requireTeacher()
 	const dataClient = await createServerDataClient()
 	let snippets: BuilderSnippet[] = []
@@ -387,22 +388,24 @@ export default async function TeacherDocumentsPage() {
 		<section className="space-y-5">
 			<MenuTabs
 				tabs={teacherTabs}
-				active="/app/teacher-studio"
+				active="/app/teacher/documents"
 				context={
 					<Link
 						href="/app/teacher-studio"
-						className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Return to Studio
 					</Link>
 				}
 			/>
 
 			{snippetsError ? (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					Unable to load snippets for the document builder: {snippetsError}
 				</p>
 			) : (
 				<DocumentBuilder
+     key={params.document || 'new'}
+     initialDocumentId={params.document}
 					initialSnippets={snippets}
 					initialLibraryItems={libraryItems}
 					initialDocuments={documents}

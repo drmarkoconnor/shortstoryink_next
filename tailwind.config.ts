@@ -9,6 +9,7 @@ const config: Config = {
 	theme: {
 		extend: {
 			colors: {
+				studio: { canvas: '#faf9f5', paper: '#ffffff', tint: '#edf0e9', ink: '#263b34', muted: '#5d6963', line: '#d6ddd5', accent: '#294d43', soft: '#e3e9dc' },
 				ink: {
 					950: '#07090f',
 					900: '#0b0e17',
@@ -16,10 +17,10 @@ const config: Config = {
 					700: '#1a2233',
 				},
 				burgundy: {
-					500: '#7a2f45',
-					400: '#8f3e56',
-					300: '#a45a70',
-					200: '#bf8799',
+					500: '#294d43',
+					400: '#496859',
+					300: '#7e9675',
+					200: '#a9bda3',
 				},
 				parchment: {
 					100: '#fcfbf8',
@@ -38,13 +39,14 @@ const config: Config = {
 					craft: '#7a2f45',
 				},
 				accent: {
-					400: '#bea574',
-					300: '#cfb890',
+                    700: '#294d43',
+					400: '#7e9675',
+					300: '#a9bda3',
 				},
 			},
 			fontFamily: {
 				serif: ['"Iowan Old Style"', 'Palatino', 'Georgia', 'serif'],
-				sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				sans: ['Arial', 'Helvetica', 'ui-sans-serif', 'sans-serif'],
 			},
 			maxWidth: {
 				prose: '70ch',

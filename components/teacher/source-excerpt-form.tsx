@@ -81,7 +81,7 @@ export function SourceExcerptForm() {
 		<form onSubmit={saveSourceExcerpt} className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
 			<section className="surface space-y-4 p-4 lg:p-5">
 				<div>
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Source metadata
 					</p>
 					<p className="muted mt-2 text-sm leading-relaxed">
@@ -89,7 +89,7 @@ export function SourceExcerptForm() {
 					</p>
 				</div>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Author
 					</span>
 					<input
@@ -99,11 +99,11 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setAuthor(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 					/>
 				</label>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Title
 					</span>
 					<input
@@ -113,11 +113,11 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setTitle(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 					/>
 				</label>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Source
 					</span>
 					<input
@@ -126,12 +126,12 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setSource(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Gutenberg, Internet Archive, manual"
 					/>
 				</label>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Source URL
 					</span>
 					<input
@@ -141,12 +141,12 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setSourceUrl(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Optional"
 					/>
 				</label>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Chapter / section
 					</span>
 					<input
@@ -155,7 +155,7 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setSourceSection(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 						placeholder="Optional"
 					/>
 				</label>
@@ -163,7 +163,7 @@ export function SourceExcerptForm() {
 
 			<section className="surface space-y-4 p-4 lg:p-5">
 				<div>
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Excerpt
 					</p>
 					<p className="muted mt-2 text-sm leading-relaxed">
@@ -171,7 +171,7 @@ export function SourceExcerptForm() {
 					</p>
 				</div>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Excerpt text
 					</span>
 					<textarea
@@ -182,12 +182,12 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setExcerpt(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm leading-relaxed text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm leading-relaxed text-studio-ink"
 					/>
 				</label>
 				<div className="grid gap-3 sm:grid-cols-2">
 					<label className="block">
-						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Category
 						</span>
 						<select
@@ -196,7 +196,7 @@ export function SourceExcerptForm() {
 								clearMessages()
 								setCategoryLabel(event.target.value)
 							}}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 							<option value="">Uncategorised</option>
 							{fixedFeedbackCategories.map((category) => (
 								<option key={category} value={category}>
@@ -206,7 +206,7 @@ export function SourceExcerptForm() {
 						</select>
 					</label>
 					<label className="block">
-						<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 							Tags
 						</span>
 						<input
@@ -215,13 +215,13 @@ export function SourceExcerptForm() {
 								clearMessages()
 								setTags(event.target.value)
 							}}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 							placeholder="dialogue, opening, imagery"
 						/>
 					</label>
 				</div>
 				<label className="block">
-					<span className="mb-1 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Teacher note
 					</span>
 					<textarea
@@ -231,7 +231,7 @@ export function SourceExcerptForm() {
 							clearMessages()
 							setNote(event.target.value)
 						}}
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm leading-relaxed text-parchment-100"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm leading-relaxed text-studio-ink"
 						placeholder="Optional private teaching note"
 					/>
 				</label>
@@ -239,14 +239,14 @@ export function SourceExcerptForm() {
 					<button
 						type="submit"
 						disabled={isSaving}
-						className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+						className="studio-primary">
 						{isSaving ? 'Saving...' : 'Save excerpt'}
 					</button>
 					{notice ? (
-						<p className="text-sm text-emerald-100">{notice}</p>
+						<p className="text-sm text-emerald-800">{notice}</p>
 					) : null}
 					{error ? (
-						<p className="text-sm text-amber-100">{error}</p>
+						<p className="text-sm text-amber-800">{error}</p>
 					) : null}
 				</div>
 			</section>

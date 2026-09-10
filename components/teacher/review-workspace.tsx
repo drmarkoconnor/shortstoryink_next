@@ -242,19 +242,19 @@ function joinCommentText(existing: string, insertion: string) {
 
 function annotationBorderClass(type: AnnotationItem['type']) {
 	return type === 'snippet'
-		? 'border-accent-300/35 bg-ink-950 text-parchment-100'
-		: 'border-burgundy-300/35 bg-ink-950 text-parchment-100'
+		? 'border-accent-300/35 bg-studio-canvas text-studio-ink'
+		: 'border-burgundy-300/35 bg-studio-canvas text-studio-ink'
 }
 
 function annotationMarkerClass(type: AnnotationItem['type'], active: boolean) {
 	if (type === 'snippet') {
 		return active
 			? 'border-accent-300 bg-accent-300 text-ink-950'
-			: 'border-accent-300/55 bg-accent-300/20 text-accent-100'
+			: 'border-accent-300/55 bg-accent-300/20 text-studio-accent'
 	}
 	return active
-		? 'border-burgundy-200 bg-burgundy-300 text-parchment-100'
-		: 'border-burgundy-300/55 bg-burgundy-500/20 text-burgundy-100'
+		? 'border-burgundy-200 bg-studio-soft text-studio-ink'
+		: 'border-burgundy-300/55 bg-studio-soft text-studio-accent'
 }
 
 function getMarkClass(
@@ -271,8 +271,8 @@ function getMarkClass(
 	// TODO: Keep cut-mark styling in parity with the writer folio and export output.
 	if (suggestedAction === 'cut') {
 		return active
-			? 'bg-transparent text-ink-900/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
-			: 'bg-transparent text-ink-900/58 line-through decoration-2 decoration-ink-900/30'
+			? 'bg-transparent text-studio-ink/55 line-through decoration-2 decoration-ink-900/35 ring-2 ring-silver-500/35'
+			: 'bg-transparent text-studio-ink/58 line-through decoration-2 decoration-ink-900/30'
 	}
 	if (kind === 'typo') {
 		return active
@@ -429,7 +429,7 @@ export function TeacherReviewWorkspace({
 
 		const timeout = window.setTimeout(() => {
 			setFlashNotice(null)
-		}, 650)
+		}, 4000)
 
 		return () => window.clearTimeout(timeout)
 	}, [notice])
@@ -441,7 +441,7 @@ export function TeacherReviewWorkspace({
 
 		const timeout = window.setTimeout(() => {
 			setSidePanelNotice(null)
-		}, 1400)
+		}, 4000)
 
 		return () => window.clearTimeout(timeout)
 	}, [sidePanelNotice])
@@ -1808,7 +1808,7 @@ export function TeacherReviewWorkspace({
 						<button
 							type="button"
 							onClick={() => toggleAnnotation(item.id)}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-medium transition ${annotationMarkerClass(item.type, isActive)}`}
+							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-medium transition ${annotationMarkerClass(item.type, isActive)}`}
 							aria-label={`${item.type === 'snippet' ? 'Snippet' : 'Comment'} marker`}>
 							{item.type === 'snippet' ? '◇' : '•'}
 						</button>
@@ -1830,7 +1830,7 @@ export function TeacherReviewWorkspace({
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_300px] 2xl:grid-cols-[minmax(0,1.7fr)_320px]">
 			<main ref={mainRef} onMouseUp={captureSelection} onKeyUp={captureSelection} className="relative min-w-0">
 				{flashNotice ? (
-					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded-full border border-emerald-300/40 bg-ink-950/95 px-3 py-1.5 text-xs text-emerald-100 shadow-lg">
+					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
 						{flashNotice}
 					</div>
 				) : null}
@@ -1843,11 +1843,11 @@ export function TeacherReviewWorkspace({
 							top: `${selectedAnchor.composerTop}px`,
 							left: `${selectedAnchor.composerLeft}px`,
 						}}
-						className="absolute z-40 w-[min(300px,calc(100%-2rem))] rounded-2xl border border-white/12 bg-ink-950/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+						className="absolute z-40 w-[min(300px,calc(100%-2rem))] rounded-md border border-studio-line bg-studio-canvas p-3 shadow-none backdrop-blur">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Marginal note
 						</p>
-						<p className="mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+						<p className="mt-2 rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
 							{selectedAnchor.quote}
 						</p>
 						<textarea
@@ -1857,17 +1857,17 @@ export function TeacherReviewWorkspace({
 							value={composerText}
 							onChange={(event) => setComposerText(event.target.value)}
 							onKeyDown={handleComposerKeyDown}
-							className="mt-3 w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+							className="mt-3 w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring"
 							placeholder="Type a note. Enter saves. Empty Enter saves as snippet."
 						/>
 						<label className="mt-3 block">
-							<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+							<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Category
 							</span>
 							<select
 								value={composerCategoryLabel}
 								onChange={(event) => setComposerCategoryLabel(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 								<option value="">Uncategorised</option>
 								{fixedFeedbackCategories.map((category) => (
 									<option key={category} value={category}>
@@ -1877,7 +1877,7 @@ export function TeacherReviewWorkspace({
 							</select>
 						</label>
 						{composerError ? (
-							<p className="mt-2 text-xs text-amber-100">{composerError}</p>
+							<p className="mt-2 text-xs text-amber-800">{composerError}</p>
 						) : null}
 						<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
 							<div className="flex flex-wrap items-center gap-2">
@@ -1887,10 +1887,10 @@ export function TeacherReviewWorkspace({
 									onClick={() => {
 										void saveNewAnnotation('cut')
 									}}
-									className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15 disabled:cursor-not-allowed disabled:opacity-60">
+									className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:bg-studio-soft disabled:cursor-not-allowed disabled:opacity-60">
 									Cut
 								</button>
-								<p className="text-[11px] text-silver-300">
+								<p className="text-xs text-studio-muted">
 									{isComposerSaving
 										? 'Saving...'
 										: 'Enter saves. Shift+Enter adds a new line.'}
@@ -1900,7 +1900,7 @@ export function TeacherReviewWorkspace({
 									type="button"
 									disabled={isComposerSaving}
 									onClick={closeInlineComposer}
-									className="text-[11px] text-silver-200 transition hover:text-parchment-100">
+									className="text-xs text-studio-muted transition hover:text-studio-ink">
 								Close
 							</button>
 						</div>
@@ -1917,17 +1917,17 @@ export function TeacherReviewWorkspace({
 								type="button"
 								onClick={() => goToPage(pageIndex - 1)}
 								disabled={pageIndex === 0}
-								className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
+								className="rounded border border-ink-900/15 bg-studio-tint px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-ink/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
 								← Previous page
 							</button>
-							<p className="text-xs uppercase tracking-[0.12em] text-ink-900/55">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-ink/55">
 								Page {Math.min(pageIndex + 1, totalPages)} of {totalPages}
 							</p>
 							<button
 								type="button"
 								onClick={() => goToPage(pageIndex + 1)}
 								disabled={pageIndex >= totalPages - 1}
-								className="rounded-full border border-ink-900/15 bg-white/55 px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
+								className="rounded border border-ink-900/15 bg-studio-tint px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-ink/75 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
 								Next page →
 							</button>
 						</div>
@@ -1946,7 +1946,7 @@ export function TeacherReviewWorkspace({
 									id={paragraph.id}
 									className={
 										isSceneBreak
-											? 'text-center tracking-[0.22em] text-ink-900/60'
+											? 'text-center tracking-[0.22em] text-studio-ink/60'
 											: 'whitespace-pre-wrap'
 									}>
 									{isSceneBreak
@@ -1955,17 +1955,17 @@ export function TeacherReviewWorkspace({
 								</p>
 								{shouldShowActiveBlockItem ? (
 									<div
-										className={`max-w-[44rem] rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.08)] ${annotationBorderClass(activeBlockItem.type)}`}>
+										className={`max-w-[44rem] rounded-md border px-4 py-3 text-sm shadow-none ${annotationBorderClass(activeBlockItem.type)}`}>
 										<div className="flex flex-wrap items-center justify-between gap-2">
 											<div className="flex flex-wrap items-center gap-2">
-												<p className="text-[11px] uppercase tracking-[0.12em]">
+												<p className="text-xs uppercase tracking-[0.12em]">
 													{activeBlockItem.type === 'snippet'
 														? 'Saved snippet'
 														: liveSubmissionStatus === 'feedback_published'
 															? 'Published comment'
 															: 'Draft comment'}
 												</p>
-												<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+												<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 													{activeBlockItem.label}
 												</p>
 											</div>
@@ -1976,7 +1976,7 @@ export function TeacherReviewWorkspace({
 												Close
 											</button>
 										</div>
-										<p className="mt-2 font-serif italic text-parchment-100/90">
+										<p className="mt-2 font-serif italic text-studio-ink/90">
 											{formatQuote(activeBlockItem.anchor.quote)}
 										</p>
 										{activeBlockItem.type === 'comment' ? (
@@ -1992,10 +1992,10 @@ export function TeacherReviewWorkspace({
 														value={commentDraft}
 														onChange={(event) => setCommentDraft(event.target.value)}
 														onKeyDown={handleInlineCommentKeyDown}
-														className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+														className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 													/>
 													<label className="block">
-														<span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-silver-300">
+														<span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 															Category
 														</span>
 														<select
@@ -2003,7 +2003,7 @@ export function TeacherReviewWorkspace({
 															onChange={(event) =>
 																setCommentCategoryId(event.target.value)
 															}
-															className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+															className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 															<option value="">Uncategorised</option>
 															{fixedFeedbackCategories.map((category) => (
 																<option key={category} value={category}>
@@ -2020,13 +2020,13 @@ export function TeacherReviewWorkspace({
 																setCommentSuggestedAction('cut')
 																setCommentCategoryId('')
 															}}
-															className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
+															className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:bg-studio-soft">
 															Cut note
 														</button>
 														<button
 															type="submit"
 															disabled={isPanelSaving}
-															className="rounded-full border border-accent-400/70 bg-accent-400/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+															className="studio-primary">
 															{isPanelSaving ? 'Saving...' : 'Save'}
 														</button>
 														<button
@@ -2038,17 +2038,17 @@ export function TeacherReviewWorkspace({
 																	activeBlockItem.anchor.suggestedAction ?? null,
 																)
 															}}
-															className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 															Cancel
 														</button>
 													</div>
-													<p className="text-[11px] text-current/80">
+													<p className="text-xs text-current/80">
 														Enter saves. Shift+Enter adds a new line.
 													</p>
 												</form>
 											) : (
 												<div className="mt-3">
-													<p className="leading-relaxed text-parchment-100">
+													<p className="leading-relaxed text-studio-ink">
 														{activeBlockItem.text.trim()
 															? activeBlockItem.text
 															: 'Draft comment'}
@@ -2058,7 +2058,7 @@ export function TeacherReviewWorkspace({
 															<button
 																type="button"
 																onClick={() => setIsInlineEditingComment(true)}
-																className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+																className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 																Edit
 															</button>
 														) : null}
@@ -2071,7 +2071,7 @@ export function TeacherReviewWorkspace({
 										setCommentSuggestedAction('cut')
 										setCommentCategoryId('')
 									}}
-									className="rounded-full border border-silver-300/30 bg-silver-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:bg-silver-300/15">
+									className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:bg-studio-soft">
 									Cut
 								</button>
 							) : null}
@@ -2080,7 +2080,7 @@ export function TeacherReviewWorkspace({
 																type="button"
 																onClick={deleteActiveComment}
 																disabled={isDeletingAnnotation}
-																className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-amber-200/40 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-60">
+																className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-amber-200/40 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60">
 																{isDeletingAnnotation ? 'Deleting...' : 'Delete'}
 															</button>
 														) : null}
@@ -2089,14 +2089,14 @@ export function TeacherReviewWorkspace({
 											)
 										) : (
 											<div className="mt-3 space-y-3">
-												<p className="leading-relaxed text-parchment-100">
+												<p className="leading-relaxed text-studio-ink">
 													{activeBlockItem.text.trim()
 														? activeBlockItem.text
 														: 'Snippet saved without a note.'}
 												</p>
 												{!isPublishedReadOnly ? (
 													<label className="block max-w-xs">
-														<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+														<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 															Category
 														</span>
 														<select
@@ -2117,7 +2117,7 @@ export function TeacherReviewWorkspace({
 																	event.target.value,
 																)
 															}}
-															className="w-full rounded-lg border border-white/15 bg-ink-900 px-2.5 py-2 text-xs text-parchment-100">
+															className="w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-xs text-studio-ink">
 															<option value="">Uncategorised</option>
 															{fixedFeedbackCategories.map((category) => (
 																<option key={category} value={category}>
@@ -2141,10 +2141,10 @@ export function TeacherReviewWorkspace({
 				<div className="surface p-4">
 					<div className="flex items-start justify-between gap-3">
 						<div>
-							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Feedback status
 							</p>
-							<p className="mt-1 text-sm text-silver-200">
+							<p className="mt-1 text-sm text-studio-muted">
 								{isPublishedReadOnly
 									? 'Use this view for reference after publication.'
 									: canPublishFeedback
@@ -2156,7 +2156,7 @@ export function TeacherReviewWorkspace({
 							{canLiveExportFeedback ? (
 								<Link
 									href={`/app/workshop/${submissionId}/export`}
-									className="inline-flex rounded-full border border-white/18 bg-white/6 px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-silver-100 shadow-[0_6px_16px_rgba(0,0,0,0.14)] transition hover:border-white/28 hover:bg-white/10 hover:text-parchment-100">
+									className="inline-flex rounded border border-studio-line bg-studio-tint px-3.5 py-2 text-sm text-studio-muted shadow-none transition hover:border-studio-line hover:bg-studio-tint hover:text-studio-ink">
 									Feedback document
 								</Link>
 							) : null}
@@ -2167,17 +2167,17 @@ export function TeacherReviewWorkspace({
 										setPublishError(null)
 										setIsPublishModalOpen(true)
 									}}
-									className="inline-flex rounded-full border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-emerald-100 shadow-[0_8px_18px_rgba(0,0,0,0.18)] transition hover:-translate-y-[1px] hover:bg-emerald-300/20 active:translate-y-0">
+									className="inline-flex rounded border border-emerald-300/55 bg-emerald-300/14 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-800 shadow-none transition hover:-translate-y-[1px] hover:bg-emerald-300/20 active:translate-y-0">
 									Publish to writer
 								</button>
 							) : null}
 						</div>
 					</div>
 					<p
-						className={`mt-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
+						className={`mt-3 rounded-md border px-3 py-2 text-sm leading-relaxed ${
 							liveSubmissionStatus === 'feedback_published'
-								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
-								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
+								? 'border-emerald-300/25 bg-studio-canvas text-emerald-800'
+								: 'border-burgundy-300/25 bg-studio-canvas text-studio-ink'
 						}`}>
 						{isPublishedReadOnly
 							? 'Feedback has been published for this version. It is now read-only. Use this view for reference; further feedback should happen on a new submission or revised version.'
@@ -2186,26 +2186,26 @@ export function TeacherReviewWorkspace({
 								: 'A newer version exists. Open that draft to continue active review or publish new feedback.'}
 					</p>
 					{summaryPublishedAt ? (
-						<p className="mt-2 text-xs text-silver-300">
-							Last published {new Date(summaryPublishedAt).toLocaleString()}
+						<p className="mt-2 text-xs text-studio-muted">
+							Last published {new Date(summaryPublishedAt).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
 					) : null}
 					{!canLiveExportFeedback ? (
-						<p className="mt-2 text-xs text-silver-300">
+						<p className="mt-2 text-xs text-studio-muted">
 							Feedback must be published before export is available.
 						</p>
 					) : null}
 					{showQueueReturnCue ? (
 						<Link
 							href="/app/teacher/review-desk"
-							className="mt-3 inline-flex rounded-full border border-accent-300/50 bg-accent-300/12 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent-100 shadow-[0_0_18px_rgba(207,184,124,0.16)] animate-pulse">
+							className="mt-3 inline-flex rounded border border-accent-300/50 bg-accent-300/12 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-accent shadow-none animate-pulse">
 							Back to queue
 						</Link>
 					) : null}
 				</div>
 				{Children.toArray(sidebarHeader)}
 				{errorNotice ? (
-					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 						{errorNotice}
 					</p>
 				) : null}
@@ -2217,13 +2217,13 @@ export function TeacherReviewWorkspace({
 								type="search"
 								value={snippetSearchQuery}
 								onChange={(event) => setSnippetSearchQuery(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 								placeholder="Search snippets"
 							/>
 							<select
 								value={snippetSearchCategory}
 								onChange={(event) => setSnippetSearchCategory(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 								<option value="">All categories</option>
 								{fixedSnippetCategories.map((category) => (
 									<option key={category} value={category}>
@@ -2234,7 +2234,7 @@ export function TeacherReviewWorkspace({
 						</div>
 						<div className="max-h-[28vh] overflow-y-auto pr-1">
 							{filteredSnippetLibrary.length === 0 ? (
-								<p className="text-sm text-silver-300">
+								<p className="text-sm text-studio-muted">
 									No snippets found.
 								</p>
 							) : (
@@ -2244,16 +2244,16 @@ export function TeacherReviewWorkspace({
 
 										return (
 											<li key={snippet.id}>
-												<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-3 text-silver-100">
+												<div className="rounded-md border border-studio-line bg-studio-canvas px-3 py-3 text-studio-muted">
 													<div className="flex flex-wrap items-center gap-2">
-														<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+														<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 															{snippet.categoryLabel}
 														</p>
-														<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
-															{new Date(snippet.createdAt).toLocaleDateString()}
+														<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
+															{new Date(snippet.createdAt).toLocaleDateString('en-GB', { timeZone: 'Europe/London' })}
 														</p>
 													</div>
-													<p className="mt-2 text-sm leading-relaxed text-parchment-100">
+													<p className="mt-2 text-sm leading-relaxed text-studio-ink">
 														{text
 															? compactPreview(text)
 															: compactPreview(snippet.anchor?.quote ?? '')}
@@ -2264,7 +2264,7 @@ export function TeacherReviewWorkspace({
 														onClick={() => {
 															void insertSnippetIntoComment(snippet)
 														}}
-														className="mt-3 rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+														className="mt-3 rounded border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
 														Insert into comment
 													</button>
 												</div>
@@ -2284,13 +2284,13 @@ export function TeacherReviewWorkspace({
 									type="search"
 									value={memorySearchQuery}
 									onChange={(event) => setMemorySearchQuery(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 									placeholder="Search previous feedback"
 								/>
 								<select
 									value={memorySearchCategory}
 									onChange={(event) => setMemorySearchCategory(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									<option value="">All categories</option>
 									{fixedFeedbackCategories.map((category) => (
 										<option key={category} value={category}>
@@ -2301,31 +2301,31 @@ export function TeacherReviewWorkspace({
 							</div>
 							<div className="max-h-[28vh] overflow-y-auto pr-1">
 								{filteredFeedbackMemory.length === 0 ? (
-									<p className="text-sm text-silver-300">
+									<p className="text-sm text-studio-muted">
 										No previous comments found.
 									</p>
 								) : (
 									<ul className="space-y-2">
 										{filteredFeedbackMemory.map((memory) => (
 											<li key={memory.id}>
-												<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-3 text-silver-100">
+												<div className="rounded-md border border-studio-line bg-studio-canvas px-3 py-3 text-studio-muted">
 													<div className="flex flex-wrap items-center gap-2">
-														<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+														<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 															{memory.categoryLabel}
 														</p>
-														<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+														<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 															v{memory.version ?? '?'}
 														</p>
 													</div>
-													<p className="mt-2 text-xs text-silver-300">
+													<p className="mt-2 text-xs text-studio-muted">
 														{memory.submissionTitle}
 													</p>
 													{memory.quote ? (
-														<p className="mt-2 border-l border-accent-300/35 pl-3 text-sm italic leading-relaxed text-parchment-100/90">
+														<p className="mt-2 border-l border-accent-300/35 pl-3 text-sm italic leading-relaxed text-studio-ink/90">
 															{compactPreview(memory.quote, 130)}
 														</p>
 													) : null}
-													<p className="mt-2 text-sm leading-relaxed text-parchment-100">
+													<p className="mt-2 text-sm leading-relaxed text-studio-ink">
 														{compactPreview(memory.comment, 150)}
 													</p>
 													<div className="mt-3 flex flex-wrap gap-2">
@@ -2335,12 +2335,12 @@ export function TeacherReviewWorkspace({
 															onClick={() => {
 																void insertFeedbackMemoryIntoComment(memory)
 															}}
-															className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+															className="rounded border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
 															Insert memory
 														</button>
 														<Link
 															href={`/app/workshop/${memory.submissionId}?focus=feedback:${memory.id}`}
-															className="rounded-full border border-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															className="rounded border border-studio-line px-3 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 															Open
 														</Link>
 													</div>
@@ -2355,28 +2355,28 @@ export function TeacherReviewWorkspace({
 
 					<ProtoCard title="Marginalia" meta="Comments and snippets">
 					<p
-						className={`mb-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
+						className={`mb-3 rounded-md border px-3 py-2 text-sm leading-relaxed ${
 							liveSubmissionStatus === 'feedback_published'
-								? 'border-emerald-300/25 bg-ink-950 text-emerald-100'
-								: 'border-burgundy-300/25 bg-ink-950 text-parchment-100'
+								? 'border-emerald-300/25 bg-studio-canvas text-emerald-800'
+								: 'border-burgundy-300/25 bg-studio-canvas text-studio-ink'
 						}`}>
 						{isPublishedReadOnly
 							? 'Published comments are shown here for reference only.'
 							: 'Draft comments and snippets stay private while you read.'}
 					</p>
 					<div className="mb-3 flex items-center justify-between gap-3">
-						<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+						<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							{commentCount} comments {' · '} {snippetCount} snippets
 						</p>
 						<button
 							type="button"
 							onClick={() => setIsPanelOpen((value) => !value)}
-							className="rounded-full border border-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+							className="rounded border border-studio-line px-3 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 							{isPanelOpen ? 'Collapse' : 'Show'}
 						</button>
 					</div>
-					<div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-ink-950 px-3 py-2">
-						<p className="text-sm text-silver-100">
+					<div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-studio-line bg-studio-canvas px-3 py-2">
+						<p className="text-sm text-studio-muted">
 							{uncategorisedCommentCount} comments uncategorised
 						</p>
 						<button
@@ -2391,32 +2391,32 @@ export function TeacherReviewWorkspace({
 									focusAnnotation(firstUncategorised.id)
 								}
 							}}
-							className="rounded-full border border-accent-300/40 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+							className="rounded border border-accent-300/40 bg-accent-300/10 px-3 py-1 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
 							Review categories
 						</button>
 					</div>
 					{sidePanelError ? (
-						<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{sidePanelError}
 						</p>
 					) : null}
 					{sidePanelNotice ? (
-						<p className="mb-3 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+						<p className="mb-3 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{sidePanelNotice}
 						</p>
 					) : null}
 					{!isPanelOpen ? (
-						<p className="text-sm text-silver-200">
+						<p className="text-sm text-studio-muted">
 							Annotation list hidden. Markers remain in the manuscript.
 						</p>
 					) : annotations.length === 0 ? (
-						<p className="text-sm text-silver-200">No annotations yet.</p>
+						<p className="text-sm text-studio-muted">No annotations yet.</p>
 					) : (
 						<div className="max-h-[36vh] overflow-y-auto pr-1">
 							<div className="space-y-4">
 								<section>
 									<div className="mb-2 flex items-center justify-between gap-2">
-										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+										<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 											{reviewUncategorisedOnly ? 'Uncategorised comments' : 'Comments'}
 										</p>
 										<button
@@ -2424,12 +2424,12 @@ export function TeacherReviewWorkspace({
 											onClick={() =>
 												setReviewUncategorisedOnly((value) => !value)
 											}
-											className="text-[10px] uppercase tracking-[0.1em] text-silver-300 transition hover:text-parchment-100">
+											className="text-xs uppercase tracking-[0.1em] text-studio-muted transition hover:text-studio-ink">
 											{reviewUncategorisedOnly ? 'Show all' : 'Only uncategorised'}
 										</button>
 									</div>
 									{visibleCommentAnnotations.length === 0 ? (
-										<p className="text-sm text-silver-300">No comments yet.</p>
+										<p className="text-sm text-studio-muted">No comments yet.</p>
 									) : (
 										<ul className="space-y-2">
 											{visibleCommentAnnotations.map((item) => {
@@ -2442,24 +2442,24 @@ export function TeacherReviewWorkspace({
 												return (
 													<li key={item.id}>
 														<div
-															className={`rounded-xl border px-3 py-3 transition ${
+															className={`rounded-md border px-3 py-3 transition ${
 																activeAnnotationId === item.id
 																	? annotationBorderClass(item.type)
-																	: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+																	: 'border-studio-line bg-studio-canvas text-studio-muted hover:border-studio-line'
 															}`}>
 															<button
 																type="button"
 																onClick={() => focusAnnotation(item.id)}
 																className="block w-full text-left">
 																<div className="flex flex-wrap items-center gap-2">
-																	<p className="text-[11px] uppercase tracking-[0.1em]">
+																	<p className="text-xs uppercase tracking-[0.1em]">
 																		Comment
 																	</p>
-																	<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																	<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 																		{item.label}
 																	</p>
 																</div>
-																<p className="mt-2 text-sm italic text-parchment-100/90">
+																<p className="mt-2 text-sm italic text-studio-ink/90">
 																	{formatQuote(item.anchor.quote)}
 																</p>
 																<p className="mt-2 text-sm leading-relaxed text-current">
@@ -2467,9 +2467,9 @@ export function TeacherReviewWorkspace({
 																</p>
 															</button>
 															{!isPublishedReadOnly ? (
-																<div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+																<div className="mt-3 space-y-2 border-t border-studio-line pt-3">
 																	<label className="block">
-																		<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																		<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 																			Category
 																		</span>
 																		<select
@@ -2485,7 +2485,7 @@ export function TeacherReviewWorkspace({
 																					categoryLabel: event.target.value,
 																				})
 																			}}
-																			className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100">
+																			className="w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-xs text-studio-ink">
 																			<option value="">Uncategorised</option>
 																			{fixedFeedbackCategories.map((category) => (
 																				<option key={category} value={category}>
@@ -2495,7 +2495,7 @@ export function TeacherReviewWorkspace({
 																		</select>
 																	</label>
 																	<label htmlFor={tagInputId} className="block">
-																		<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																		<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 																			Tags
 																		</span>
 																		<input
@@ -2508,7 +2508,7 @@ export function TeacherReviewWorkspace({
 																					tags: parseTagsInput(event.target.value),
 																				})
 																			}}
-																			className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100"
+																			className="w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-xs text-studio-ink"
 																			placeholder="motivation, scene work"
 																		/>
 																	</label>
@@ -2519,11 +2519,11 @@ export function TeacherReviewWorkspace({
 																			onClick={() => {
 																				void promoteCommentToSnippet(item)
 																			}}
-																			className="rounded-full border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
+																			className="rounded border border-accent-300/35 bg-accent-300/10 px-3 py-1 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18 disabled:cursor-not-allowed disabled:opacity-60">
 																			{isPromotingThis ? 'Saving...' : 'Save as snippet'}
 																		</button>
 																		{isSavingThis ? (
-																			<p className="text-[11px] text-silver-300">
+																			<p className="text-xs text-studio-muted">
 																				Saving...
 																			</p>
 																		) : null}
@@ -2535,7 +2535,7 @@ export function TeacherReviewWorkspace({
 																	{item.tags.map((tag) => (
 																		<p
 																			key={tag}
-																			className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																			className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 																			{tag}
 																		</p>
 																	))}
@@ -2550,15 +2550,15 @@ export function TeacherReviewWorkspace({
 								</section>
 								<section>
 									<div className="mb-2 flex items-center justify-between gap-2">
-										<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+										<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 											Snippets
 										</p>
-										<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+										<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 											{snippetCount}
 										</p>
 									</div>
 									{snippetAnnotations.length === 0 ? (
-										<p className="text-sm text-silver-300">No snippets yet.</p>
+										<p className="text-sm text-studio-muted">No snippets yet.</p>
 									) : (
 										<ul className="space-y-2">
 											{snippetAnnotations.map((item) => {
@@ -2568,24 +2568,24 @@ export function TeacherReviewWorkspace({
 												return (
 													<li key={item.id}>
 														<div
-															className={`rounded-xl border px-3 py-3 transition ${
+															className={`rounded-md border px-3 py-3 transition ${
 																activeAnnotationId === item.id
 																	? annotationBorderClass(item.type)
-																	: 'border-white/10 bg-ink-900/35 text-silver-100 hover:border-white/20'
+																	: 'border-studio-line bg-studio-canvas text-studio-muted hover:border-studio-line'
 															}`}>
 															<button
 																type="button"
 																onClick={() => focusAnnotation(item.id)}
 																className="block w-full text-left">
 																<div className="flex flex-wrap items-center gap-2">
-																	<p className="text-[11px] uppercase tracking-[0.1em]">
+																	<p className="text-xs uppercase tracking-[0.1em]">
 																		Snippet
 																	</p>
-																	<p className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]">
+																	<p className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-[0.1em]">
 																		{item.label}
 																	</p>
 																</div>
-																<p className="mt-2 text-sm italic text-parchment-100/90">
+																<p className="mt-2 text-sm italic text-studio-ink/90">
 																	{formatQuote(item.anchor.quote)}
 																</p>
 																<p className="mt-2 text-sm leading-relaxed text-current">
@@ -2595,8 +2595,8 @@ export function TeacherReviewWorkspace({
 																</p>
 															</button>
 															{!isPublishedReadOnly ? (
-																<label className="mt-3 block border-t border-white/10 pt-3">
-																	<span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-silver-300">
+																<label className="mt-3 block border-t border-studio-line pt-3">
+																	<span className="mb-1 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 																		Category
 																	</span>
 																	<select
@@ -2612,7 +2612,7 @@ export function TeacherReviewWorkspace({
 																				event.target.value,
 																			)
 																		}}
-																		className="w-full rounded-lg border border-white/15 bg-ink-950 px-2.5 py-2 text-xs text-parchment-100">
+																		className="w-full rounded border border-studio-line bg-studio-paper px-2.5 py-2.5 text-xs text-studio-ink">
 																		<option value="">Uncategorised</option>
 																		{fixedFeedbackCategories.map((category) => (
 																			<option key={category} value={category}>
@@ -2639,12 +2639,12 @@ export function TeacherReviewWorkspace({
 						title="Edit snippet"
 						meta="Secondary editing surface">
 						{sidePanelError ? (
-							<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+							<p className="mb-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 								{sidePanelError}
 							</p>
 						) : null}
 						<form onSubmit={saveActiveSnippet} className="space-y-3">
-							<p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-silver-100">
+							<p className="rounded-lg border border-studio-line bg-studio-tint px-3 py-2 text-sm leading-relaxed text-studio-muted">
 								{formatQuote(activeAnnotation.anchor.quote)}
 							</p>
 							<textarea
@@ -2652,11 +2652,11 @@ export function TeacherReviewWorkspace({
 								rows={4}
 								value={snippetNoteDraft}
 								onChange={(event) => setSnippetNoteDraft(event.target.value)}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 								placeholder="Optional private note for this snippet"
 							/>
 							<div>
-								<label className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
+								<label className="mb-2 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Category
 								</label>
 								<select
@@ -2665,7 +2665,7 @@ export function TeacherReviewWorkspace({
 									onChange={(event) =>
 										setSnippetCategoryIdDraft(event.target.value)
 									}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 									<option value="">Uncategorised</option>
 									{fixedSnippetCategories.map((category) => (
 										<option key={category} value={category}>
@@ -2677,14 +2677,14 @@ export function TeacherReviewWorkspace({
 							<button
 								type="submit"
 								disabled={isPanelSaving}
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+								className="studio-primary">
 								{isPanelSaving ? 'Saving...' : 'Save changes'}
 							</button>
 						</form>
 					</ProtoCard>
 				) : (
 					<ProtoCard title="Selected annotation" meta="Reading-first workflow">
-						<p className="text-sm leading-relaxed text-silver-200">
+						<p className="text-sm leading-relaxed text-studio-muted">
 							Comments are edited directly in the manuscript popup. Use this rail
 							to review the full list and refine snippets when needed.
 						</p>
@@ -2692,33 +2692,33 @@ export function TeacherReviewWorkspace({
 				)}
 			</aside>
 			{isPublishModalOpen ? (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/65 px-4 backdrop-blur-sm">
-					<div className="w-full max-w-lg rounded-3xl border border-white/12 bg-ink-950 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 backdrop-blur-sm">
+					<div className="w-full max-w-lg rounded-lg border border-studio-line bg-studio-canvas p-5 shadow-none">
 						<div className="flex items-start justify-between gap-3">
 							<div>
-								<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Final step
 								</p>
-								<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+								<h2 className="literary-title mt-2 text-2xl text-studio-ink">
 									Publish to writer
 								</h2>
 							</div>
 							<button
 								type="button"
 								onClick={() => setIsPublishModalOpen(false)}
-								className="rounded-full border border-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-3 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Close
 							</button>
 						</div>
-						<p className="mt-3 text-sm leading-relaxed text-silver-200">
+						<p className="mt-3 text-sm leading-relaxed text-studio-muted">
 							Add an optional overview note, then publish the anchored comments.
 						</p>
-						<p className="mt-2 rounded-xl border border-burgundy-300/25 bg-ink-900 px-3 py-2 text-sm text-parchment-100">
+						<p className="mt-2 rounded-md border border-burgundy-300/25 bg-studio-canvas px-3 py-2 text-sm text-studio-ink">
 							Nothing new becomes visible to the writer until you confirm publish.
 						</p>
 						<form onSubmit={publishToWriter} className="mt-4 space-y-4">
 							<label className="block">
-								<span className="mb-2 block text-xs uppercase tracking-[0.1em] text-silver-300">
+								<span className="mb-2 block text-xs uppercase tracking-[0.1em] text-studio-muted">
 									Overview note
 								</span>
 								<textarea
@@ -2727,24 +2727,24 @@ export function TeacherReviewWorkspace({
 									rows={5}
 									value={publishSummary}
 									onChange={(event) => setPublishSummary(event.target.value)}
-									className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100"
+									className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm text-studio-ink"
 									placeholder="Optional short overview for the writer"
 								/>
 							</label>
 							{publishError ? (
-								<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+								<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 									{publishError}
 								</p>
 							) : null}
 							{/* TODO: later allow importing an earlier version summary into a new publish draft. */}
 							<div className="flex items-center justify-between gap-3">
-								<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+								<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 									{commentCount} anchored comments
 								</p>
 								<button
 									type="submit"
 									disabled={isPublishing}
-									className="rounded-full border border-emerald-300/60 bg-emerald-300/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-100 transition hover:bg-emerald-300/25 disabled:cursor-not-allowed disabled:opacity-60">
+									className="rounded border border-emerald-300/60 bg-emerald-300/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-emerald-800 transition hover:bg-emerald-300/25 disabled:cursor-not-allowed disabled:opacity-60">
 									{isPublishing ? 'Publishing...' : 'Confirm publish'}
 								</button>
 							</div>

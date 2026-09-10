@@ -1,0 +1,125 @@
+{
+  "checkedAt": "2026-09-09T16:53:58.192Z",
+  "measurements": [
+    {
+      "path": "/",
+      "sample": 1,
+      "status": 200,
+      "dns": 0.040096,
+      "tls": 0.601503,
+      "ttfb": 5.73712,
+      "total": 5.767209,
+      "bytes": 18794
+    },
+    {
+      "path": "/",
+      "sample": 2,
+      "status": 200,
+      "dns": 0.003038,
+      "tls": 0.291484,
+      "ttfb": 0.683817,
+      "total": 0.700215,
+      "bytes": 18794
+    },
+    {
+      "path": "/",
+      "sample": 3,
+      "status": 200,
+      "dns": 0.002563,
+      "tls": 0.339851,
+      "ttfb": 0.649263,
+      "total": 0.668453,
+      "bytes": 18794
+    },
+    {
+      "path": "/auth/sign-in",
+      "sample": 1,
+      "status": 200,
+      "dns": 0.002583,
+      "tls": 1.299595,
+      "ttfb": 1.745034,
+      "total": 1.763628,
+      "bytes": 7899
+    },
+    {
+      "path": "/auth/sign-in",
+      "sample": 2,
+      "status": 200,
+      "dns": 0.002764,
+      "tls": 0.220627,
+      "ttfb": 0.719696,
+      "total": 0.720389,
+      "bytes": 7899
+    },
+    {
+      "path": "/auth/sign-in",
+      "sample": 3,
+      "status": 200,
+      "dns": 0.002491,
+      "tls": 0.217634,
+      "ttfb": 0.592234,
+      "total": 0.592452,
+      "bytes": 7899
+    },
+    {
+      "path": "/guide/new-writers",
+      "sample": 1,
+      "status": 200,
+      "dns": 0.002623,
+      "tls": 0.066389,
+      "ttfb": 0.387836,
+      "total": 0.416566,
+      "bytes": 25770
+    },
+    {
+      "path": "/guide/new-writers",
+      "sample": 2,
+      "status": 200,
+      "dns": 0.002519,
+      "tls": 0.062739,
+      "ttfb": 0.247601,
+      "total": 0.275588,
+      "bytes": 25770
+    },
+    {
+      "path": "/guide/new-writers",
+      "sample": 3,
+      "status": 200,
+      "dns": 0.002843,
+      "tls": 0.275688,
+      "ttfb": 0.677383,
+      "total": 0.677676,
+      "bytes": 25770
+    },
+    {
+      "path": "/app/teacher/review-desk",
+      "sample": 1,
+      "status": 307,
+      "dns": 0.002872,
+      "tls": 0.071806,
+      "ttfb": 1.514158,
+      "total": 1.514387,
+      "bytes": 2920
+    },
+    {
+      "path": "/app/teacher/review-desk",
+      "sample": 2,
+      "status": 307,
+      "dns": 0.002472,
+      "tls": 0.18075,
+      "ttfb": 0.584906,
+      "total": 0.589169,
+      "bytes": 2920
+    },
+    {
+      "path": "/app/teacher/review-desk",
+      "sample": 3,
+      "status": 307,
+      "dns": 0.002767,
+      "tls": 0.173625,
+      "ttfb": 0.524942,
+      "total": 0.525201,
+      "bytes": 2920
+    }
+  ]
+}

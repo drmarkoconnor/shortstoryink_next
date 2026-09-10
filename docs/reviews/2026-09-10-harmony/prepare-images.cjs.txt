@@ -1,0 +1,16 @@
+const fs=require('fs');
+const path=require('path');
+const sharp=require('/Users/moc/repos/all_things_coding/2026/shortstoryink_next/node_modules/sharp');
+const root='/Users/moc/repos/all_things_coding/2026/shortstoryink_next';
+const names={home:'The light shortstory.ink home page', 'sign-up':'Account creation form', 'sign-in':'Sign-in and password recovery form', 'confirm-email':'Email confirmation instructions', 'draft-filled':'A fictional draft beside its title, group and submission controls', 'submission-saved':'Submission confirmation', 'feedback-overview':'An editorial letter for a fictional piece', 'feedback-note':'A craft comment open beside its highlighted passage', 'start-revision':'Confirmation before beginning a revision', revision:'The revision workspace with source and next-version labels', 'version-history':'Version history with a link to preserved feedback', 'teacher-review':'The teacher manuscript workspace with a draft comment', 'teacher-publish':'The teacher publication confirmation and overview', handout:'The illustrated handout editor'};
+(async()=>{
+const target=path.join(root,'public/guide/new-writers/current');fs.mkdirSync(target,{recursive:true});
+const images={};let bytes=0;
+for(const [name,alt] of Object.entries(names)){
+ const input=path.join(root,'docs/reviews/2026-09-10-harmony/guide-captures',name+'.png');
+ const out=await sharp(input).webp({quality:88,effort:5}).toFile(path.join(target,name+'.webp'));
+ images[name]={src:'/guide/new-writers/current/'+name+'.webp',width:out.width,height:out.height,alt};bytes+=out.size;
+}
+fs.writeFileSync(path.join(root,'app/guide/new-writers/guide-images.ts'),'// Browser captures of current components with fictional example writing.\nexport const guideImages = '+JSON.stringify(images,null,2)+' as const\n');
+console.log(Object.keys(images).length+' screenshots; '+Math.round(bytes/1024)+' KB total');
+})().catch(e=>{console.error(e);process.exitCode=1});

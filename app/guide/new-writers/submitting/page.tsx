@@ -1,90 +1,15 @@
 import type { Metadata } from 'next'
-import {
-	CopyBlock,
-	Figure,
-	GuideHero,
-	GuideShell,
-	NextGuideLink,
-	PageGrid,
-} from '../guide-content'
-
-export const metadata: Metadata = {
-	title: 'Submitting A Draft | New Writer Guide',
-	description: 'How to submit a piece for feedback in shortstory.ink.',
-}
-
-export default function SubmittingPage() {
-	return (
-		<GuideShell activeHref="/guide/new-writers/submitting">
-			<GuideHero
-				kicker="Submitting"
-				title="Bring the draft as you want it read."
-				body="Paste or type your piece into the writing space, add a title, choose the group, and save the submission."
-				image={{
-					src: '/guide/new-writers/submit-empty.webp',
-					width: 1050,
-					height: 713,
-					alt: 'The writer submission page before a draft has been entered.',
-				}}
-			/>
-
-			<PageGrid>
-				<CopyBlock kicker="Your writing space" title="Paste, type, and check the title.">
-					<p>
-						The large pale page is where your draft goes. Formatting is
-						preserved, so you can bring the piece in as you want it read.
-					</p>
-					<p>
-						Add a title in the right-hand panel. If you belong to more than one
-						group, choose the right one before saving.
-					</p>
-				</CopyBlock>
-				<Figure
-					image={{
-						src: '/guide/new-writers/submit-draft.webp',
-						width: 1200,
-						height: 764,
-						alt: 'A filled draft on the writer submission page.',
-					}}
-					caption="The word counter helps you keep within the current submission limit."
-				/>
-				<Figure
-					image={{
-						src: '/guide/new-writers/submission-saved.webp',
-						width: 299,
-						height: 143,
-						alt: 'A confirmation message saying the submission was saved.',
-					}}
-				/>
-				<CopyBlock kicker="After saving" title="You will see confirmation.">
-					<p>
-						Once the piece is saved, it enters the review queue. You can leave
-						the page; the draft is now waiting for a teacher response.
-					</p>
-					<p>
-						Your previous submissions remain available below the writing space,
-						so you can check the status of older pieces without losing your
-						place.
-					</p>
-				</CopyBlock>
-				<CopyBlock kicker="History" title="Previous submissions stay organised.">
-					<p>
-						The previous submissions panel is a simple record of what you have
-						sent. It is there when you need it, but it does not crowd the main
-						writing page.
-					</p>
-				</CopyBlock>
-				<Figure
-					image={{
-						src: '/guide/new-writers/version-history.webp',
-						width: 760,
-						height: 148,
-						alt: 'A version history panel showing preserved feedback history.',
-					}}
-				/>
-			</PageGrid>
-
-			<NextGuideLink href="/guide/new-writers/feedback" label="Next: read feedback" />
-		</GuideShell>
-	)
-}
+import { GuideShell, GuideHero, GuideStep, NextGuideLink } from '../guide-content'
+export const metadata: Metadata = { title: "Submitting | New Writer Guide", description: "Bring one piece, add its title, and send it for a close read when you are ready." }
+export default function Page() { return <GuideShell activeHref="/guide/new-writers/submitting">
+<GuideHero kicker="Submitting" title="Give your draft room to be read." body="Bring one piece, add its title, and send it for a close read when you are ready." />
+<GuideStep number="01" title="Write, then check the details." image="draft-filled" caption="The manuscript and submission details stay beside each other on a wide screen; on a phone they stack.">
+<p>{"Choose Start writing on your writing page. Type or paste your draft into the manuscript area, then add a title and choose your group."}</p>
+<p>{"Your paragraph breaks stay with the text. The word counter helps you check the length before you submit."}</p>
+</GuideStep>
+<GuideStep number="02" title="Save the submission." image="submission-saved" caption="This confirmation appears after a successful submission. The example uses fictional writing.">
+<p>{"Choose Save submission and wait for the confirmation. Your piece is then in the review queue."}</p>
+<p>{"A recovery copy on this device is different from a submitted piece. Look for the submission confirmation before leaving; Download draft also gives you a copy to keep."}</p>
+</GuideStep>
+<NextGuideLink href="/guide/new-writers/feedback" label="Next: read feedback" />
+</GuideShell> }

@@ -16,7 +16,7 @@ export function ArchivePieceSelect({
 
 	return (
 		<div className="max-w-full space-y-2">
-			<label className="block text-[11px] uppercase tracking-[0.12em] text-silver-300">
+			<label className="block text-xs uppercase tracking-[0.12em] text-studio-muted">
 				Choose a published piece
 			</label>
 			<select
@@ -30,7 +30,7 @@ export function ArchivePieceSelect({
 					})
 				}}
 				disabled={isPending}
-				className="block w-full min-w-0 max-w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 disabled:cursor-wait disabled:opacity-80">
+				className="block w-full min-w-0 max-w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink disabled:cursor-wait disabled:opacity-80">
 				{options.map((item) => (
 					<option key={item.id} value={item.id}>
 						{item.label}
@@ -38,7 +38,7 @@ export function ArchivePieceSelect({
 				))}
 			</select>
 			{isPending ? (
-				<p className="text-xs text-silver-300">Opening selected piece...</p>
+				<p className="text-xs text-studio-muted">Opening selected piece...</p>
 			) : null}
 		</div>
 	)

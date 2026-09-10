@@ -22,16 +22,16 @@ export function StoryFolio({
 			}`}>
 			{hideHeader ? null : (
 				<header className="mb-6 border-b border-ink-900/10 pb-5">
-					<p className="text-xs uppercase tracking-[0.14em] text-ink-900/55">
+					<p className="text-xs uppercase tracking-[0.14em] text-studio-ink/55">
 						{eyebrow}
 					</p>
-					<h2 className="literary-title mt-2 text-3xl leading-tight text-ink-900">
+					<h2 className="literary-title mt-2 text-3xl leading-tight text-studio-ink">
 						{title}
 					</h2>
 				</header>
 			)}
 			<div
-				className={`max-w-[78ch] space-y-5 font-serif text-[18px] leading-8 text-ink-900/90 lg:text-[18px] lg:leading-[1.95rem] ${
+				className={`max-w-[78ch] space-y-5 font-serif text-[18px] leading-8 text-studio-ink/90 lg:text-[18px] lg:leading-[1.95rem] ${
 					paged
 						? hideHeader
 							? 'lg:min-h-[calc(100vh-22rem)] xl:min-h-[calc(100vh-23rem)]'

@@ -29,7 +29,7 @@ export function PrintAction({
 				}
 				window.print()
 			}}
-			className="rounded-full border border-ink-900/15 bg-white px-4 py-2 text-xs uppercase tracking-[0.1em] text-ink-900 transition hover:bg-parchment-50">
+			className="studio-secondary">
 			Print or save PDF
 		</button>
 	)

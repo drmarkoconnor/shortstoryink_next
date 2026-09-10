@@ -22,7 +22,7 @@ function formatDate(value: string) {
 		return 'Unknown date'
 	}
 
-	return new Date(value).toLocaleString()
+	return new Date(value).toLocaleString('en-GB', { timeZone: 'Europe/London' })
 }
 
 function versionLabel(version?: number) {
@@ -61,7 +61,7 @@ export function SubmissionHistorySelect({
 		<section className="surface p-4 lg:p-5">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<h2 className="literary-title text-2xl text-parchment-100">
+					<h2 className="literary-title text-2xl text-studio-ink">
 						Previous submissions
 					</h2>
 					<p className="muted mt-2 max-w-[48rem] text-sm leading-relaxed">
@@ -69,13 +69,13 @@ export function SubmissionHistorySelect({
 						feedback without turning the page into a long filing cabinet.
 					</p>
 				</div>
-				<p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-silver-200">
+				<p className="rounded border border-studio-line bg-studio-tint px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 					{submissions.length} total
 				</p>
 			</div>
 
 			{submissionsError ? (
-				<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					{submissionsError}
 				</p>
 			) : submissions.length === 0 ? (
@@ -83,7 +83,7 @@ export function SubmissionHistorySelect({
 			) : (
 				<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
 					<label className="block">
-						<span className="mb-1.5 block text-sm text-silver-100">
+						<span className="mb-1.5 block text-sm text-studio-muted">
 							Select a submission
 						</span>
 						<select
@@ -94,7 +94,7 @@ export function SubmissionHistorySelect({
 									scrollToSelectedSubmission()
 								}
 							}}
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink outline-none ring-accent-400 transition focus:ring">
 							<option value="">Choose from your submitted pieces</option>
 							{submissions.map((submission) => (
 								<option key={submission.id} value={submission.id}>
@@ -108,23 +108,23 @@ export function SubmissionHistorySelect({
 					{selectedSubmission ? (
 						<div
 							ref={selectedSubmissionRef}
-							className="rounded-2xl border border-white/10 bg-ink-900/45 p-4 text-sm text-silver-100 lg:min-w-[19rem]">
+							className="rounded-md border border-studio-line bg-studio-canvas p-4 text-sm text-studio-muted lg:min-w-[19rem]">
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div>
-									<p className="font-medium text-parchment-100">
+									<p className="font-medium text-studio-ink">
 										{versionLabel(selectedSubmission.version)} -{' '}
 										{selectedSubmission.title}
 									</p>
-									<p className="mt-1 text-xs uppercase tracking-[0.1em] text-accent-300">
+									<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-accent">
 										{statusLabel(selectedSubmission.status)}
 									</p>
 								</div>
-								<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-silver-100">
+								<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1 text-xs text-studio-muted">
 									{selectedSubmission.commentCount ?? 0} comments
 								</p>
 							</div>
 
-							<p className="mt-3 text-xs leading-relaxed text-silver-200">
+							<p className="mt-3 text-xs leading-relaxed text-studio-muted">
 								{selectedSubmission.workshopTitle ?? 'Default group queue'}
 								{' · '}
 								{formatDate(selectedSubmission.createdAt)}
@@ -137,7 +137,7 @@ export function SubmissionHistorySelect({
 								{selectedSubmission.status === 'feedback_published' ? (
 									<Link
 										href={`/app/writer/feedback/${selectedSubmission.id}`}
-										className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+										className="studio-primary">
 										Go to feedback
 									</Link>
 								) : null}
@@ -150,14 +150,14 @@ export function SubmissionHistorySelect({
 										/>
 										<button
 											type="submit"
-											className="rounded-full border border-rose-300/50 bg-rose-300/10 px-4 py-2 text-xs uppercase tracking-[0.1em] text-rose-100 transition hover:bg-rose-300/20">
+											className="rounded border border-rose-300/50 bg-rose-300/10 px-4 py-2 text-xs uppercase tracking-[0.1em] text-rose-800 transition hover:bg-rose-300/20">
 											Delete draft
 										</button>
 									</form>
 								) : null}
 								{selectedSubmission.status !== 'feedback_published' &&
 								selectedSubmission.status !== 'submitted' ? (
-									<p className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200">
+									<p className="rounded border border-studio-line bg-studio-tint px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-muted">
 										Feedback not published yet
 									</p>
 								) : null}

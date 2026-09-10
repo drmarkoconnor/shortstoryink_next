@@ -1,0 +1,102 @@
+{
+  "report": [
+    {
+      "page": "overview",
+      "size": "desktop",
+      "images": 1,
+      "overflow": false
+    },
+    {
+      "page": "getting-started",
+      "size": "desktop",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "page": "submitting",
+      "size": "desktop",
+      "images": 2,
+      "overflow": false
+    },
+    {
+      "page": "feedback",
+      "size": "desktop",
+      "images": 2,
+      "overflow": false
+    },
+    {
+      "page": "revising",
+      "size": "desktop",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "page": "how-feedback-works",
+      "size": "desktop",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "page": "overview",
+      "size": "mobile",
+      "images": 1,
+      "overflow": false
+    },
+    {
+      "page": "getting-started",
+      "size": "mobile",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "page": "submitting",
+      "size": "mobile",
+      "images": 2,
+      "overflow": false
+    },
+    {
+      "page": "feedback",
+      "size": "mobile",
+      "images": 2,
+      "overflow": false
+    },
+    {
+      "page": "revising",
+      "size": "mobile",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "page": "how-feedback-works",
+      "size": "mobile",
+      "images": 3,
+      "overflow": false
+    },
+    {
+      "component": "writer",
+      "size": "mobile",
+      "overflow": false
+    },
+    {
+      "component": "feedback",
+      "size": "mobile",
+      "overflow": false
+    },
+    {
+      "component": "revision",
+      "size": "mobile",
+      "overflow": false
+    },
+    {
+      "component": "review",
+      "size": "mobile",
+      "overflow": false
+    },
+    {
+      "component": "builder",
+      "size": "mobile",
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

@@ -106,12 +106,12 @@ function itemTypeLabel(type: TeachingLibraryEntry['itemType']) {
 
 function itemTypeClassName(type: TeachingLibraryEntry['itemType']) {
 	if (type === 'note') {
-		return 'border-sky-200/25 bg-sky-200/10 text-sky-100'
+		return 'border-sky-200/25 bg-sky-200/10 text-sky-800'
 	}
 	if (type === 'reference') {
-		return 'border-amber-200/25 bg-amber-200/10 text-amber-100'
+		return 'border-amber-200/25 bg-amber-200/10 text-amber-800'
 	}
-	return 'border-accent-300/35 bg-accent-300/10 text-accent-100'
+	return 'border-accent-300/35 bg-accent-300/10 text-studio-accent'
 }
 
 function formatShortDate(value: string) {
@@ -481,19 +481,19 @@ export function TeachingLibrary({
 
 	return (
 		<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-			<section className="surface p-4">
+			<section className="surface p-5 sm:p-6">
 				<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_180px_auto]">
 					<input
 						type="search"
 						value={searchQuery}
 						onChange={(event) => setSearchQuery(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 						placeholder="Search reusable material"
 					/>
 					<select
 						value={typeFilter}
 						onChange={(event) => setTypeFilter(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 						<option value="">All types</option>
 						<option value="note">Notes</option>
 						<option value="example">Examples</option>
@@ -502,7 +502,7 @@ export function TeachingLibrary({
 					<select
 						value={categoryFilter}
 						onChange={(event) => setCategoryFilter(event.target.value)}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 						<option value="">All categories</option>
 						{categories.map((category) => (
 							<option key={category} value={category}>
@@ -512,13 +512,13 @@ export function TeachingLibrary({
 					</select>
 					<Link
 						href="/app/teacher/documents"
-						className="inline-flex items-center justify-center rounded-xl border border-accent-300/50 bg-accent-300/10 px-3 py-2 text-center text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-300/20">
+						className="inline-flex items-center justify-center rounded-md border border-accent-300/50 bg-accent-300/10 px-3 py-2 text-center text-xs uppercase tracking-[0.1em] text-studio-ink transition hover:bg-accent-300/20">
 						Open builder
 					</Link>
 				</div>
 
-				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-					<p className="text-sm text-silver-300">
+				<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-studio-line pb-3">
+					<p className="text-sm text-studio-muted">
 						{filteredEntries.length} shown from{' '}
 						<span
 							title={libraryLimitTitle({
@@ -527,7 +527,7 @@ export function TeachingLibrary({
 							})}
 							className={
 								isNearLibraryLoadLimit
-									? 'text-amber-100 underline decoration-amber-200/50 decoration-dotted underline-offset-4'
+									? 'text-amber-800 underline decoration-amber-200/50 decoration-dotted underline-offset-4'
 									: 'underline decoration-white/20 decoration-dotted underline-offset-4'
 							}>
 							{entries.length}
@@ -535,7 +535,7 @@ export function TeachingLibrary({
 						curated items
 						{isNearLibraryLoadLimit ? ' Pagination soon.' : ''}
 					</p>
-					<div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.1em] text-silver-300">
+					<div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.1em] text-studio-muted">
 						<span>{counts.note} notes</span>
 						<span>{counts.example} examples</span>
 						<span>{counts.reference} references</span>
@@ -543,13 +543,13 @@ export function TeachingLibrary({
 				</div>
 
 				{persistenceNotice ? (
-					<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 						{persistenceNotice}
 					</p>
 				) : null}
 
 				{filteredEntries.length === 0 ? (
-					<p className="mt-5 text-sm text-silver-300">No library items found.</p>
+					<p className="mt-5 text-sm text-studio-muted">No library items found.</p>
 				) : (
 					<div className="mt-4 overflow-x-auto">
 						<table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
@@ -563,7 +563,7 @@ export function TeachingLibrary({
 								<col className="w-[142px]" />
 							</colgroup>
 							<thead>
-								<tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-silver-400">
+								<tr className="border-b border-studio-line text-xs uppercase tracking-[0.1em] text-studio-muted">
 									<th className="px-2 py-2 font-medium">Type</th>
 									<th className="px-2 py-2 font-medium">Material</th>
 									<th className="px-2 py-2 font-medium">Category</th>
@@ -587,15 +587,15 @@ export function TeachingLibrary({
 												className={`transition ${
 													isActive
 														? 'bg-accent-300/10'
-														: 'hover:bg-white/[0.035]'
+														: 'hover:bg-studio-tint'
 												}`}>
 												<td className="align-top px-2 py-3">
 													<span
-														className={`inline-flex rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.1em] ${itemTypeClassName(entry.itemType)}`}>
+														className={`inline-flex rounded border px-2 py-1 text-xs uppercase tracking-[0.1em] ${itemTypeClassName(entry.itemType)}`}>
 														{itemTypeLabel(entry.itemType)}
 													</span>
 													{entry.referenceType ? (
-														<p className="mt-1 text-[11px] uppercase tracking-[0.1em] text-silver-400">
+														<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-muted">
 															{entry.referenceType}
 														</p>
 													) : null}
@@ -618,16 +618,16 @@ export function TeachingLibrary({
 														onFocus={(event) => showFocusPreview(entry, event)}
 														onBlur={() => setHoverPreview(null)}
 														className="block w-full text-left">
-														<span className="block truncate font-semibold text-parchment-100">
+														<span className="block truncate font-semibold text-studio-ink">
 															{entry.title}
 														</span>
-														<span className="mt-1 block text-xs leading-relaxed text-silver-300">
+														<span className="mt-1 block text-xs leading-relaxed text-studio-muted">
 															{compactPreview(entry.body, 110)}
 														</span>
 													</button>
 												</td>
 												<td className="align-top px-2 py-3">
-													<span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-silver-200">
+													<span className="rounded border border-studio-line px-2 py-0.5 text-xs text-studio-muted">
 														{entry.categoryLabel}
 													</span>
 												</td>
@@ -637,27 +637,27 @@ export function TeachingLibrary({
 															{visibleTags.map((tag) => (
 																<span
 																	key={tag}
-																	className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-silver-300">
+																	className="rounded border border-studio-line px-2 py-0.5 text-xs text-studio-muted">
 																	{tag}
 																</span>
 															))}
 															{entry.tags.length > visibleTags.length ? (
-																<span className="text-[11px] text-silver-500">
+																<span className="text-xs text-studio-muted">
 																	+{entry.tags.length - visibleTags.length}
 																</span>
 															) : null}
 														</div>
 													) : (
-														<span className="text-silver-500">-</span>
+														<span className="text-studio-muted">-</span>
 													)}
 												</td>
-												<td className="align-top px-2 py-3 text-xs leading-relaxed text-silver-300">
+												<td className="align-top px-2 py-3 text-xs leading-relaxed text-studio-muted">
 													{entry.url ? (
 														<a
 															href={entry.url}
 															target="_blank"
 															rel="noreferrer"
-															className="line-clamp-2 underline decoration-white/20 underline-offset-4 hover:text-parchment-100">
+															className="line-clamp-2 underline decoration-white/20 underline-offset-4 hover:text-studio-ink">
 															{entry.sourceLabel || entry.url}
 														</a>
 													) : (
@@ -666,7 +666,7 @@ export function TeachingLibrary({
 														</span>
 													)}
 												</td>
-												<td className="align-top px-2 py-3 text-xs text-silver-400">
+												<td className="align-top px-2 py-3 text-xs text-studio-muted">
 													{formatShortDate(entry.updatedAt)}
 												</td>
 												<td className="align-top px-2 py-3">
@@ -676,39 +676,39 @@ export function TeachingLibrary({
 															onClick={() => {
 																void copyEntry(entry)
 															}}
-															className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 															{copiedEntryKey === key ? 'Copied' : 'Copy'}
 														</button>
 														<button
 															type="button"
 															onClick={() => editEntry(entry)}
-															className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+															className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 															Edit
 														</button>
 													</div>
 												</td>
 											</tr>
 											{isExpanded ? (
-												<tr key={`${key}:expanded`} className="bg-ink-950/70">
+												<tr key={`${key}:expanded`} className="bg-black/25">
 													<td colSpan={7} className="px-3 py-3">
-														<div className="rounded-xl border border-white/10 bg-ink-900/70 p-4">
+														<div className="rounded-md border border-studio-line bg-studio-canvas p-4">
 															<div className="flex flex-wrap items-start justify-between gap-3">
 																<div>
-																	<p className="text-[10px] uppercase tracking-[0.1em] text-silver-400">
+																	<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 																		Full preview
 																	</p>
-																	<h3 className="mt-1 font-semibold text-parchment-100">
+																	<h3 className="mt-1 font-semibold text-studio-ink">
 																		{entry.title}
 																	</h3>
 																</div>
 																<button
 																	type="button"
 																	onClick={() => setExpandedEntryKey(null)}
-																	className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+																	className="rounded border border-studio-line px-2.5 py-1 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 																	Close
 																</button>
 															</div>
-															<p className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-silver-200">
+															<p className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-studio-muted">
 																{entry.body}
 															</p>
 														</div>
@@ -727,17 +727,17 @@ export function TeachingLibrary({
 			<aside ref={editorRef} className="surface p-4 xl:sticky xl:top-24">
 				<div className="flex items-start justify-between gap-3">
 					<div>
-						<p className="text-[11px] uppercase tracking-[0.1em] text-silver-300">
+						<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 							{draft.id
 								? draft.itemType === 'example'
 									? 'Edit example'
 									: 'Edit item'
 								: 'Create item'}
 						</p>
-						<h2 className="literary-title mt-1 text-2xl text-parchment-100">
+						<h2 className="literary-title mt-1 text-2xl text-studio-ink">
 							Library
 						</h2>
-						<p className="mt-1 text-xs leading-relaxed text-silver-400">
+						<p className="mt-1 text-xs leading-relaxed text-studio-muted">
 							Notes and references live here. Examples are curated snippets.
 						</p>
 					</div>
@@ -745,7 +745,7 @@ export function TeachingLibrary({
 						<button
 							type="button"
 							onClick={resetDraft}
-							className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+							className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 							New
 						</button>
 					) : null}
@@ -756,10 +756,10 @@ export function TeachingLibrary({
 						type="button"
 						onClick={() => createDraft('note')}
 						disabled={draft.itemType === 'example'}
-						className={`rounded-xl border px-3 py-2 text-sm transition ${
+						className={`rounded-md border px-3 py-2 text-sm transition ${
 							draft.itemType === 'note'
-								? 'border-accent-300/50 bg-accent-300/15 text-parchment-100'
-								: 'border-white/10 text-silver-200 hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50'
+								? 'border-accent-300/50 bg-accent-300/15 text-studio-ink'
+								: 'border-studio-line text-studio-muted hover:border-studio-line disabled:cursor-not-allowed disabled:opacity-50'
 						}`}>
 						Note
 					</button>
@@ -767,17 +767,17 @@ export function TeachingLibrary({
 						type="button"
 						onClick={() => createDraft('reference')}
 						disabled={draft.itemType === 'example'}
-						className={`rounded-xl border px-3 py-2 text-sm transition ${
+						className={`rounded-md border px-3 py-2 text-sm transition ${
 							draft.itemType === 'reference'
-								? 'border-accent-300/50 bg-accent-300/15 text-parchment-100'
-								: 'border-white/10 text-silver-200 hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50'
+								? 'border-accent-300/50 bg-accent-300/15 text-studio-ink'
+								: 'border-studio-line text-studio-muted hover:border-studio-line disabled:cursor-not-allowed disabled:opacity-50'
 						}`}>
 						Reference
 					</button>
 				</div>
 
 				{draft.itemType === 'example' ? (
-					<p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-200">
+					<p className="mt-3 rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-muted">
 						Editing a curated snippet example. Snippet triage still lives in
 						the Snippets workbench.
 					</p>
@@ -790,7 +790,7 @@ export function TeachingLibrary({
 						onChange={(event) =>
 							setDraft((current) => ({ ...current, title: event.target.value }))
 						}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 						placeholder={
 							draft.itemType === 'example'
 								? 'Teacher note optional'
@@ -809,7 +809,7 @@ export function TeachingLibrary({
 											.value as TeachingLibraryReferenceType,
 									}))
 								}
-								className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 								{teachingLibraryReferenceTypes.map((type) => (
 									<option key={type} value={type}>
 										{type}
@@ -822,7 +822,7 @@ export function TeachingLibrary({
 								onChange={(event) =>
 									setDraft((current) => ({ ...current, url: event.target.value }))
 								}
-								className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 								placeholder="URL optional"
 							/>
 						</div>
@@ -834,7 +834,7 @@ export function TeachingLibrary({
 							setDraft((current) => ({ ...current, body: event.target.value }))
 						}
 						rows={draft.itemType === 'note' ? 7 : 4}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm leading-6 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-sm leading-6 text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 						placeholder={
 							draft.itemType === 'note'
 								? 'Reusable teaching explanation'
@@ -852,7 +852,7 @@ export function TeachingLibrary({
 								categoryLabel: normalizeSnippetCategoryLabel(event.target.value),
 							}))
 						}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100">
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 						<option value="Uncategorised">Uncategorised</option>
 						{fixedSnippetCategories.map((category) => (
 							<option key={category} value={category}>
@@ -870,17 +870,17 @@ export function TeachingLibrary({
 								tagsText: event.target.value,
 							}))
 						}
-						className="w-full rounded-xl border border-white/15 bg-ink-950 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+						className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 						placeholder="Tags, comma separated"
 					/>
 
 					{notice ? (
-						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{notice}
 						</p>
 					) : null}
 					{error ? (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{error}
 						</p>
 					) : null}
@@ -891,7 +891,7 @@ export function TeachingLibrary({
 								type="button"
 								onClick={deleteDraft}
 								disabled={isSaving}
-								className="rounded-full border border-rose-300/35 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-rose-100 transition hover:border-rose-200/55 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40">
+								className="rounded border border-rose-300/35 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-rose-800 transition hover:border-rose-200/55 hover:bg-rose-300/10 disabled:cursor-not-allowed disabled:opacity-40">
 								Delete
 							</button>
 						) : (
@@ -901,7 +901,7 @@ export function TeachingLibrary({
 							type="button"
 							onClick={saveDraft}
 							disabled={isSaving}
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-1.5 text-[11px] uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+							className="studio-primary">
 							{isSaving ? 'Saving...' : draft.id ? 'Save' : 'Create'}
 						</button>
 					</div>
@@ -910,21 +910,21 @@ export function TeachingLibrary({
 
 			{hoverPreview ? (
 				<div
-					className="pointer-events-none fixed z-50 hidden max-h-64 w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-xl border border-white/15 bg-ink-950/95 p-4 shadow-2xl shadow-black/40 backdrop-blur md:block"
+					className="pointer-events-none fixed z-50 hidden max-h-64 w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-md border border-studio-line bg-studio-canvas p-4 shadow-none shadow-black/40 backdrop-blur md:block"
 					style={{ left: hoverPreview.x, top: hoverPreview.y }}>
 					<div className="flex items-center gap-2">
 						<span
-							className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${itemTypeClassName(hoverPreview.entry.itemType)}`}>
+							className={`rounded border px-2 py-0.5 text-xs uppercase tracking-[0.1em] ${itemTypeClassName(hoverPreview.entry.itemType)}`}>
 							{itemTypeLabel(hoverPreview.entry.itemType)}
 						</span>
-						<span className="truncate text-xs text-silver-400">
+						<span className="truncate text-xs text-studio-muted">
 							{hoverPreview.entry.categoryLabel}
 						</span>
 					</div>
-					<h3 className="mt-2 font-semibold text-parchment-100">
+					<h3 className="mt-2 font-semibold text-studio-ink">
 						{hoverPreview.entry.title}
 					</h3>
-					<p className="mt-2 max-h-40 overflow-hidden whitespace-pre-wrap text-sm leading-6 text-silver-200">
+					<p className="mt-2 max-h-40 overflow-hidden whitespace-pre-wrap text-sm leading-6 text-studio-muted">
 						{hoverPreview.entry.body}
 					</p>
 				</div>

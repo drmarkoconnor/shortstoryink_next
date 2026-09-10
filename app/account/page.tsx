@@ -24,9 +24,9 @@ export default async function AccountPage() {
 		revalidatePath('/account')
 		return { saved: true }
 	}
-	return <div className="surface mx-auto max-w-2xl space-y-8 p-6 lg:p-8">
-		<h1 className="literary-title text-3xl text-parchment-100">Your account</h1>
-		{error ? <p role="alert" className="text-sm text-amber-100">Your profile could not be loaded. Please reload to try again.</p> : <ProfileSection displayName={data?.display_name ?? ''} email={user.email ?? ''} saveAction={saveProfile} />}
-		<div className="border-t border-white/15 pt-8"><SecuritySection /></div>
+	return <div className="mx-auto max-w-2xl space-y-10">
+		<h1 className="studio-heading">Your account</h1>
+		{error ? <p role="alert" className="text-sm text-amber-800">Your profile could not be loaded. Please reload to try again.</p> : <ProfileSection displayName={data?.display_name ?? ''} email={user.email ?? ''} saveAction={saveProfile} />}
+		<div className="border-t border-studio-line pt-8"><SecuritySection /></div>
 	</div>
 }

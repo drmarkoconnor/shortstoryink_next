@@ -657,35 +657,35 @@ export default async function WorkshopSubmissionPage({
 				errorNotice={errorNotice}
 				initialActiveAnnotationId={toMessage(query.focus)}
 				sidebarHeader={
-					<div className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+					<div className="rounded-md border border-studio-line bg-studio-canvas p-4">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Review detail
 						</p>
-						<h1 className="literary-title mt-2 text-2xl text-parchment-100">
+						<h1 className="literary-title mt-2 text-2xl text-studio-ink">
 							{submissionTitle}
 						</h1>
-						<div className="mt-3 flex flex-wrap gap-2 text-[11px] text-silver-200">
-							<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+						<div className="mt-3 flex flex-wrap gap-2 text-xs text-studio-muted">
+							<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 								{writerName}
 							</p>
-							<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+							<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 								v{currentVersion}
 							</p>
-							<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+							<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 								{reviewStatusLabel(submissionStatus)}
 							</p>
-							<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+							<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 								{submissionSource}
 							</p>
 						</div>
-						<p className="mt-3 text-xs leading-relaxed text-silver-300">
-							{new Date(createdAt).toLocaleString()}
+						<p className="mt-3 text-xs leading-relaxed text-studio-muted">
+							{new Date(createdAt).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
 						<p
-							className={`mt-3 rounded-xl border px-3 py-2 text-sm leading-relaxed ${
+							className={`mt-3 rounded-md border px-3 py-2 text-sm leading-relaxed ${
 								submissionStatus === 'feedback_published'
-									? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100'
-									: 'border-burgundy-300/20 bg-burgundy-500/10 text-burgundy-100'
+									? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-800'
+									: 'border-burgundy-300/20 bg-studio-soft text-studio-accent'
 							}`}>
 							{submissionStatus === 'feedback_published'
 								? 'Feedback has been published for this version. It is now read-only. Use this view for reference; further feedback should happen on a new submission or revised version.'
@@ -694,37 +694,37 @@ export default async function WorkshopSubmissionPage({
 						<div className="mt-4 flex flex-wrap gap-2">
 							<Link
 								href="/app/teacher/review-desk"
-								className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Back to queue
 							</Link>
 							{submissionStatus === 'feedback_published' ? (
 								<Link
 									href={`/app/workshop/${submissionId}/export`}
-									className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Feedback document
 								</Link>
 							) : (
-								<p className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-silver-300">
+								<p className="rounded border border-studio-line px-3 py-1.5 text-xs text-studio-muted">
 									Feedback must be published before export is available.
 								</p>
 							)}
 						</div>
 						{latestVersionEntry && latestVersionEntry.id !== submissionId ? (
-							<div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
+							<div className="mt-4 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-800">
 								A newer revision exists in this chain.
 								<Link
 									href={`/app/workshop/${latestVersionEntry.id}`}
-									className="ml-1 text-amber-50 underline underline-offset-2">
+									className="ml-1 text-amber-800 underline underline-offset-2">
 									Open latest version
 								</Link>
 							</div>
 						) : null}
 						{schemaMode === 'modern' && versionHistory.length > 1 ? (
-							<div className="mt-4 border-t border-white/10 pt-4">
-								<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+							<div className="mt-4 border-t border-studio-line pt-4">
+								<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 									Version history
 								</p>
-								<p className="mt-1 text-xs leading-relaxed text-silver-300">
+								<p className="mt-1 text-xs leading-relaxed text-studio-muted">
 									Open earlier drafts in the same reading workspace.
 								</p>
 								<ul className="mt-3 flex flex-wrap gap-2">
@@ -732,10 +732,10 @@ export default async function WorkshopSubmissionPage({
 										<li key={item.id}>
 											<Link
 												href={`/app/workshop/${item.id}`}
-												className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.09em] transition ${
+												className={`inline-flex rounded border px-2.5 py-1 text-xs uppercase tracking-[0.09em] transition ${
 													item.id === submissionId
-														? 'border-accent-300/50 bg-accent-300/10 text-accent-100'
-														: 'border-white/10 bg-white/5 text-silver-300 hover:border-white/20 hover:text-parchment-100'
+														? 'border-accent-300/50 bg-accent-300/10 text-studio-accent'
+														: 'border-studio-line bg-studio-tint text-studio-muted hover:border-studio-line hover:text-studio-ink'
 												}`}>
 												V{item.version} {' · '}
 												{reviewStatusLabel(item.status)}

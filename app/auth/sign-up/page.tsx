@@ -1,9 +1,10 @@
+import { AuthFrame } from '@/components/layout/auth-frame'
 import { SignUpPanel } from '@/components/auth/sign-up-panel'
 
 export default function SignUpPage() {
 	return (
-		<main className="mx-auto flex min-h-screen w-full max-w-lg items-center px-6 py-16">
+		<AuthFrame>
 			<SignUpPanel />
-		</main>
+		</AuthFrame>
 	)
 }

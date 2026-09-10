@@ -12,5 +12,5 @@ export function SignOutForm({ ownerId }: { ownerId: string }) {
 			for (const name of ['nf_jwt', 'nf_refresh']) document.cookie = `${name}=; path=/; secure; samesite=lax; max-age=0`
 			window.location.assign('/auth/sign-in')
 		}
-	}}><button disabled={pending} type="submit" className="rounded-full border border-white/25 px-3 py-1.5 text-xs uppercase tracking-[0.11em] text-silver-100 transition hover:border-white/35 hover:bg-white/5 hover:text-parchment-100">{pending ? 'Logging out…' : 'Log out'}</button></form>
+	}}><button disabled={pending} type="submit" className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:bg-studio-tint hover:text-studio-ink">{pending ? 'Logging out…' : 'Log out'}</button></form>
 }

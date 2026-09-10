@@ -10,7 +10,7 @@ export function CarouselRail({
 }) {
 	return (
 		<section className="space-y-3">
-			<h3 className="text-sm uppercase tracking-[0.12em] text-silver-300">
+			<h3 className="text-sm uppercase tracking-[0.12em] text-studio-muted">
 				{title}
 			</h3>
 			<div className="flex gap-3 overflow-x-auto pb-2">

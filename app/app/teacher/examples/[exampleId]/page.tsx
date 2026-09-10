@@ -265,20 +265,20 @@ export default async function TeacherExampleDetailPage({
 			<div className="surface p-5 lg:p-6">
 				<div className="flex flex-wrap items-start justify-between gap-4">
 					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Annotated example
 						</p>
-						<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+						<h1 className="literary-title mt-2 text-3xl text-studio-ink">
 							{example.title}
 						</h1>
-						<p className="mt-2 text-sm text-silver-200">
+						<p className="mt-2 text-sm text-studio-muted">
 							{example.author_name || 'Unknown author'} {' · '}
 							{example.status ?? 'draft'} {' · '} {annotations.length} notes
 						</p>
 					</div>
 					<Link
 						href="/app/teacher/examples"
-						className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:text-parchment-100">
+						className="rounded border border-studio-line px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Back to examples
 					</Link>
 				</div>
@@ -287,37 +287,37 @@ export default async function TeacherExampleDetailPage({
 			<div className="grid gap-5 lg:grid-cols-2">
 				<form action={updateExampleMetadataAction} className="surface p-5">
 					<input type="hidden" name="exampleId" value={example.id} />
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Reader framing
 					</p>
 					<div className="mt-4 grid gap-3 md:grid-cols-2">
 						<label className="block md:col-span-2">
-							<span className="mb-1.5 block text-sm text-silver-100">Title</span>
+							<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 							<input
 								name="title"
 								defaultValue={example.title}
 								required
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Author
 							</span>
 							<input
 								name="authorName"
 								defaultValue={example.author_name ?? ''}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Copyright
 							</span>
 							<select
 								name="copyrightStatus"
 								defaultValue={example.copyright_status ?? 'teacher-owned'}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink">
 								<option value="teacher-owned">Teacher-owned</option>
 								<option value="public-domain">Public domain</option>
 								<option value="licensed">Licensed</option>
@@ -325,59 +325,59 @@ export default async function TeacherExampleDetailPage({
 							</select>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Source label
 							</span>
 							<input
 								name="sourceLabel"
 								defaultValue={example.source_label ?? ''}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Source URL
 							</span>
 							<input
 								name="sourceUrl"
 								defaultValue={example.source_url ?? ''}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block md:col-span-2">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Editorial introduction
 							</span>
 							<textarea
 								name="editorialNote"
 								rows={4}
 								defaultValue={example.editorial_note ?? ''}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-studio-ink"
 							/>
 						</label>
 						<label className="block md:col-span-2">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Content note
 							</span>
 							<textarea
 								name="contentNote"
 								rows={3}
 								defaultValue={example.content_note ?? ''}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 text-studio-ink"
 							/>
 						</label>
 						<label className="block md:col-span-2">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Craft tags
 							</span>
 							<input
 								name="craftTags"
 								defaultValue={(example.craft_tags ?? []).join(', ')}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink"
 							/>
 						</label>
 						<label className="block md:col-span-2">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Story text
 							</span>
 							<textarea
@@ -386,9 +386,9 @@ export default async function TeacherExampleDetailPage({
 								required={example.status !== 'published'}
 								disabled={example.status === 'published'}
 								defaultValue={example.body}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 font-serif text-[16px] leading-7 text-parchment-100 disabled:cursor-not-allowed disabled:opacity-55"
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2 font-serif text-[16px] leading-7 text-studio-ink disabled:cursor-not-allowed disabled:opacity-55"
 							/>
-							<p className="mt-1.5 text-xs leading-5 text-silver-300">
+							<p className="mt-1.5 text-xs leading-5 text-studio-muted">
 								{example.status === 'published'
 									? 'Published examples keep their story text locked so reader anchors remain stable.'
 									: 'Edit story text before publishing. Changing paragraph text may move or invalidate existing annotation anchors.'}
@@ -397,31 +397,31 @@ export default async function TeacherExampleDetailPage({
 					</div>
 					<button
 						type="submit"
-						className="mt-4 rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+						className="studio-primary mt-4">
 						Save details
 					</button>
 				</form>
 
 				<form action={updateExampleVisibilityAction} className="surface p-5">
 					<input type="hidden" name="exampleId" value={example.id} />
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Group visibility
 					</p>
-					<p className="mt-3 text-sm leading-relaxed text-silver-200">
+					<p className="mt-3 text-sm leading-relaxed text-studio-muted">
 						Examples are available to all groups by default. Untick a group to
 						hide this example from writers in that group.
 					</p>
 					<div className="mt-4 grid gap-2">
 						{groups.length === 0 ? (
-							<p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-silver-200">
+							<p className="rounded-md border border-studio-line bg-studio-tint px-3 py-2 text-sm text-studio-muted">
 								No groups found.
 							</p>
 						) : null}
 						{groups.map((group) => (
 							<label
 								key={group.id}
-								className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-								<span className="text-sm text-silver-100">{group.title}</span>
+								className="flex items-center justify-between gap-3 rounded-md border border-studio-line bg-studio-tint px-3 py-2">
+								<span className="text-sm text-studio-muted">{group.title}</span>
 								<input
 									type="checkbox"
 									name="visibleGroupIds"
@@ -434,7 +434,7 @@ export default async function TeacherExampleDetailPage({
 					</div>
 					<button
 						type="submit"
-						className="mt-4 rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+						className="studio-primary mt-4">
 						Save visibility
 					</button>
 				</form>

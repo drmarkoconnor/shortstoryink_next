@@ -213,14 +213,14 @@ export default async function WriterDocumentsPage() {
 	}
 
 	return (
-		<section className="space-y-5">
-			<div className="surface p-5 lg:p-6">
-				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+		<section className="space-y-8">
+			<div className="studio-page-header">
+				<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 					Teaching materials
 				</p>
 				<div className="mt-2 flex flex-wrap items-end justify-between gap-3">
 					<div>
-						<h1 className="literary-title text-3xl text-parchment-100">
+						<h1 className="studio-heading mt-3">
 							Your reading shelf
 						</h1>
 						<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -229,21 +229,21 @@ export default async function WriterDocumentsPage() {
 					</div>
 					<Link
 						href="/app/writer"
-						className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:text-parchment-100">
+						className="rounded border border-studio-line px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Write a piece
 					</Link>
 				</div>
 			</div>
 
 			{loadError ? (
-				<div className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+				<div className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-800">
 					{loadError}
 				</div>
 			) : null}
 
 			{!loadError && documents.length === 0 ? (
 				<div className="surface p-5 lg:p-6">
-					<h2 className="literary-title text-2xl text-parchment-100">
+					<h2 className="literary-title text-2xl text-studio-ink">
 						No materials yet
 					</h2>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -258,19 +258,19 @@ export default async function WriterDocumentsPage() {
 					{documents.map((document) => (
 						<article
 							key={document.id}
-							className="rounded-2xl border border-white/12 bg-white/[0.04] p-5 shadow-[0_12px_30px_rgba(0,0,0,0.16)]">
+							className="rounded-md border border-studio-line bg-studio-tint p-5 shadow-none">
 							<div className="flex flex-wrap items-center justify-between gap-2">
-								<p className="text-xs uppercase tracking-[0.12em] text-accent-200">
+								<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 									{document.documentType}
 								</p>
-								<p className="text-xs text-silver-300">
+								<p className="text-xs text-studio-muted">
 									{formatUpdatedDate(document.updatedAt)}
 								</p>
 							</div>
-							<h2 className="literary-title mt-3 line-clamp-2 text-2xl text-parchment-100">
+							<h2 className="literary-title mt-3 line-clamp-2 text-2xl text-studio-ink">
 								{document.title}
 							</h2>
-							<div className="mt-3 min-h-[4.5rem] space-y-1 text-sm leading-6 text-silver-100">
+							<div className="mt-3 min-h-[4.5rem] space-y-1 text-sm leading-6 text-studio-muted">
 								{document.previewLines.length > 0 ? (
 									document.previewLines.map((line, index) => (
 										<p key={`${document.id}-${index}`} className="line-clamp-1">
@@ -278,18 +278,18 @@ export default async function WriterDocumentsPage() {
 										</p>
 									))
 								) : (
-									<p className="text-silver-300">
+									<p className="text-studio-muted">
 										Open the document to read the full teaching material.
 									</p>
 								)}
 							</div>
 							<div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-								<p className="max-w-[18rem] truncate text-xs text-silver-300">
+								<p className="max-w-[18rem] truncate text-xs text-studio-muted">
 									{document.groupTitles.join(', ')}
 								</p>
 								<Link
 									href={`/app/writer/documents/${document.id}`}
-									className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+									className="studio-primary">
 									Read document
 								</Link>
 							</div>

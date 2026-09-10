@@ -4,13 +4,10 @@ import type { MouseEventHandler } from 'react'
 type Variant = 'primary' | 'secondary' | 'ghost' | 'text'
 
 const classes: Record<Variant, string> = {
-	primary:
-		'inline-flex items-center gap-2 rounded-full border border-burgundy-300/80 bg-burgundy-500/70 px-4 py-2 text-sm text-parchment-100 transition hover:bg-burgundy-400/80',
-	secondary:
-		'inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm text-parchment-100 transition hover:bg-white/15',
-	ghost:
-		'inline-flex items-center gap-2 rounded-full border border-transparent px-4 py-2 text-sm text-silver-100 transition hover:border-white/20 hover:bg-white/10',
-	text: 'inline-flex items-center gap-2 text-sm text-burgundy-200 underline-offset-4 transition hover:underline',
+ primary: 'studio-primary gap-2',
+ secondary: 'studio-secondary gap-2',
+ ghost: 'studio-secondary gap-2 border-transparent text-studio-muted',
+ text: 'studio-link inline-flex items-center gap-2',
 }
 
 export function ProtoButton({

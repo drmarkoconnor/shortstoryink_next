@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ManuscriptTextarea } from '@/components/writer/manuscript-textarea'
@@ -115,17 +117,26 @@ export function WriterSubmissionComposer({
 	}, [notice])
 
 	return (
-		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+		<div className="grid items-start gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
+   <header className="lg:col-span-2"><p className="studio-eyebrow">Your writing life</p><h1 className="studio-heading mt-3">Welcome back, {writerName.split(' ')[0]}.</h1><p className="mt-4 text-studio-muted">A little space to read, write and begin again.</p></header>
+   <div className="grid gap-12 lg:col-span-2 lg:grid-cols-[1.2fr_1fr]">
+   <section className="border-y border-studio-line py-7">
+    <p className="studio-eyebrow">On your desk</p><h2 className="literary-title mt-4 text-3xl">{draft.title || 'The next page is yours'}</h2>
+    <p className="mt-4 max-w-2xl font-serif text-lg leading-8 text-studio-muted">{draft.body ? draft.body.slice(0, 230) + (draft.body.length > 230 ? '…' : '') : 'Begin with someone, somewhere, under pressure. A sentence is enough to start.'}</p>
+    <a href="#writing-draft" className="studio-primary mt-6" onClick={() => document.querySelector<HTMLTextAreaElement>('textarea[name="body"]')?.focus()}>{draft.body ? 'Continue writing' : 'Start writing'}</a>
+    <p className="mt-3 text-xs text-studio-muted">Your working draft is recovered on this browser.</p>
+   </section>
+   <aside className="border-y border-studio-line py-7"><Image src="/illustrations/park.webp" alt="A quiet park, an invitation to imagine a story." width={1774} height={887} sizes="(max-width: 1024px) 90vw, 560px" className="studio-illustration" /><p className="studio-eyebrow mt-4">The reading room</p><h2 className="literary-title mt-2 text-2xl">Look a little closer.</h2><Link className="studio-link mt-4 inline-block text-sm" href="/app/writer/reading-room">Read, notice, try something</Link></aside></div>
 			{(notice || savedNotice) && isSuccessModalOpen ? (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/65 px-4 backdrop-blur-sm">
-					<div className="w-full max-w-md rounded-3xl border border-emerald-300/25 bg-ink-950 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-						<p className="text-xs uppercase tracking-[0.12em] text-emerald-200">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 backdrop-blur-sm">
+					<div className="w-full max-w-md rounded-lg border border-emerald-300/25 bg-studio-canvas p-5 shadow-none">
+						<p className="text-xs uppercase tracking-[0.12em] text-emerald-800">
 							Submission saved
 						</p>
-						<h2 className="literary-title mt-2 text-3xl text-parchment-100">
+						<h2 className="literary-title mt-2 text-3xl text-studio-ink">
 							Well done.
 						</h2>
-						<p className="mt-3 text-sm leading-relaxed text-silver-100">
+						<p className="mt-3 text-sm leading-relaxed text-studio-muted">
 							Your piece is now waiting for a close read. You can submit
 							another piece while you wait, or spend a little time with the
 							teaching materials.
@@ -139,7 +150,7 @@ export function WriterSubmissionComposer({
 										titleInputRef.current?.focus()
 									})
 								}}
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+								className="studio-primary">
 								Submit another
 							</button>
 							<button
@@ -147,13 +158,13 @@ export function WriterSubmissionComposer({
 								onClick={() => {
 									router.push('/app/writer/documents')
 								}}
-								className="rounded-full border border-white/20 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:bg-white/10">
+								className="rounded border border-studio-line bg-studio-tint px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:bg-studio-tint">
 								Browse teaching materials
 							</button>
 							<button
 								type="button"
 								onClick={() => setIsSuccessModalOpen(false)}
-								className="rounded-full border border-white/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Close
 							</button>
 						</div>
@@ -161,9 +172,9 @@ export function WriterSubmissionComposer({
 				</div>
 			) : null}
 
-			<div className="space-y-4">
+			<div id="writing-draft" className="scroll-mt-6 space-y-4">
 				<label className="block">
-					<span className="mb-2 block text-sm text-silver-100">
+					<span className="mb-2 block text-sm text-studio-muted">
 						Your draft
 					</span>
 					<div className="folio-page p-5 sm:p-6 lg:min-h-[34rem] lg:p-7">
@@ -174,7 +185,7 @@ export function WriterSubmissionComposer({
 							required
 							form="writer-submit-form"
 							rows={16}
-							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-ink-900/90 outline-none placeholder:text-ink-900/45 lg:min-h-[28rem]"
+							className="min-h-[26rem] w-full resize-y border-none bg-transparent font-serif text-[18px] leading-8 text-studio-ink/90 outline-none placeholder:text-studio-ink/45 lg:min-h-[28rem]"
 							placeholder={
 								'Paste or type the piece here as you want it read. Formatting is preserved.\n\nUse Tab to indent dialogue in the standard way.'
 							}
@@ -184,7 +195,7 @@ export function WriterSubmissionComposer({
 					<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
 						<p
 							className={
-								isOverAbuLimit ? 'text-amber-100' : 'text-silver-200'
+								isOverAbuLimit ? 'text-amber-800' : 'text-studio-muted'
 							}>
 							{wordCount.toLocaleString()} words
 							{isAbuSelected
@@ -192,7 +203,7 @@ export function WriterSubmissionComposer({
 								: ''}
 						</p>
 						{isOverAbuLimit ? (
-							<p className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs text-amber-100">
+							<p className="rounded border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs text-amber-800">
 								Please shorten this piece before submitting.
 							</p>
 						) : null}
@@ -212,42 +223,11 @@ export function WriterSubmissionComposer({
 				id="writer-submit-form"
 				action={submit}
 				className="surface p-4 lg:sticky lg:top-6 lg:p-5">
-				<div className="grid grid-cols-3 gap-2 text-center text-[11px] text-silver-100">
-					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
-						<p className="text-lg font-semibold text-parchment-100">
-							{submittedCount}
-						</p>
-						<p className="mt-0.5 uppercase tracking-[0.08em]">Awaiting</p>
-					</div>
-					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
-						<p className="text-lg font-semibold text-parchment-100">
-							{inReviewCount}
-						</p>
-						<p className="mt-0.5 uppercase tracking-[0.08em]">Review</p>
-					</div>
-					<div className="rounded-xl border border-white/10 bg-white/5 px-2 py-2">
-						<p className="text-lg font-semibold text-parchment-100">
-							{publishedCount}
-						</p>
-						<p className="mt-0.5 uppercase tracking-[0.08em]">Feedback</p>
-					</div>
-				</div>
-
-				<div className="mt-5">
-					<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
-						Writer home
-					</p>
-					<p className="mt-2 font-serif text-lg text-parchment-100">
-						Welcome, {writerName}
-					</p>
-					<h1 className="literary-title mt-2 text-2xl text-parchment-100">
-						Submit a piece for feedback
-					</h1>
-				</div>
+    <p className="studio-eyebrow">When you are ready</p><h2 className="literary-title mt-3 text-2xl">Share your writing</h2><p className="mt-3 text-sm leading-6 text-studio-muted">{submittedCount} awaiting a read · {inReviewCount} in review · {publishedCount} with feedback</p>
 
 				<div className="mt-5 space-y-3">
 					<label className="block">
-						<span className="mb-1.5 block text-sm text-silver-100">Title</span>
+						<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 						<input
 							ref={titleInputRef}
 							name="title"
@@ -255,14 +235,14 @@ export function WriterSubmissionComposer({
 							onChange={(event) => recovery.edit({ title: event.target.value })}
 							disabled={!recovery.ready || pending}
 							required
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition placeholder:text-silver-400 focus:ring"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink outline-none ring-accent-400 transition placeholder:text-studio-muted focus:ring"
 							placeholder="Draft title"
 						/>
 					</label>
 
 					{isWorkshopRequired ? (
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Group
 							</span>
 							<select
@@ -271,7 +251,7 @@ export function WriterSubmissionComposer({
 								value={selectedWorkshopId}
 								onChange={(event) => recovery.edit({ workshopId: event.target.value })}
 								disabled={!recovery.ready || pending || workshops.length === 0}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-parchment-100 outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
 								{workshops.length === 0 ? (
 									<option value="">No group membership found</option>
 								) : null}
@@ -281,13 +261,13 @@ export function WriterSubmissionComposer({
 									</option>
 								))}
 							</select>
-							<p className="mt-1.5 text-xs leading-5 text-silver-300">
+							<p className="mt-1.5 text-xs leading-5 text-studio-muted">
 								Authorised Basic User submissions are limited to{' '}
 								{abuSubmissionWordLimit.toLocaleString()} words.
 							</p>
 						</label>
 					) : (
-						<div className="rounded-xl border border-white/10 bg-ink-900/35 px-3 py-2 text-sm text-silver-100">
+						<div className="rounded-md border border-studio-line bg-studio-canvas px-3 py-2 text-sm text-studio-muted">
 							Default queue
 						</div>
 					)}
@@ -295,35 +275,35 @@ export function WriterSubmissionComposer({
 
 				<div className="mt-4 space-y-2">
 					{notice && (
-						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+						<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 							{notice}
 						</p>
 					)}
-					{saveError && <p role="alert" className="text-sm text-amber-100">{saveError}</p>}
+					{saveError && <p role="alert" className="text-sm text-amber-800">{saveError}</p>}
 					{errorNotice && (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{errorNotice}
 						</p>
 					)}
 					{workshopError && (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							{workshopError}
 						</p>
 					)}
 					{isWorkshopRequired && !workshopError && workshops.length === 0 && (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							No group membership found yet. Your baseline group may still be
 							loading.
 						</p>
 					)}
 					{!isWorkshopRequired && (
-						<p className="rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-2 text-sm text-sky-100">
+						<p className="rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 py-2 text-sm text-sky-800">
 							Legacy schema detected. Submissions currently route through a
 							default queue.
 						</p>
 					)}
 					{isOverAbuLimit ? (
-						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+						<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 							This draft is {Math.abs(remainingWords).toLocaleString()} words
 							over the current Authorised Basic User limit.
 						</p>
@@ -331,9 +311,9 @@ export function WriterSubmissionComposer({
 				</div>
 
 				{availableDocuments.length > 0 || documentsError ? (
-					<div className="mt-5 border-t border-white/10 pt-4">
+					<div className="mt-5 border-t border-studio-line pt-4">
 						<label className="block">
-							<span className="mb-1.5 block text-sm text-silver-100">
+							<span className="mb-1.5 block text-sm text-studio-muted">
 								Documents
 							</span>
 							<select
@@ -345,7 +325,7 @@ export function WriterSubmissionComposer({
 									}
 								}}
 								disabled={availableDocuments.length === 0}
-								className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2 text-sm text-parchment-100 outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
+								className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink outline-none ring-accent-400 transition focus:ring disabled:opacity-60">
 								<option value="">
 									{availableDocuments.length > 0
 										? 'Available documents'
@@ -359,14 +339,14 @@ export function WriterSubmissionComposer({
 							</select>
 						</label>
 						{documentsError ? (
-							<p className="mt-2 text-xs leading-5 text-amber-100">
+							<p className="mt-2 text-xs leading-5 text-amber-800">
 								{documentsError}
 							</p>
 						) : null}
 						<button
 							type="button"
 							onClick={() => router.push('/app/writer/documents')}
-							className="mt-3 text-left text-xs uppercase tracking-[0.1em] text-accent-200 transition hover:text-accent-100">
+							className="mt-3 text-left text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:text-studio-accent">
 							Browse all teaching materials
 						</button>
 					</div>
@@ -377,7 +357,7 @@ export function WriterSubmissionComposer({
 					disabled={
 						!recovery.ready || pending || isOverAbuLimit || (isWorkshopRequired && !selectedWorkshop)
 					}
-					className="mt-5 w-full rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+					className="studio-primary mt-5 w-full">
 					{pending ? 'Saving…' : isOverAbuLimit ? 'Shorten before submitting' : 'Save submission'}
 				</button>
 			</form>

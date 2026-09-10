@@ -105,27 +105,27 @@ export default async function TeacherSnippetLibraryPage() {
 	}
 
 	return (
-		<section className="space-y-5">
+		<section className="space-y-8">
 			<MenuTabs
 				tabs={teacherTabs}
-				active="/app/teacher-studio"
+				active="/app/teacher/snippets"
 				context={
 					<Link
 						href="/app/teacher-studio"
-						className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Return to Studio
 					</Link>
 				}
 			/>
 
-			<div className="surface px-4 py-3">
+			<div className="studio-page-header">
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-							Snippet Workbench
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
+							A commonplace for teaching
 						</p>
-						<h1 className="literary-title mt-1 text-2xl text-parchment-100">
-							Snippets
+						<h1 className="studio-heading mt-3">
+							Saved passages
 						</h1>
 						<p className="muted mt-1 max-w-prose text-sm leading-relaxed">
 							Find, rank, tag, and prepare saved extracts for documents and classes.
@@ -135,7 +135,7 @@ export default async function TeacherSnippetLibraryPage() {
 			</div>
 
 			{loadError ? (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					Unable to load snippets: {loadError}
 				</p>
 			) : (

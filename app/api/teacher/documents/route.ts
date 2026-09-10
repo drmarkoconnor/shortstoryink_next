@@ -1,3 +1,4 @@
+import { normalizeIllustrationAttrs } from '@/lib/illustrations/catalog'
 import type { JSONContent } from '@tiptap/core'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
@@ -41,6 +42,11 @@ function normalizeJsonNode(value: unknown, depth = 0): JSONContent | null {
 	if (!isRecord(value) || typeof value.type !== 'string' || depth > 12) {
 		return null
 	}
+
+ if (value.type === 'studioIllustration') {
+  const attrs = normalizeIllustrationAttrs(isRecord(value.attrs) ? value.attrs : {})
+  return attrs ? { type: 'studioIllustration', attrs } : null
+ }
 
 	const node: JSONContent = {
 		type: value.type,

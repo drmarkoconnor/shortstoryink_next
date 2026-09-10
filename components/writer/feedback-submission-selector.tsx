@@ -21,7 +21,7 @@ type FeedbackSubmission = {
 }
 
 function formatDate(value: string) {
-	return value ? new Date(value).toLocaleString() : 'Unknown date'
+	return value ? new Date(value).toLocaleString('en-GB', { timeZone: 'Europe/London' }) : 'Unknown date'
 }
 
 function curlyQuote(value: string) {
@@ -76,13 +76,13 @@ export function FeedbackSubmissionSelector({
 	}
 
 	if (submissions.length === 0) {
-		return <p className="text-sm text-silver-300">No finished pieces yet.</p>
+		return <p className="text-sm text-studio-muted">No finished pieces yet.</p>
 	}
 
 	return (
 		<div className="space-y-4">
 			<label className="block">
-				<span className="mb-1.5 block text-sm text-silver-100">
+				<span className="mb-1.5 block text-sm text-studio-muted">
 					Choose a finished piece
 				</span>
 				<select
@@ -93,7 +93,7 @@ export function FeedbackSubmissionSelector({
 							scrollToSelectedSubmission()
 						}
 					}}
-					className="w-full rounded-xl border border-white/15 bg-ink-900 px-3 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring">
+					className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink outline-none ring-accent-400 transition focus:ring">
 					<option value="">Select a finished piece</option>
 					{submissions.map((submission) => (
 						<option key={submission.id} value={submission.id}>
@@ -107,17 +107,17 @@ export function FeedbackSubmissionSelector({
 			{selectedSubmission ? (
 				<section
 					ref={selectedSubmissionRef}
-					className="rounded-2xl border border-white/15 bg-ink-900/40 p-4 lg:p-5">
+					className="rounded-md border border-studio-line bg-studio-canvas p-4 lg:p-5">
 					<div className="flex flex-wrap items-start justify-between gap-3">
 						<div>
-							<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
+							<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 								Finished piece
 							</p>
-							<h2 className="literary-title mt-2 line-clamp-2 text-2xl text-parchment-100">
+							<h2 className="literary-title mt-2 line-clamp-2 text-2xl text-studio-ink">
 								{versionLabel(selectedSubmission.version)} -{' '}
 								{selectedSubmission.title}
 							</h2>
-							<p className="mt-2 text-xs leading-relaxed text-silver-300">
+							<p className="mt-2 text-xs leading-relaxed text-studio-muted">
 								{formatDate(selectedSubmission.createdAt)} {' · '} Version{' '}
 								{selectedSubmission.version} {' · '}
 								{selectedSubmission.commentCount} comments
@@ -125,31 +125,31 @@ export function FeedbackSubmissionSelector({
 						</div>
 						<Link
 							href={`/app/writer/feedback/${selectedSubmission.id}`}
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs uppercase tracking-[0.1em] text-parchment-100 transition hover:bg-accent-400/30">
+							className="studio-primary">
 							Read finished piece
 						</Link>
 					</div>
 
-					<div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-						<p className="text-[11px] uppercase tracking-[0.12em] text-silver-300">
+					<div className="mt-4 rounded-md border border-studio-line bg-black/20 p-4">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							Overview
 						</p>
-						<p className="mt-2 text-[15px] leading-relaxed text-silver-100">
+						<p className="mt-2 text-[15px] leading-relaxed text-studio-muted">
 							{selectedSubmission.summary || 'No summary published.'}
 						</p>
 					</div>
 
 					<div className="mt-4">
 						<div className="flex items-baseline justify-between gap-3">
-							<h3 className="literary-title text-lg text-parchment-100">
+							<h3 className="literary-title text-lg text-studio-ink">
 								Comments
 							</h3>
-							<p className="text-xs uppercase tracking-[0.1em] text-silver-300">
+							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 								Preview
 							</p>
 						</div>
 						{selectedSubmission.comments.length === 0 ? (
-							<p className="mt-3 text-sm text-silver-200">
+							<p className="mt-3 text-sm text-studio-muted">
 								No comments found.
 							</p>
 						) : (
@@ -157,16 +157,16 @@ export function FeedbackSubmissionSelector({
 								{selectedSubmission.comments.map((comment) => (
 									<li
 										key={comment.id}
-										className="rounded-xl border border-white/10 bg-ink-800/60 p-3">
-										<p className="text-xs uppercase tracking-[0.1em] text-accent-300">
+										className="rounded-md border border-studio-line bg-studio-tint p-3">
+										<p className="text-xs uppercase tracking-[0.1em] text-studio-accent">
 											{comment.categoryLabel || 'Feedback'}
 										</p>
 										{comment.quote ? (
-											<p className="mt-2 text-sm leading-relaxed text-silver-100">
+											<p className="mt-2 text-sm leading-relaxed text-studio-muted">
 												{curlyQuote(comment.quote)}
 											</p>
 										) : null}
-										<p className="mt-2 border-l border-burgundy-300/70 pl-3 font-serif text-sm italic leading-relaxed text-parchment-100">
+										<p className="mt-2 border-l border-burgundy-300/70 pl-3 font-serif text-sm italic leading-relaxed text-studio-ink">
 											{comment.comment}
 										</p>
 									</li>
@@ -176,11 +176,11 @@ export function FeedbackSubmissionSelector({
 					</div>
 				</section>
 			) : (
-				<section className="rounded-2xl border border-white/15 bg-ink-900/40 p-5">
-					<p className="text-xs uppercase tracking-[0.12em] text-accent-300">
+				<section className="rounded-md border border-studio-line bg-studio-canvas p-5">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 						Choose a piece
 					</p>
-					<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+					<h2 className="literary-title mt-2 text-2xl text-studio-ink">
 						Select a finished piece to preview it here.
 					</h2>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">

@@ -7,22 +7,15 @@ import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 import { SignOutForm } from '@/components/auth/sign-out-form'
 
 const writerNavItems = [
-	{ href: '/app/writer', label: 'Write' },
-	{ href: '/app/writer/documents', label: 'Materials' },
-	{ href: '/app/writer/examples', label: 'Examples' },
-	{ href: '/app/writer/feedback', label: 'Finished Pieces' },
-	{ href: '/guide/new-writers', label: 'Guide' },
-	{ href: '/app/account', label: 'Account' },
+ { href: '/app/writer', label: 'My writing' },
+ { href: '/app/writer/reading-room', label: 'Reading room', matches: ['/app/writer/documents', '/app/writer/examples'] },
+ { href: '/app/writer/feedback', label: 'My feedback' },
 ]
-
 const teacherNavItems = [
-	{ href: '/app/teacher/review-desk', label: 'Review' },
-	{ href: '/app/teacher/groups', label: 'Groups' },
-	{ href: '/app/teacher-studio', label: 'Studio' },
-	{ href: '/app/teacher/feedback-memory', label: 'Memory' },
-	{ href: '/app/teacher/examples', label: 'Examples' },
-	{ href: '/app/teacher/archive', label: 'Archive' },
-	{ href: '/app/account', label: 'Account' },
+ { href: '/app/teacher/review-desk', label: 'Review queue', matches: ['/app/workshop', '/app/teacher/archive'] },
+ { href: '/app/teacher-studio', label: 'Teaching studio', matches: ['/app/teacher/documents', '/app/teacher/snippets', '/app/teacher/feedback-memory'] },
+ { href: '/app/teacher/library', label: 'Reading library', matches: ['/app/teacher/examples', '/app/teacher/sources'] },
+ { href: '/app/teacher/groups', label: 'Groups' },
 ]
 
 export async function AppFrame({
@@ -45,37 +38,23 @@ export async function AppFrame({
 				? teacherNavItems
 				: []
 
-	const identityClass =
-		role === 'writer'
-			? 'border-burgundy-200/80 bg-burgundy-500/85 text-parchment-100 shadow-[0_0_0_1px_rgba(252,251,248,0.08),0_8px_20px_rgba(122,47,69,0.28)]'
-			: 'border-white/15 bg-white/10 text-silver-100'
 
-	return (
-		<div className="min-h-screen bg-ink-900 text-parchment-100">
-			<header className="app-shell-header border-b border-white/15 bg-ink-950/35">
-				<div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-4 px-6 py-5">
-					<div>
-						<BrandWordmark />
-						<div className="mt-2 flex flex-wrap gap-1.5">
-							<span
-								className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${identityClass}`}>
-								{role}
-							</span>
-							<span
-								className={`rounded-full border px-2.5 py-1 text-[11px] tracking-tight ${identityClass}`}>
-								{displayName || userEmail}
-							</span>
-						</div>
-					</div>
-					<div className="flex flex-wrap items-center justify-end gap-2">
-						<AppNav items={visibleNav} />
-						<SignOutForm ownerId={user.id} />
-					</div>
-				</div>
-			</header>
-			<main className="app-shell-main mx-auto w-full max-w-6xl px-6 py-8 lg:py-10">
-				{children}
-			</main>
-		</div>
-	)
+ return (
+  <div className="min-h-screen bg-studio-canvas text-studio-ink">
+   <a className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 studio-primary" href="#main-content">Skip to content</a>
+   <header className="app-shell-header studio-header">
+    <BrandWordmark />
+    <AppNav items={visibleNav} />
+    <details className="studio-account">
+     <summary className="cursor-pointer text-sm">{displayName || 'Account'}</summary>
+     <div className="space-y-4">
+      <a className="block studio-link" href="/app/account">Account settings</a>
+      <a className="block studio-link" href="/guide/new-writers">Writing guide</a>
+      <SignOutForm ownerId={user.id} />
+     </div>
+    </details>
+   </header>
+   <main id="main-content" className="app-shell-main studio-main">{children}</main>
+  </div>
+ )
 }

@@ -12,19 +12,19 @@ export function ProtoCard({
 	action?: ReactNode
 }) {
 	return (
-		<section className="surface p-4">
-			<div className="mb-2 flex items-start justify-between gap-3">
+		<section className="surface p-5 sm:p-6">
+			<div className="mb-4 flex items-start justify-between gap-3">
 				<div>
-					<h3 className="text-sm font-semibold text-parchment-100">{title}</h3>
+					<h3 className="literary-title text-2xl text-studio-ink">{title}</h3>
 					{meta && (
-						<p className="mt-1 text-xs uppercase tracking-[0.09em] text-silver-300">
+						<p className="mt-1 text-xs uppercase tracking-[0.09em] text-studio-muted">
 							{meta}
 						</p>
 					)}
 				</div>
 				{action}
 			</div>
-			<div className="text-[15px] leading-relaxed text-silver-100">
+			<div className="text-sm leading-7 text-studio-muted">
 				{children}
 			</div>
 		</section>

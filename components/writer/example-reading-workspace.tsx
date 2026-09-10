@@ -79,8 +79,8 @@ function formatQuote(quote: string) {
 
 function markerClass(open: boolean) {
 	return open
-		? 'border-burgundy-400 bg-burgundy-500 text-parchment-100 shadow-[0_0_0_3px_rgba(122,47,69,0.18)]'
-		: 'border-burgundy-300/60 bg-burgundy-500/10 text-burgundy-500 hover:border-burgundy-400 hover:bg-burgundy-500/18'
+		? 'border-burgundy-400 bg-studio-soft text-studio-ink shadow-none'
+		: 'border-burgundy-300/60 bg-studio-soft text-studio-accent hover:border-burgundy-400 hover:bg-studio-soft'
 }
 
 export function ExampleReadingWorkspace({
@@ -106,7 +106,9 @@ export function ExampleReadingWorkspace({
 	const [selectedCategory, setSelectedCategory] = useState('All notes')
 	const [spreadIndex, setSpreadIndex] = useState(0)
 	const [turningPage, setTurningPage] = useState<TurningPage | null>(null)
-	const [introOpen, setIntroOpen] = useState(true)
+	const [introOpen, setIntroOpen] = useState(Boolean(contentNote))
+ const [showNotes, setShowNotes] = useState(true)
+ const [largeText, setLargeText] = useState(false)
 	const pagedManuscript = useMemo(
 		() => paginateManuscript(paragraphs, bookReadingPageOptions),
 		[paragraphs],
@@ -239,7 +241,7 @@ export function ExampleReadingWorkspace({
 		blockItems: ExampleAnnotation[],
 	): ReactNode[] => {
 		const { text } = paragraph
-		if (blockItems.length === 0) {
+		if (!showNotes || blockItems.length === 0) {
 			return [text]
 		}
 
@@ -283,49 +285,49 @@ export function ExampleReadingWorkspace({
 						</mark>
 						<button
 							type="button"
-							onClick={() => setHoveredAnnotationId(item.id)}
-							onFocus={() => setHoveredAnnotationId(item.id)}
+							onClick={() => setHoveredAnnotationId(current => current === item.id ? null : item.id)}
+                            onKeyDown={event => { if (event.key === 'Escape') setHoveredAnnotationId(null) }}
 							onBlur={() =>
 								setHoveredAnnotationId((current) =>
 									current === item.id ? null : current,
 								)
 							}
-							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 align-super text-[10px] font-semibold transition ${markerClass(
+							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-semibold transition ${markerClass(
 								isOpen,
 							)}`}
-							aria-label={`Open ${item.categoryLabel} note`}
+							aria-label={`Open note ${sortedItems.findIndex(note => note.id === item.id) + 1}: ${item.categoryLabel}`}
 							aria-expanded={isOpen}
 							aria-controls={`example-note-${item.id}`}>
-							<span aria-hidden="true">•</span>
+							<span aria-hidden="true">{sortedItems.findIndex(note => note.id === item.id) + 1}</span>
 						</button>
 						<span
 							id={`example-note-${item.id}`}
 							role="note"
-							className={`absolute left-1/2 top-full z-50 mt-3 w-[min(26rem,calc(100vw-3rem))] -translate-x-1/2 rounded-2xl border border-burgundy-300/35 bg-ink-950 px-4 py-4 text-left text-parchment-100 shadow-[0_18px_48px_rgba(0,0,0,0.34)] transition duration-150 ${
+							className={`studio-inline-note absolute left-1/2 top-full z-50 mt-3 w-[min(26rem,calc(100vw-3rem))] -translate-x-1/2 rounded-md border border-burgundy-300/35 bg-studio-canvas px-4 py-4 text-left text-studio-ink shadow-none transition duration-150 ${
 								isOpen
 									? 'pointer-events-auto visible translate-y-0 opacity-100'
-									: 'pointer-events-none invisible translate-y-1 opacity-0'
+									: 'hidden'
 							}`}>
 							<span
-								className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-burgundy-300/75"
+								className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-studio-soft"
 								aria-hidden="true"
 							/>
 							<span className="flex flex-wrap items-center gap-2">
-								<span className="rounded-full border border-current/20 px-2 py-0.5 font-sans text-[11px] uppercase tracking-[0.1em] text-accent-100">
+								<span className="rounded border border-current/20 px-2 py-0.5 font-sans text-xs uppercase tracking-[0.1em] text-studio-accent">
 									{item.categoryLabel}
 								</span>
 								{item.tags.slice(0, 3).map((tag) => (
 									<span
 										key={tag}
-										className="rounded-full border border-current/15 px-2 py-0.5 font-sans text-[11px] uppercase tracking-[0.08em] text-silver-200">
+										className="rounded border border-current/15 px-2 py-0.5 font-sans text-xs uppercase tracking-[0.08em] text-studio-muted">
 										{tag}
 									</span>
 								))}
 							</span>
-							<span className="mt-3 block font-serif text-[16px] italic leading-7 text-parchment-100/82">
+							<span className="mt-3 block font-serif text-[16px] italic leading-7 text-studio-ink/82">
 								{formatQuote(item.anchor.quote)}
 							</span>
-							<span className="mt-3 block font-serif text-[18px] leading-8 text-parchment-100">
+							<span className="mt-3 block font-serif text-[18px] leading-8 text-studio-ink">
 								{item.comment}
 							</span>
 						</span>
@@ -365,8 +367,8 @@ export function ExampleReadingWorkspace({
 									id={omitIds ? undefined : paragraph.id}
 									className={
 										isSceneBreak
-											? 'text-center font-serif text-[19px] tracking-[0.22em] text-ink-900/60'
-											: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-ink-900/90 xl:text-[19px] xl:leading-9'
+											? 'text-center font-serif text-[19px] tracking-[0.22em] text-studio-ink/60'
+											: 'whitespace-pre-wrap font-serif text-[18px] leading-8 text-studio-ink/90 xl:text-[19px] xl:leading-9'
 									}>
 									{isSceneBreak
 										? '***'
@@ -380,27 +382,32 @@ export function ExampleReadingWorkspace({
 	)
 
 	return (
-		<section className="relative left-1/2 w-[min(calc(100vw-2rem),92rem)] -translate-x-1/2 space-y-3">
+		<section className="mx-auto max-w-6xl space-y-6 studio-reading-page" data-large-text={largeText}>
+   <header className="border-b border-studio-line pb-6">
+    <Link className="studio-link" href="/app/writer/examples">Back to annotated readings</Link>
+    <div className="mt-5 flex flex-wrap items-end justify-between gap-5"><div><p className="studio-eyebrow">Annotated reading</p><h1 className="studio-heading mt-3">{title}</h1><p className="mt-3 font-serif text-xl text-studio-muted">{authorName}</p></div><button type="button" className="studio-secondary" onClick={() => setIntroOpen(value => !value)} aria-expanded={introOpen}>About this reading</button></div>
+   </header>
+
 			{introOpen ? (
-				<div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-950/75 p-4 backdrop-blur-sm">
+				<div className="border-b border-studio-line pb-6">
 					<div
-						role="dialog"
-						aria-modal="true"
+						role="region"
+
 						aria-labelledby="reading-intro-title"
-						className="surface max-h-[min(90vh,42rem)] w-full max-w-2xl overflow-y-auto p-5 lg:p-6">
-						<p className="text-xs uppercase tracking-[0.12em] text-accent-200">
+						className="max-w-3xl">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-accent">
 							Annotated reading
 						</p>
 						<h2
 							id="reading-intro-title"
-							className="literary-title mt-2 text-3xl leading-tight text-parchment-100">
-							Before you read
+							className="literary-title mt-2 text-3xl leading-tight text-studio-ink">
+							A note on this reading
 						</h2>
-						<p className="mt-4 text-base leading-8 text-silver-100">
+						<p className="mt-4 text-base leading-8 text-studio-muted">
 							{editorialNote}
 						</p>
 						{contentNote ? (
-							<p className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm leading-6 text-amber-100">
+							<p className="mt-4 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-sm leading-6 text-amber-800">
 								{contentNote}
 							</p>
 						) : null}
@@ -409,7 +416,7 @@ export function ExampleReadingWorkspace({
 								{craftTags.map((tag) => (
 									<span
 										key={tag}
-										className="rounded-full border border-accent-300/25 bg-accent-300/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] text-accent-100">
+										className="rounded border border-accent-300/25 bg-accent-300/10 px-2.5 py-1 text-xs uppercase tracking-[0.08em] text-studio-accent">
 										{tag}
 									</span>
 								))}
@@ -419,12 +426,12 @@ export function ExampleReadingWorkspace({
 							<button
 								type="button"
 								onClick={() => setIntroOpen(false)}
-								className="rounded-full border border-accent-300/45 bg-accent-300/18 px-4 py-2 text-sm font-semibold text-parchment-100 transition hover:bg-accent-300/24">
-								Begin reading
+								className="rounded border border-accent-300/45 bg-accent-300/18 px-4 py-2 text-sm font-semibold text-studio-ink transition hover:bg-accent-300/24">
+								Close introduction
 							</button>
 							<Link
 								href="/app/writer/examples"
-								className="rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm text-silver-100 transition hover:border-white/25 hover:text-parchment-100">
+								className="rounded border border-studio-line bg-studio-tint px-4 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 								Back to examples
 							</Link>
 						</div>
@@ -432,58 +439,7 @@ export function ExampleReadingWorkspace({
 				</div>
 			) : null}
 
-			<header className="surface overflow-hidden p-0">
-				<div className="relative bg-ink-950">
-					<div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_12%,rgba(207,184,124,0.2),transparent_26%),linear-gradient(135deg,rgba(17,24,39,0.96),rgba(44,28,34,0.9))]" />
-					<div className="relative flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
-						<div className="flex min-w-0 items-center gap-3">
-							<Link
-								href="/app/writer/examples"
-								className="shrink-0 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:bg-white/12">
-								Back
-							</Link>
-							<div className="min-w-0">
-								<p className="text-[11px] uppercase tracking-[0.14em] text-accent-200">
-									Annotated reading
-								</p>
-								<h1 className="literary-title truncate text-2xl leading-tight text-parchment-100 lg:text-3xl">
-									{title}
-								</h1>
-								{authorName ? (
-									<p className="truncate font-serif text-sm text-silver-100">
-										{authorName}
-									</p>
-								) : null}
-							</div>
-						</div>
-						<div className="flex flex-wrap items-center gap-2 text-xs">
-							<Link
-								href="/app/writer"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-								Write
-							</Link>
-							<Link
-								href="/app/writer/feedback"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-								Feedback
-							</Link>
-							<Link
-								href="/app/writer/examples"
-								className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
-								Library
-							</Link>
-							<button
-								type="button"
-								onClick={() => setIntroOpen(true)}
-								className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-100 transition hover:border-white/30 hover:bg-white/12">
-								About
-							</button>
-						</div>
-					</div>
-				</div>
-			</header>
-
-			<div className="surface px-3 py-2">
+			<div className="border-b border-studio-line py-3">
 				<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 					<div className="min-w-0 flex-1 overflow-x-auto pb-1">
 						<div className="flex w-max gap-2">
@@ -495,23 +451,22 @@ export function ExampleReadingWorkspace({
 										setSelectedCategory(category)
 										setHoveredAnnotationId(null)
 									}}
-									className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition ${
+									className={`shrink-0 rounded border px-3 py-1.5 text-xs uppercase tracking-[0.1em] transition ${
 										selectedCategory === category
-											? 'border-accent-300 bg-accent-300/18 text-accent-50'
-											: 'border-white/15 bg-white/6 text-silver-200 hover:border-white/25 hover:text-parchment-100'
+											? 'border-accent-300 bg-accent-300/18 text-studio-accent'
+											: 'border-studio-line bg-studio-tint text-studio-muted hover:border-studio-line hover:text-studio-ink'
 									}`}>
 									{category}
 								</button>
 							))}
 						</div>
 					</div>
-					<p className="shrink-0 text-xs uppercase tracking-[0.12em] text-silver-300">
-						{sortedItems.length} notes
-					</p>
+					<div className="flex flex-wrap gap-4 text-sm"><button type="button" className="studio-link" aria-pressed={largeText} onClick={() => setLargeText(value => !value)}>{largeText ? 'Standard text' : 'Larger text'}</button><button type="button" className="studio-link" aria-pressed={!showNotes} onClick={() => setShowNotes(value => !value)}>{showNotes ? 'Focus on the text' : 'Show margin notes'}</button></div>
 				</div>
 			</div>
 
-			<main className="relative min-w-0">
+			<div className={`grid items-start gap-10 ${showNotes ? 'lg:grid-cols-[minmax(0,1fr)_290px]' : 'mx-auto max-w-3xl'}`}>
+   <main className="relative min-w-0">
 				<div
 					className="example-page-spread example-book-spread">
 					{renderBookPage(currentPages[0], 0)}
@@ -534,22 +489,24 @@ export function ExampleReadingWorkspace({
 					type="button"
 					onClick={() => goToSpread(spreadIndex - 1)}
 					disabled={spreadIndex === 0}
-					className="absolute left-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Previous spread">
-					‹
+					className="studio-secondary my-4 mr-3"
+					aria-label="Previous section">
+					Previous
 				</button>
 				<button
 					type="button"
 					onClick={() => goToSpread(spreadIndex + 1)}
 					disabled={spreadIndex >= totalSpreads - 1}
-					className="absolute right-3 top-1/2 z-40 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink-900/10 bg-parchment-50/80 font-serif text-3xl leading-none text-ink-900 shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition hover:bg-parchment-100 disabled:cursor-not-allowed disabled:opacity-25"
-					aria-label="Next spread">
-					›
+					className="studio-secondary my-4 mr-3"
+					aria-label="Next section">
+					Next
 				</button>
-				<p className="absolute bottom-3 left-1/2 z-40 -translate-x-1/2 rounded-full border border-ink-900/10 bg-parchment-50/80 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-ink-900/70 shadow-[0_8px_20px_rgba(0,0,0,0.14)]">
-					Spread {spreadIndex + 1} of {totalSpreads}
+				<p className="inline-block text-sm text-studio-muted">
+					Section {spreadIndex + 1} of {totalSpreads}
 				</p>
-			</main>
-		</section>
+   </main>
+   {showNotes ? <aside className="border-t border-studio-line pt-6 lg:border-l lg:border-t-0 lg:pl-6"><h2 className="literary-title text-2xl">In the margins</h2><p className="mt-2 text-sm text-studio-muted">Writing choices to notice</p><div className="mt-5 divide-y divide-studio-line">{sortedItems.filter(item => currentPages.some(page => page?.paragraphs.some(paragraph => annotationsByBlock[paragraph.id]?.some(note => note.id === item.id)))).map(item => <div key={item.id} className="py-5"><p className="studio-eyebrow">{sortedItems.findIndex(note => note.id === item.id) + 1}. {item.categoryLabel}</p><p className="mt-3 font-serif text-lg leading-7">{item.comment}</p><button type="button" className="studio-link mt-4" onClick={() => {setHoveredAnnotationId(item.id);document.getElementById(item.anchor.blockId)?.scrollIntoView({block:'center',behavior:'smooth'})}}>See it in the text</button></div>)}</div>{sortedItems.length === 0 ? <p className="mt-5 text-sm text-studio-muted">No notes in this view.</p> : null}</aside> : null}
+   </div>
+  </section>
 	)
 }

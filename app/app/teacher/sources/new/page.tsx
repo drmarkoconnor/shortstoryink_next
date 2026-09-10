@@ -8,25 +8,25 @@ export default async function NewSourceExcerptPage() {
 	await requireTeacher()
 
 	return (
-		<section className="space-y-5">
+		<section className="space-y-8">
 			<MenuTabs
 				tabs={teacherTabs}
-				active="/app/teacher-studio"
+				active="/app/teacher/sources/new"
 				context={
 					<Link
 						href="/app/teacher-studio"
-						className="rounded-full border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100">
+						className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 						Return to Studio
 					</Link>
 				}
 			/>
 
-			<div className="surface p-5 lg:p-6">
-				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
-					Sources v1
+			<div className="studio-page-header">
+				<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
+					Reading library
 				</p>
-				<h1 className="literary-title mt-2 text-3xl text-parchment-100">
-					Create single source
+				<h1 className="studio-heading mt-3">
+					Save a passage
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
 					Add a selected literary example to your snippet library with enough

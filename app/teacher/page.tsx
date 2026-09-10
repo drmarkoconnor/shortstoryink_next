@@ -378,25 +378,25 @@ export default async function TeacherPage({
 		null
 
 	return (
-		<section className="space-y-5">
+		<section className="space-y-8">
 			<MenuTabs tabs={teacherTabs} active="/app/teacher/groups" />
 
 			{notice && (
-				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
 					{notice}
 				</p>
 			)}
 			{errorNotice && (
-				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					{errorNotice}
 				</p>
 			)}
 
-				<div className="surface p-5 lg:p-6">
-					<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+				<div className="studio-page-header">
+					<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 						Groups
 					</p>
-					<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+					<h1 className="studio-heading mt-3">
 						Group access
 					</h1>
 					<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -410,7 +410,7 @@ export default async function TeacherPage({
 						Writer accounts available for group assignment.
 					</ProtoCard>
 					<ProtoCard title={String(workshops.length)} meta="Total groups">
-						All access groups including the protected baseline group.
+						All access groups including the default writing group.
 					</ProtoCard>
 					<ProtoCard title={String(assignableWorkshops.length)} meta="Assignable">
 						Groups that can be manually assigned to writers.
@@ -426,12 +426,12 @@ export default async function TeacherPage({
 						<input
 							name="title"
 							required
-							className="w-full rounded-xl border border-white/15 bg-ink-900/50 px-3 py-2 text-sm text-parchment-100"
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink"
 							placeholder="Group title"
 						/>
 						<button
 							type="submit"
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30">
+							className="studio-primary">
 							Create group
 						</button>
 					</form>
@@ -442,7 +442,7 @@ export default async function TeacherPage({
 						<select
 							name="writerId"
 							required
-							className="w-full rounded-xl border border-white/15 bg-ink-900/50 px-3 py-2 text-sm text-parchment-100">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 							<option value="">Select writer</option>
 							{writers.map((writer) => (
 								<option key={writer.id} value={writer.id}>
@@ -453,7 +453,7 @@ export default async function TeacherPage({
 						<select
 							name="workshopId"
 							required
-							className="w-full rounded-xl border border-white/15 bg-ink-900/50 px-3 py-2 text-sm text-parchment-100">
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink">
 							<option value="">Select group</option>
 							{assignableWorkshops.map((workshop) => (
 								<option key={workshop.id} value={workshop.id}>
@@ -463,24 +463,24 @@ export default async function TeacherPage({
 						</select>
 						<button
 							type="submit"
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-4 py-2 text-xs text-parchment-100 transition hover:bg-accent-400/30">
+							className="studio-primary">
 							Add user to group
 						</button>
 					</form>
 					</ProtoCard>
 				</div>
 
-				<ProtoCard title="Manage groups" meta="Group CRUD">
+				<ProtoCard title="Manage groups" meta="Membership and access">
 					<div className="space-y-3">
 						{workshops.length === 0 ? (
-							<p className="text-sm text-silver-300">No groups found.</p>
+							<p className="text-sm text-studio-muted">No groups found.</p>
 						) : (
 							workshops.map((workshop) => {
 								const isProtected = isProtectedWorkshop(workshop)
 								return (
 									<div
 										key={workshop.id}
-										className="grid gap-2 rounded-xl border border-white/10 bg-ink-900/35 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+										className="grid gap-2 rounded-md border border-studio-line bg-studio-canvas p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
 										<form
 											action={updateWorkshopAction}
 											className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -503,18 +503,18 @@ export default async function TeacherPage({
 												name="title"
 												defaultValue={workshop.title}
 												disabled={isProtected}
-												className="w-full rounded-xl border border-white/15 bg-ink-900/50 px-3 py-2 text-sm text-parchment-100 disabled:opacity-70"
+												className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-sm text-studio-ink disabled:opacity-70"
 											/>
 											<button
 												type="submit"
 												disabled={isProtected}
-												className="rounded-full border border-white/15 px-3 py-2 text-xs uppercase tracking-[0.09em] text-silver-200 transition hover:border-white/25 hover:text-parchment-100 disabled:cursor-not-allowed disabled:opacity-50">
+												className="rounded border border-studio-line px-3 py-2 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink disabled:cursor-not-allowed disabled:opacity-50">
 												Update
 											</button>
 										</form>
 										<div className="flex items-center gap-2 lg:justify-end">
 											{isProtected ? (
-												<span className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.09em] text-emerald-100">
+												<span className="rounded border border-emerald-300/35 bg-emerald-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.09em] text-emerald-800">
 													Protected
 												</span>
 											) : (
@@ -536,7 +536,7 @@ export default async function TeacherPage({
 													/>
 													<button
 														type="submit"
-														className="rounded-full border border-rose-300/45 bg-rose-300/10 px-3 py-2 text-xs uppercase tracking-[0.09em] text-rose-100 transition hover:bg-rose-300/20">
+														className="rounded border border-rose-300/45 bg-rose-300/10 px-3 py-2 text-xs uppercase tracking-[0.09em] text-rose-800 transition hover:bg-rose-300/20">
 														Delete
 													</button>
 												</form>
@@ -552,10 +552,10 @@ export default async function TeacherPage({
 				<div className="surface p-6 lg:p-8">
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+						<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 							User access
 						</p>
-						<h2 className="literary-title mt-2 text-2xl text-parchment-100">
+						<h2 className="literary-title mt-2 text-2xl text-studio-ink">
 							Baseline access and extra groups
 						</h2>
 						<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -564,7 +564,7 @@ export default async function TeacherPage({
 							be added or removed here.
 						</p>
 						{abuWorkshop ? (
-							<p className="mt-3 text-xs text-silver-300">
+							<p className="mt-3 text-xs text-studio-muted">
 								Baseline group: {abuWorkshop.title}
 							</p>
 						) : null}
@@ -580,18 +580,18 @@ export default async function TeacherPage({
 
 				<div className="mt-6 space-y-3">
 					{writersWithMemberships.length === 0 ? (
-						<p className="text-sm text-silver-300">No writer accounts found.</p>
+						<p className="text-sm text-studio-muted">No writer accounts found.</p>
 					) : (
 						selectedWriter ? (
 							<div
 								key={selectedWriter.id}
-								className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
+								className="rounded-md border border-studio-line bg-studio-canvas p-4">
 								<div className="flex flex-wrap items-start justify-between gap-4">
 									<div>
-										<p className="text-sm font-medium text-parchment-100">
+										<p className="text-sm font-medium text-studio-ink">
 											{displayUserLabel(selectedWriter)}
 										</p>
-										<p className="mt-1 text-xs uppercase tracking-[0.1em] text-silver-300">
+										<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-muted">
 											{selectedWriter.role}
 										</p>
 									</div>
@@ -603,7 +603,7 @@ export default async function TeacherPage({
 										/>
 										<button
 											type="submit"
-											className="rounded-full border border-rose-300/50 bg-rose-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.09em] text-rose-100 transition hover:bg-rose-300/20">
+											className="rounded border border-rose-300/50 bg-rose-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.09em] text-rose-800 transition hover:bg-rose-300/20">
 											Delete user
 										</button>
 									</form>
@@ -611,7 +611,7 @@ export default async function TeacherPage({
 
 								<div className="mt-4 flex flex-wrap gap-2">
 									{selectedWriter.memberships.length === 0 ? (
-										<p className="text-xs text-silver-300">
+										<p className="text-xs text-studio-muted">
 											No group memberships found.
 										</p>
 									) : (
@@ -620,14 +620,14 @@ export default async function TeacherPage({
 											return (
 												<div
 													key={`${selectedWriter.id}-${workshop.id}`}
-													className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+													className={`flex items-center gap-2 rounded border px-3 py-1.5 text-xs ${
 														isBaseline
-															? 'border-emerald-300/35 bg-emerald-300/10 text-emerald-100'
-															: 'border-white/10 bg-white/5 text-silver-200'
+															? 'border-emerald-300/35 bg-emerald-300/10 text-emerald-800'
+															: 'border-studio-line bg-studio-tint text-studio-muted'
 													}`}>
 													<span>{workshop.title}</span>
 													{isBaseline ? (
-														<span className="uppercase tracking-[0.09em] text-emerald-200/80">
+														<span className="uppercase tracking-[0.09em] text-emerald-800/80">
 															locked
 														</span>
 													) : (
@@ -649,7 +649,7 @@ export default async function TeacherPage({
 															/>
 															<button
 																type="submit"
-																className="text-silver-300 transition hover:text-parchment-100">
+																className="text-studio-muted transition hover:text-studio-ink">
 																Remove
 															</button>
 														</form>

@@ -58,14 +58,14 @@ export default async function TeacherArchivePage({
 		rows.find((item) => item.id === selectedArchiveId) ?? rows[0] ?? null
 
 	return (
-		<section className="space-y-5">
+		<section className="space-y-8">
 			<MenuTabs tabs={teacherTabs} active="/app/teacher/archive" />
 
-			<div className="surface p-6 lg:p-8">
-				<p className="text-xs uppercase tracking-[0.12em] text-silver-300">
+			<div className="studio-page-header">
+				<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
 					Archive
 				</p>
-				<h1 className="literary-title mt-2 text-3xl text-parchment-100">
+				<h1 className="studio-heading mt-3">
 					Published feedback archive
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
@@ -76,20 +76,20 @@ export default async function TeacherArchivePage({
 
 			<div className="surface p-6 lg:p-8">
 				<div className="flex items-center justify-between gap-3">
-					<h2 className="literary-title text-2xl text-parchment-100">
+					<h2 className="literary-title text-2xl text-studio-ink">
 						Published pieces
 					</h2>
-					<p className="text-xs uppercase tracking-[0.11em] text-silver-300">
+					<p className="text-xs uppercase tracking-[0.11em] text-studio-muted">
 						{rows.length} archived
 					</p>
 				</div>
 
 				{loadError ? (
-					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 						Unable to load archive: {loadError}
 					</p>
 				) : rows.length === 0 ? (
-					<p className="mt-4 text-sm text-silver-300">
+					<p className="mt-4 text-sm text-studio-muted">
 						No published pieces in the archive yet.
 					</p>
 				) : (
@@ -104,27 +104,27 @@ export default async function TeacherArchivePage({
 							}))}
 						/>
 						{selectedArchive ? (
-							<div className="rounded-2xl border border-white/10 bg-ink-900/35 p-4">
-								<p className="text-sm font-medium text-parchment-100">
+							<div className="rounded-md border border-studio-line bg-studio-canvas p-4">
+								<p className="text-sm font-medium text-studio-ink">
 									{selectedArchive.title}
 								</p>
-								<p className="mt-1 text-sm text-silver-200">
+								<p className="mt-1 text-sm text-studio-muted">
 									{writerById[selectedArchive.author_id] || selectedArchive.author_id}
 								</p>
-								<div className="mt-3 flex flex-wrap gap-2 text-[11px] text-silver-200">
-									<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+								<div className="mt-3 flex flex-wrap gap-2 text-xs text-studio-muted">
+									<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 										Published
 									</p>
-									<p className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+									<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
 										v{selectedArchive.version}
 									</p>
 								</div>
-								<p className="mt-3 text-xs text-silver-300">
-									Published {new Date(selectedArchive.created_at).toLocaleString()}
+								<p className="mt-3 text-xs text-studio-muted">
+									Published {new Date(selectedArchive.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 								</p>
 								<Link
 									href={`/app/workshop/${selectedArchive.id}`}
-									className="mt-4 inline-flex rounded-full border border-accent-300/45 bg-accent-300/12 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-accent-100 transition hover:bg-accent-300/18">
+									className="mt-4 inline-flex rounded border border-accent-300/45 bg-accent-300/12 px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
 									Open manuscript
 								</Link>
 							</div>

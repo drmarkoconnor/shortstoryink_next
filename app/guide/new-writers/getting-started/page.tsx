@@ -1,74 +1,19 @@
 import type { Metadata } from 'next'
-import {
-	CopyBlock,
-	Figure,
-	GuideHero,
-	GuideShell,
-	NextGuideLink,
-	PageGrid,
-} from '../guide-content'
-
-export const metadata: Metadata = {
-	title: 'Getting Started | New Writer Guide',
-	description: 'How to create an account and sign in to shortstory.ink.',
-}
-
-export default function GettingStartedPage() {
-	return (
-		<GuideShell activeHref="/guide/new-writers/getting-started">
-			<GuideHero
-				kicker="Getting started"
-				title="Create your account and come back whenever you need."
-				body="Your account is simply the doorway to your writing desk. Use the same email and password when you return."
-				image={{
-					src: '/guide/new-writers/sign-up.webp',
-					width: 490,
-					height: 458,
-					alt: 'The sign up form with email, password, and confirm password fields.',
-				}}
-			/>
-
-			<PageGrid>
-				<CopyBlock kicker="Step one" title="Sign up once.">
-					<p>
-						Enter your email, choose a password, and confirm it. After that,
-						your drafts, feedback, and revision history all stay attached to
-						your account.
-					</p>
-					<p>
-						If you are joining a group, use the email address your teacher is
-						expecting so access is smooth.
-					</p>
-				</CopyBlock>
-				<Figure
-					image={{
-						src: '/guide/new-writers/sign-up.webp',
-						width: 490,
-						height: 458,
-						alt: 'The shortstory.ink sign up panel.',
-					}}
-				/>
-				<Figure
-					image={{
-						src: '/guide/new-writers/sign-in.webp',
-						width: 492,
-						height: 439,
-						alt: 'The shortstory.ink sign in panel.',
-					}}
-				/>
-				<CopyBlock kicker="Coming back" title="Sign in when you return.">
-					<p>
-						Use the sign-in page when you want to submit another piece, check
-						whether feedback has arrived, or continue a revision.
-					</p>
-					<p>
-						Forgot your password? Use the password reset option and follow the
-						email link.
-					</p>
-				</CopyBlock>
-			</PageGrid>
-
-			<NextGuideLink href="/guide/new-writers/submitting" label="Next: submit a draft" />
-		</GuideShell>
-	)
-}
+import { GuideShell, GuideHero, GuideStep, NextGuideLink } from '../guide-content'
+export const metadata: Metadata = { title: "Getting started | New Writer Guide", description: "Create your account, confirm your email, and return whenever you are ready to write." }
+export default function Page() { return <GuideShell activeHref="/guide/new-writers/getting-started">
+<GuideHero kicker="Getting started" title="A doorway to your writing desk." body="Create your account, confirm your email, and return whenever you are ready to write." />
+<GuideStep number="01" title="Create your account." image="sign-up" caption="The sign-up form asks for your email and a confirmed password.">
+<p>{"Enter your email and choose a password. Type it again in the confirmation field, then choose Sign up."}</p>
+<p>{"If you are joining a group, use the email address your teacher is expecting."}</p>
+</GuideStep>
+<GuideStep number="02" title="Confirm your email." image="confirm-email" caption="The confirmation screen explains what to do next.">
+<p>{"Open the confirmation email and follow its link. Check your spam folder if it does not arrive."}</p>
+<p>{"Confirmation activates your account; it does not submit any writing."}</p>
+</GuideStep>
+<GuideStep number="03" title="Come back to your studio." image="sign-in" caption="Sign in, or request a password reset from the same screen.">
+<p>{"Sign in with the same email and password. If you forget your password, choose Forgot password? and follow the reset email."}</p>
+<p>{"Returning after the September update? Use Forgot password? once to set your new password. Your existing writing and feedback remain attached to your account."}</p>
+</GuideStep>
+<NextGuideLink href="/guide/new-writers/submitting" label="Next: submit a draft" />
+</GuideShell> }

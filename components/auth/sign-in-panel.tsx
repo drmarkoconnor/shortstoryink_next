@@ -42,45 +42,45 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 	}
 
 	return (
-		<section className="surface w-full p-8">
-			<p className="mb-3 text-xs uppercase tracking-[0.16em] text-accent-300">
-				Authentication
+		<section className="w-full">
+			<p className="mb-3 text-xs uppercase tracking-[0.16em] text-studio-accent">
+				Welcome back
 			</p>
-			<h1 className="literary-title text-3xl">Sign in to shortstory.ink</h1>
+			<h1 className="studio-heading">Sign in to your studio</h1>
 			<p className="muted mt-3 text-sm">
 				Sign in with your email and password.
 			</p>
 			<p className="muted mt-3 text-sm">Returning after our September update? Choose “Forgot password?” once to set a new password. Your writing and feedback are still here.</p>
 			{configError && (
-				<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+				<p className="mt-3 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
 					Sign-in is temporarily unavailable. Please try again later.
 				</p>
 			)}
 
 			<form onSubmit={onPasswordSubmit} className="mt-8 space-y-4">
 				<label className="block">
-					<span className="mb-2 block text-sm text-silver-200">Email</span>
+					<span className="mb-2 block text-sm text-studio-muted">Email</span>
 					<input
 						value={email}
 						onChange={(event) => setEmail(event.target.value)}
 						type="email"
 						autoComplete="email"
 						required
-						className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+						className="w-full rounded border border-studio-line bg-studio-paper px-4 py-2.5 text-studio-ink outline-none ring-accent-400 transition focus:ring"
 						placeholder="you@example.com"
 					/>
 				</label>
 
 				{!showReset && (
 					<label className="block">
-						<span className="mb-2 block text-sm text-silver-200">Password</span>
+						<span className="mb-2 block text-sm text-studio-muted">Password</span>
 						<input
 							value={password}
 							onChange={(event) => setPassword(event.target.value)}
 							type="password"
 							autoComplete="current-password"
 							required
-							className="w-full rounded-xl border border-white/15 bg-ink-900 px-4 py-2.5 text-parchment-100 outline-none ring-accent-400 transition focus:ring"
+							className="w-full rounded border border-studio-line bg-studio-paper px-4 py-2.5 text-studio-ink outline-none ring-accent-400 transition focus:ring"
 							placeholder="Your password"
 						/>
 					</label>
@@ -92,14 +92,14 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 							<button
 								type="submit"
 								disabled={configError || status === 'signing-in'}
-								className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+								className="studio-primary">
 								{status === 'signing-in' ? 'Signing in…' : 'Sign in'}
 							</button>
 							<button
 								type="button"
 								disabled={status === 'signing-in'}
 								onClick={() => setShowReset(true)}
-								className="rounded-full border border-white/25 bg-white/5 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-white/10">
+								className="rounded border border-studio-line bg-studio-tint px-5 py-2.5 text-sm text-studio-ink transition hover:bg-studio-tint">
 								Forgot password?
 							</button>
 						</>
@@ -108,16 +108,16 @@ export function SignInPanel({ configError = false, callbackError = false, postSi
 						<button
 							type="submit"
 							disabled={configError || status === 'resetting'}
-							className="rounded-full border border-accent-400/70 bg-accent-400/20 px-5 py-2.5 text-sm text-parchment-100 transition hover:bg-accent-400/30 disabled:cursor-not-allowed disabled:opacity-60">
+							className="studio-primary">
 							{status === 'resetting' ? 'Sending reset…' : 'Send password reset email'}
 						</button>
 					)}
 				</div>
 
-				{showReset && <button type="button" disabled={status === 'resetting'} className="text-sm text-accent-200" onClick={() => { setShowReset(false); setMessage(null) }}>Back to sign in</button>}
+				{showReset && <button type="button" disabled={status === 'resetting'} className="text-sm text-studio-accent" onClick={() => { setShowReset(false); setMessage(null) }}>Back to sign in</button>}
 				{message && (
 					<p role="status"
-						className={`text-sm ${status === 'error' ? 'text-red-300' : 'text-silver-200'}`}>
+						className={`text-sm ${status === 'error' ? 'text-red-800' : 'text-studio-muted'}`}>
 						{message}
 					</p>
 				)}

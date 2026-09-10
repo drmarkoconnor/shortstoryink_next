@@ -1,0 +1,29 @@
+'use client'
+// TEMPORARY local-only synthetic component harness. Removed before build/deploy.
+import { useSearchParams } from 'next/navigation'
+import { DocumentBuilder } from '@/components/teacher/document-builder'
+import { WriterSubmissionComposer } from '@/components/writer/writer-submission-composer'
+import { ExampleReadingWorkspace } from '@/components/writer/example-reading-workspace'
+import { TeacherReviewWorkspace } from '@/components/teacher/review-workspace'
+import { SceneExplorer } from '@/components/illustrations/scene-explorer'
+import { BrandWordmark } from '@/components/brand/brand-wordmark'
+import { AppNav } from '@/components/layout/app-nav'
+import { Suspense } from 'react'
+const paragraphs = [
+ {id:'p1',text:'Eleanor chose the bench furthest from the bandstand. She set the paper bag beside her and folded its top twice, although there was nothing in it that could spill.'},
+ {id:'p2',text:'Across the path, a boy was teaching his younger sister to whistle. Every failed attempt made him laugh. Eleanor watched the little girl’s hands, clenched around the stems of three daisies.'},
+ {id:'p3',text:'He had said four o’clock. The clock above the café had stopped at twenty past two, as it always did, but Eleanor had already checked her watch six times.'},
+ {id:'p4',text:'She moved the bag onto her lap. When someone turned into the path, she looked down, suddenly occupied with the fold she had made so carefully.'},
+]
+function Fixture() {
+ const view = useSearchParams().get('view') || 'builder'
+ const teacher = view === 'builder' || view === 'review'
+ return <><header className="studio-header"><BrandWordmark /><AppNav items={teacher ? [{href:'/app/teacher/review-desk',label:'Review queue'},{href:'/app/teacher-studio',label:'Teaching studio'},{href:'/app/teacher/library',label:'Reading library'},{href:'/app/teacher/groups',label:'Groups'}] : [{href:'/app/writer',label:'My writing'},{href:'/app/writer/reading-room',label:'Reading room'},{href:'/app/writer/feedback',label:'My feedback'}]} /><span className="text-sm">{teacher ? 'Mark' : 'Eleanor'}</span></header><main className="studio-main">
+ {view === 'builder' ? <DocumentBuilder initialDocumentId="qa-document" initialDocuments={[{id:'qa-document',title:'Someone, somewhere, under pressure',documentType:'Teaching note',groupIds:[],content:{type:'doc',content:[{type:'heading',attrs:{level:2},content:[{type:'text',text:'Begin with a small gesture'}]},{type:'paragraph',content:[{type:'text',text:'A scene begins when someone wants something. Read the passage below and notice what the character cannot say.'}]},{type:'studioIllustration',attrs:{illustrationId:'park',caption:'A place to wait. A reason to stay.',size:'wide'}},{type:'paragraph',content:[{type:'text',text:paragraphs[0].text}]},{type:'heading',attrs:{level:2},content:[{type:'text',text:'Try it in your own writing'}]},{type:'paragraph',content:[{type:'text',text:'Place someone in a familiar setting. Give them a private worry and let one ordinary object carry the pressure.'}]}]},createdAt:'2026-09-09',updatedAt:'2026-09-09'}]} initialSnippets={[{id:'s1',text:paragraphs[0].text,note:'The repeated fold lets an ordinary action reveal unease.',categoryLabel:'Character',tags:[],sourceMetadata:{sourceLabel:'Practice passage'}}]} initialGroups={[{id:'g1',title:'Wednesday writers'}]} initialLibraryItems={[]} /> : null}
+ {view === 'writer' ? <WriterSubmissionComposer writerId="qa-writer" writerName="Eleanor" createSubmissionAction={async () => ({error:'Local preview — no submission is sent.'})} deleteSubmissionAction={() => {}} workshops={[{id:'g1',title:'Wednesday writers',isAbu:false}]} isWorkshopRequired defaultWorkshopId="g1" submissions={[]} submissionsError={null} notice={null} errorNotice={null} workshopError={null} submittedCount={0} inReviewCount={0} publishedCount={0} abuSubmissionWordLimit={1000} availableDocuments={[]} documentsError={null} /> : null}
+ {view === 'reading' ? <><ExampleReadingWorkspace title="The paper bag" authorName="Practice passage" editorialNote="Notice how an everyday gesture can make a private worry visible." contentNote="" craftTags={['Character']} paragraphs={paragraphs} annotations={[{id:'a1',comment:'An ordinary action becomes a signal of strain. The narrator never needs to name the feeling.',categoryLabel:'Character',categorySlug:'character',tags:[],createdAt:'2026-09-09',anchor:{blockId:'p1',startOffset:72,endOffset:94,quote:paragraphs[0].text.slice(72,94)}}]} /></> : null}
+ {view === 'scenes' ? <><p className="studio-eyebrow">Read. Notice. Imagine.</p><h1 className="studio-heading mt-3">The reading room</h1><SceneExplorer /></> : null}
+ {view === 'review' ? <TeacherReviewWorkspace submissionId="qa-submission" title="The paper bag" paragraphs={paragraphs} feedback={[]} snippets={[]} snippetLibrary={[]} feedbackMemory={[]} notice={null} errorNotice={null} submissionStatus="submitted" canDeleteFeedback canPublishFeedback canExportFeedback initialSummary="" initialSummaryPublishedAt={null} sidebarHeader={<h1 className="literary-title text-3xl">The paper bag</h1>} /> : null}
+ </main></>
+}
+export default function Page() { return <Suspense><Fixture /></Suspense> }
