@@ -1,0 +1,13 @@
+'use client'
+import {Suspense,useState} from 'react'
+import {useSearchParams} from 'next/navigation'
+import {CourseOverview} from '@/components/course/course-overview'
+import {LessonPage} from '@/components/course/lesson-page'
+import {WorkshopGuidance} from '@/components/course/workshop-guidance'
+import {CommonplaceBook} from '@/components/commonplace/commonplace-book'
+import {AppNav} from '@/components/layout/app-nav'
+import type {CommonplaceEntry,CommonplaceInput} from '@/lib/commonplace/validation'
+function Fixture(){const params=useSearchParams();const view=params.get('view')||'overview';const [entries,setEntries]=useState<CommonplaceEntry[]>([]);const [fail,setFail]=useState(false)
+async function save(e:CommonplaceInput){if(fail)return {error:'Synthetic save failure. Your words remain here.'};setEntries(all=>[{...e,updatedAt:new Date().toISOString()},...all.filter(x=>x.id!==e.id)]);return {}}
+return <><header className="app-shell-header studio-header"><span className="font-serif text-2xl">shortstory.ink</span><AppNav items={[{href:'/app/course',label:'Workshop course'},{href:'/app/writer',label:'My writing'},{href:'/app/writer/reading-room',label:'Reading room'},{href:'/app/writer/feedback',label:'My feedback'},{href:'/app/writer/commonplace',label:'Commonplace'}]} /></header><main className="app-shell-main studio-main"><label className="course-controls"><input type="checkbox" checked={fail} onChange={e=>setFail(e.target.checked)} /> Simulate save failure</label>{view==='overview'?<CourseOverview/>:view==='book'?<CommonplaceBook initialEntries={entries} onSave={save} onDelete={async()=>({})}/>:view==='returning'||view==='reading-together'?<WorkshopGuidance returning={view==='returning'}/>:<LessonPage slug={view} onSave={save} teacher={params.get('teacher')==='yes'}/>}</main></>}
+export default function Page(){return <Suspense><Fixture/></Suspense>}

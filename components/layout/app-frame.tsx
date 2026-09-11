@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
@@ -7,9 +8,11 @@ import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 import { SignOutForm } from '@/components/auth/sign-out-form'
 
 const writerNavItems = [
+ { href: '/app/course', label: 'Workshop course' },
  { href: '/app/writer', label: 'My writing' },
  { href: '/app/writer/reading-room', label: 'Reading room', matches: ['/app/writer/documents', '/app/writer/examples'] },
  { href: '/app/writer/feedback', label: 'My feedback' },
+ { href: '/app/writer/commonplace', label: 'Commonplace' },
 ]
 const teacherNavItems = [
  { href: '/app/teacher/review-desk', label: 'Review queue', matches: ['/app/workshop', '/app/teacher/archive'] },
@@ -50,6 +53,7 @@ export async function AppFrame({
      <div className="space-y-4">
       <a className="block studio-link" href="/app/account">Account settings</a>
       <a className="block studio-link" href="/guide/new-writers">Writing guide</a>
+      <Link className="block studio-link" href="/app/course">Workshop course</Link>
       <SignOutForm ownerId={user.id} />
      </div>
     </details>

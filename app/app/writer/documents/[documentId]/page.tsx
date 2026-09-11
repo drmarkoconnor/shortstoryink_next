@@ -1,3 +1,5 @@
+import { SelectionCapture } from '@/components/commonplace/selection-capture'
+import { saveCommonplace } from '@/app/app/writer/commonplace/actions'
 import { IllustrationFigure } from '@/components/illustrations/illustration-figure'
 import type { JSONContent } from '@tiptap/core'
 import Link from 'next/link'
@@ -355,7 +357,7 @@ export default async function WriterDocumentPage({
 						{document.title}
 					</h1>
 				</header>
-				<div className="mt-2">{(content.content ?? []).map(renderDocumentNode)}</div>
+				<SelectionCapture source={document.title} sourceUrl={`/app/writer/documents/${documentId}`} onSave={saveCommonplace}><div className="mt-2">{(content.content ?? []).map(renderDocumentNode)}</div></SelectionCapture>
 			</article>
 		</section>
 	)

@@ -1,0 +1,13 @@
+{
+  "widths": [
+    1360,
+    390
+  ],
+  "coursePages": 5,
+  "capture": true,
+  "saveFailureRetention": true,
+  "createEditSearchFilterDelete": true,
+  "teacherLessonPreview": true,
+  "print": true,
+  "errors": []
+}

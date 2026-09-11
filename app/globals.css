@@ -308,3 +308,22 @@ textarea:not(.writing-manuscript):focus-visible { outline:2px solid #496859; out
 @media print { .writing-surface { border:0; background:white; box-shadow:none; } }
 
 .studio-picker[open] { display:flex; flex-direction:column; height:min(850px,90dvh); overflow:hidden; }
+
+/* Course handouts and the writer's private commonplace. */
+.course-input { display:block; width:100%; margin-top:.5rem; padding:.7rem .85rem; border:1px solid #a8b4a5; border-radius:4px; background:#f0f3ec; color:var(--studio-ink, #293c34); }
+.course-input:focus { outline:2px solid #527564; outline-offset:2px; }
+.commonplace-dialog { width:min(680px,calc(100% - 2rem)); max-height:90dvh; overflow-y:auto; padding:2rem; border:1px solid #bac2b5; border-radius:5px; background:#faf9f5; color:#293c34; }
+.commonplace-dialog::backdrop { background:rgb(30 44 36 / .35); }
+.course-prose { margin-top:2rem; line-height:2; }
+.course-prose p { margin-top:1rem; }
+.course-prose h2 { margin-top:2rem; font-family:Georgia,serif; font-size:1.5rem; line-height:1.4; }
+@media(max-width:640px) { .commonplace-dialog { padding:1.25rem; } }
+@media print {
+ .course-controls, .commonplace-dialog { display:none!important; }
+ .course-page { max-width:none!important; color:#172820; }
+ .course-page .studio-figure { max-width:65%; margin:1rem auto; }
+ .course-page h1, .course-page h2, .course-page h3 { break-after:avoid; }
+ .course-page blockquote, .course-page li { break-inside:avoid; }
+ .course-page details > p { display:block!important; }
+ .course-page .writing-surface { padding:1rem; box-shadow:none; }
+}

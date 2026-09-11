@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { RevisionNote } from '@/components/commonplace/revision-note'
 import { useRouter } from 'next/navigation'
 import { useRecoveryDraft } from '@/lib/drafts/use-recovery-draft'
 import { DraftRecoveryNotice } from '@/components/writer/draft-recovery-notice'
@@ -93,6 +94,7 @@ export function RevisionDraftForm({
 	return (
 		<div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
 			<div className="space-y-4"><header><h2 className="literary-title text-3xl">Your next draft</h2><p className="mt-3 text-studio-muted">Make room for the next version.</p></header>
+				<RevisionNote title={title} submissionId={currentSubmissionId} />
 				<label className="block">
 					<span className="mb-2 block text-sm text-studio-muted">
 						Revised body text

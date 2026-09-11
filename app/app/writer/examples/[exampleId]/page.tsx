@@ -1,3 +1,5 @@
+import { SelectionCapture } from '@/components/commonplace/selection-capture'
+import { saveCommonplace } from '@/app/app/writer/commonplace/actions'
 import { notFound } from 'next/navigation'
 import { ExampleReadingWorkspace } from '@/components/writer/example-reading-workspace'
 import { requireWriter } from '@/lib/auth/get-current-profile'
@@ -81,7 +83,7 @@ export default async function WriterExampleReaderPage({
 	)
 
 	return (
-		<ExampleReadingWorkspace
+		<SelectionCapture source={`${example.title} — ${example.author_name ?? ""}`} sourceUrl={`/app/writer/examples/${exampleId}`} onSave={saveCommonplace}><ExampleReadingWorkspace
 			title={example.title}
 			authorName={example.author_name ?? ''}
 			editorialNote={example.editorial_note ?? ''}
@@ -89,6 +91,6 @@ export default async function WriterExampleReaderPage({
 			craftTags={example.craft_tags ?? []}
 			paragraphs={toManuscriptParagraphs(example.body)}
 			annotations={annotations}
-		/>
+		/></SelectionCapture>
 	)
 }

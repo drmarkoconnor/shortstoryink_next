@@ -127,3 +127,20 @@ test('a teacher comment atomically starts review and prevents a writer deleting 
 	assert.equal((await db.query<{ status: string }>('select status from public.submissions where id=$1', [submissionId])).rows[0]?.status, 'in_review')
 	assert.equal((await as('studio_authenticated', writer, 'delete from public.submissions where id=$1 returning id', [submissionId])).rows.length, 0)
 })
+
+test('private commonplace supports own saving and retry, but denies peers, teacher and anonymous access', async () => {
+ const note=id(701), anchor={blockId:'commonplace',startOffset:0,endOffset:5,quote:'Hello',sourceLabel:'My observation',kind:'writer-commonplace'}
+ const save='insert into public.snippets(id,saved_by,source_type,snippet_text,anchor,visibility) values($1,$2,\'external\',$3,$4,\'private\') on conflict(id) do update set snippet_text=excluded.snippet_text returning id'
+ await as('studio_authenticated',writer,save,[note,writer,'Hello',anchor])
+ await as('studio_authenticated',writer,save,[note,writer,'Changed',anchor])
+ assert.equal((await as('studio_authenticated',writer,'select * from public.snippets where id=$1',[note])).rows.length,1)
+ for(const who of [other,teacher]){
+  assert.equal((await as('studio_authenticated',who,'select * from public.snippets where id=$1',[note])).rows.length,0)
+  assert.equal((await as('studio_authenticated',who,"update public.snippets set note='Intrusion' where id=$1 returning id",[note])).rows.length,0)
+  assert.equal((await as('studio_authenticated',who,'delete from public.snippets where id=$1 returning id',[note])).rows.length,0)
+  await assert.rejects(as('studio_authenticated',who,save,[note,who,'Intrusion',anchor]),/row-level security/)
+ }
+ assert.equal((await as('studio_anon',null,'select * from public.snippets where id=$1',[note])).rows.length,0)
+ await assert.rejects(as('studio_authenticated',writer,save,[id(702),other,'Forged owner',anchor]),/row-level security/)
+ assert.equal((await as('studio_authenticated',writer,'delete from public.snippets where id=$1 returning id',[note])).rows.length,1)
+})

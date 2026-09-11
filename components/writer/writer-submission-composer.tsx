@@ -119,6 +119,7 @@ export function WriterSubmissionComposer({
 	return (
 		<div className="mx-auto max-w-[1200px] space-y-10">
    <header className=""><p className="studio-eyebrow">Your writing life</p><h1 className="studio-heading mt-3">Welcome back, {writerName.split(' ')[0]}.</h1><p className="mt-4 text-studio-muted">A little space to read, write and begin again.</p></header>
+   <section className="border-l-2 border-studio-line pl-5"><p className="studio-eyebrow">The Short Story Workshop</p><p className="mt-3 leading-7">Find your next reading and writing experiment.</p><Link href="/app/course" className="studio-link mt-3 inline-block">Open the course journey →</Link></section>
    <div className="grid gap-12  lg:grid-cols-[1.2fr_1fr]">
    <section className="border-y border-studio-line py-7">
     <p className="studio-eyebrow">On your desk</p><h2 className="literary-title mt-4 text-3xl">{draft.title || 'The next page is yours'}</h2>
