@@ -54,9 +54,12 @@ export function repairSingleBlockAnchor<T extends RepairableAnchor>(
 			isWordCharacter(firstCharacter) &&
 			(!anchor.prefix || anchor.prefix.endsWith(previousCharacter))
 		) {
+			const repairedStart = anchor.startOffset - 1
 			return {
 				...anchor,
-				startOffset: anchor.startOffset - 1,
+				startOffset: repairedStart,
+				quote: paragraph.text.slice(repairedStart, anchor.endOffset),
+				prefix: paragraph.text.slice(Math.max(0, repairedStart - 24), repairedStart),
 			}
 		}
 
