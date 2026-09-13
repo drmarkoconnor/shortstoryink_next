@@ -40,6 +40,7 @@ type FeedbackAnchor = {
 	categoryLabel?: string
 	tags?: unknown[]
 	suggestedAction?: 'cut'
+	memoryHidden?: boolean
 }
 
 function isFeedbackAnchor(value: unknown): value is FeedbackAnchor {
@@ -76,7 +77,12 @@ export default async function TeacherFeedbackMemoryPage() {
 	if (feedbackResult.error) {
 		loadError = feedbackResult.error.message
 	} else {
-		const feedbackRows = (feedbackResult.data ?? []) as FeedbackRow[]
+		const feedbackRows = ((feedbackResult.data ?? []) as FeedbackRow[]).filter(
+			(row) => {
+				const anchor = isFeedbackAnchor(row.anchor) ? row.anchor : null
+				return anchor?.memoryHidden !== true
+			},
+		)
 		const submissionIds = [
 			...new Set(feedbackRows.map((row) => row.submission_id).filter(Boolean)),
 		]
@@ -159,8 +165,9 @@ export default async function TeacherFeedbackMemoryPage() {
 					Comments and writer examples
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-					Saved feedback, anchored quotes, and writer-specific patterns for close
-					reuse in future readings.
+					Useful feedback, anchored quotes, and writer-specific patterns for close
+					reuse in future readings. Test or anodyne comments can be removed from
+					this memory without altering the feedback already returned to a writer.
 				</p>
 			</div>
 
