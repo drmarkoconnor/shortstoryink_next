@@ -184,7 +184,7 @@ export function WriterSubmissionComposer({
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 backdrop-blur-sm">
 					<div className="w-full max-w-md rounded-lg border border-emerald-300/25 bg-studio-canvas p-5 shadow-none">
 						<p className="text-xs uppercase tracking-[0.12em] text-emerald-800">Submission saved</p>
-						<h2 className="literary-title mt-2 text-3xl text-studio-ink">It's on the desk.</h2>
+						<h2 className="literary-title mt-2 text-3xl text-studio-ink">It&apos;s on the desk.</h2>
 						<p className="mt-3 text-sm leading-relaxed text-studio-muted">
 							Your piece is waiting for a close read. You can start another piece, return to
 							your writing, or leave it here for now.
