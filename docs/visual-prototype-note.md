@@ -12,4 +12,12 @@ This note exists to make the intent explicit during review:
 - no course-led writer experience
 - invitation-led public positioning
 
-Do not propagate further visual complexity until the writer and editor preview has been reviewed in real use.
+Mark's review is positive enough to proceed, with one deliberate reservation: the current treatment can still feel a little plain / blocky / “1990s HTML” in places. Do **not** solve that by adding decorative complexity during workflow stabilisation.
+
+After the core writer-editor loop is stable, compare a small set of representative screens in at least three visual directions before any whole-site restyle:
+
+1. refined Literary Room — current concept with softer hierarchy and fewer boxed regions
+2. Modern Editorial Journal — stronger typography, asymmetry and whitespace, fewer explicit panels
+3. Contemporary Arts Magazine — more art direction and image/typographic contrast while remaining calm
+
+Do not propagate further visual complexity until the writer/editor workflows and data-safety checks are complete.
