@@ -240,6 +240,34 @@
   box-shadow: 0 12px 30px rgba(38, 55, 47, .05);
 }
 
+/*
+ * The manuscript review screen used to devote a very narrow, very long rail to
+ * three substantial tools. Snippets and Writer memory already have dedicated
+ * library surfaces, so keep them out of the live reading rail. Marginalia is
+ * the context-sensitive tool that earns the space: give it a wider, sticky
+ * column so comments remain usable while the editor reads.
+ */
+@media (min-width: 1280px) {
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px) !important;
+    align-items: start;
+  }
+
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) > aside {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    align-self: start;
+    padding-right: .2rem;
+  }
+
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) [data-proto-card='Writer memory'],
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) [data-proto-card='Snippets'] {
+    display: none;
+  }
+}
+
 /* Reading and commonplace get quiet but recognisable identities. */
 .studio-shell--writer:has(a[href='/app/writer/reading-room'][aria-current='page']) .studio-main,
 .studio-shell--writer:has(a[href^='/app/writer/documents'][aria-current='page']) .studio-main {
