@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-reading-workspace'
 import { requireWriter } from '@/lib/auth/get-current-profile'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { repairSingleBlockAnchor } from '@/lib/manuscript/anchor-repair'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { createAdminDataClient } from '@/lib/data/client'
 
@@ -105,11 +106,8 @@ export default async function WriterFeedbackDetailPage({
 		created_at: string
 	}>
 
-	const feedback: FeedbackItem[] = feedbackRows.map((item) => ({
-		id: item.id,
-		comment: item.comment,
-		created_at: item.created_at,
-		anchor: isFeedbackAnchor(item.anchor)
+	const feedback: FeedbackItem[] = feedbackRows.map((item) => {
+		const parsedAnchor: FeedbackAnchor | null = isFeedbackAnchor(item.anchor)
 			? {
 					blockId: String(item.anchor.blockId),
 					endBlockId:
@@ -147,8 +145,19 @@ export default async function WriterFeedbackDetailPage({
 							? item.anchor.kind
 							: 'craft',
 				}
-			: null,
-	}))
+			: null
+
+		return {
+			id: item.id,
+			comment: item.comment,
+			created_at: item.created_at,
+			// Repair display coordinates only. The original feedback row remains
+			// untouched so we never mutate manuscript history merely to render it.
+			anchor: parsedAnchor
+				? repairSingleBlockAnchor(parsedAnchor, paragraphs)
+				: null,
+		}
+	})
 
 	const summaryResult = await adminData
 		.from('feedback_summaries')
