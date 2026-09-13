@@ -13,15 +13,19 @@ type ManuscriptParagraph = {
 	text: string
 }
 
+function isWordCharacter(value: string | undefined) {
+	return Boolean(value && /[\p{L}\p{N}]/u.test(value))
+}
+
 /**
  * Repair a stored single-paragraph annotation against the immutable manuscript
  * text without mutating the database.
  *
  * Older selections can be displaced by a character if the browser DOM used to
  * calculate an offset contained annotation controls that are absent from the
- * canonical manuscript. The stored quote is the safest evidence of what the
- * editor originally selected, so if the recorded offsets no longer slice to
- * that quote we re-locate the nearest exact occurrence.
+ * canonical manuscript. Newer anchors retain the literal browser selection;
+ * older anchors are repaired only when the evidence is strong enough to avoid
+ * changing the writer's manuscript history.
  */
 export function repairSingleBlockAnchor<T extends RepairableAnchor>(
 	anchor: T,
@@ -36,10 +40,31 @@ export function repairSingleBlockAnchor<T extends RepairableAnchor>(
 		return anchor
 	}
 
-	if (paragraph.text.slice(anchor.startOffset, anchor.endOffset) === anchor.quote) {
+	const storedSlice = paragraph.text.slice(anchor.startOffset, anchor.endOffset)
+	if (storedSlice === anchor.quote) {
+		// Legacy signature for the reported bug: the stored quote begins in the
+		// middle of a word and the immediately preceding manuscript character is
+		// also a word character. A normal whole-word selection cannot legitimately
+		// have that boundary, so expand the display highlight by one character.
+		const previousCharacter = paragraph.text[anchor.startOffset - 1]
+		const firstCharacter = anchor.quote[0]
+		if (
+			anchor.startOffset > 0 &&
+			isWordCharacter(previousCharacter) &&
+			isWordCharacter(firstCharacter) &&
+			(!anchor.prefix || anchor.prefix.endsWith(previousCharacter))
+		) {
+			return {
+				...anchor,
+				startOffset: anchor.startOffset - 1,
+			}
+		}
+
 		return anchor
 	}
 
+	// If the quote itself is intact but the stored coordinates have drifted,
+	// find every nearby exact match and choose the one nearest the old start.
 	const nearStart = Math.max(0, anchor.startOffset - 64)
 	const nearEnd = Math.min(paragraph.text.length, anchor.endOffset + 64)
 	const nearText = paragraph.text.slice(nearStart, nearEnd)
