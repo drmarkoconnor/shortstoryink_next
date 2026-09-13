@@ -1,0 +1,298 @@
+/* shortstory.ink v1.1 visual architecture
+   --------------------------------------
+   The application is a dark literary room containing warm paper work surfaces.
+   This deliberately gives the writer fast visual orientation while preserving
+   high-legibility manuscript, feedback and reading pages. */
+
+:root {
+  --room-950: #0f1d18;
+  --room-900: #14251f;
+  --room-800: #1d3029;
+  --room-line: rgba(244, 239, 229, 0.16);
+  --room-text: #f3eee5;
+  --room-muted: #b7c2bc;
+  --brass: #c6a66a;
+  --paper-warm: #f4efe5;
+  --paper-deep: #ece5d8;
+  --paper-reading: #f8f3e9;
+  --sage-room: #dfe7dc;
+  --editor-canvas: #e7e3da;
+  --ink-deep: #24372f;
+}
+
+/* Logged-in shell --------------------------------------------------------- */
+.studio-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% -10%, rgba(99, 126, 111, 0.18), transparent 34rem),
+    linear-gradient(180deg, var(--room-900), var(--room-950));
+  color: var(--room-text);
+}
+
+.studio-shell .studio-header {
+  color: var(--room-text);
+  border-bottom-color: var(--room-line);
+}
+
+.studio-shell .studio-header .literary-title,
+.studio-shell .studio-header .text-studio-ink {
+  color: var(--room-text);
+}
+
+.studio-shell .studio-nav {
+  color: var(--room-muted);
+}
+
+.studio-shell .studio-nav a {
+  color: inherit;
+}
+
+.studio-shell .studio-nav a:hover {
+  color: var(--room-text);
+}
+
+.studio-shell .studio-nav a[aria-current='page'] {
+  border-color: var(--brass);
+  color: var(--room-text);
+}
+
+.studio-shell .studio-account summary {
+  color: var(--room-text);
+}
+
+.studio-shell .studio-account[open] > div {
+  border-color: #c9c1b4;
+  background: var(--paper-warm);
+  color: var(--ink-deep);
+  box-shadow: 0 18px 44px rgba(8, 19, 15, 0.22);
+}
+
+.studio-shell .studio-main {
+  min-height: calc(100vh - 84px);
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, var(--paper-warm), #f7f3eb 42rem);
+  color: var(--ink-deep);
+  box-shadow:
+    0 -1px 0 rgba(255,255,255,.08),
+    0 20px 80px rgba(5, 14, 11, .24);
+}
+
+.studio-shell--editor .studio-main {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.22), transparent 16rem),
+    var(--editor-canvas);
+}
+
+/* Writer surfaces should read as distinct sheets / desks, not as cards
+   floating on an undifferentiated white webpage. */
+.studio-shell--writer .writing-surface {
+  background: #eef2e9;
+  border-color: #778b7d;
+  box-shadow: 0 12px 34px rgba(39, 58, 49, 0.06);
+}
+
+.studio-shell--writer .surface,
+.studio-shell--writer .folio-page {
+  background-color: var(--paper-reading);
+}
+
+.studio-shell--editor .surface,
+.studio-shell--editor .folio-page {
+  background-color: #faf6ee;
+  border-color: #cec6b8;
+}
+
+/* Give primary working areas a restrained spatial boundary. */
+.studio-room-panel {
+  border: 1px solid rgba(88, 104, 94, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 252, 246, 0.54);
+  padding: clamp(1.1rem, 2.4vw, 2rem);
+}
+
+.studio-room-panel--sage {
+  background: rgba(222, 231, 219, 0.64);
+}
+
+/* Public site ------------------------------------------------------------- */
+.public-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 78% 5%, rgba(101, 130, 113, .22), transparent 32rem),
+    linear-gradient(145deg, #10211a, #1a3027 62%, #12231d);
+  color: var(--room-text);
+}
+
+.public-shell .studio-header {
+  border-bottom-color: var(--room-line);
+}
+
+.public-shell .studio-header .literary-title,
+.public-shell .studio-header .text-studio-ink {
+  color: var(--room-text);
+}
+
+.public-shell .public-muted {
+  color: #c4cec8;
+}
+
+.public-shell .studio-eyebrow {
+  color: #c7d1ca;
+}
+
+.public-shell .studio-secondary {
+  border-color: rgba(244,239,229,.32);
+  color: var(--room-text);
+}
+
+.public-shell .studio-secondary:hover {
+  background: rgba(244,239,229,.08);
+}
+
+.public-hero {
+  max-width: 1344px;
+  margin: 0 auto;
+  padding: clamp(3rem, 7vw, 6.8rem) 2rem clamp(4rem, 8vw, 7rem);
+}
+
+.public-hero-copy {
+  max-width: 42rem;
+}
+
+.public-hero .studio-primary {
+  border-color: #d2b477;
+  background: #d2b477;
+  color: #17271f;
+}
+
+.public-hero .studio-primary:hover {
+  border-color: #ead39f;
+  background: #ead39f;
+}
+
+.public-paper {
+  max-width: 1344px;
+  margin: 0 auto;
+  border-radius: 16px 16px 0 0;
+  background: var(--paper-warm);
+  color: var(--ink-deep);
+  padding: clamp(2.2rem, 5vw, 4.2rem) 2rem 3.5rem;
+  box-shadow: 0 -12px 50px rgba(5, 14, 11, .22);
+}
+
+.public-paper .studio-eyebrow,
+.public-paper .text-studio-muted {
+  color: #637067;
+}
+
+.public-feature {
+  border-top: 1px solid #cfc8bc;
+  padding-top: 1.25rem;
+}
+
+.public-access-note {
+  border-left: 2px solid #9b7b43;
+  padding-left: 1rem;
+  color: #5f675f;
+}
+
+/* Authentication --------------------------------------------------------- */
+.auth-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(105, 132, 117, .22), transparent 28rem),
+    linear-gradient(180deg, var(--room-900), var(--room-950));
+  color: var(--room-text);
+}
+
+.auth-shell .studio-header {
+  border-bottom-color: var(--room-line);
+}
+
+.auth-shell .studio-header .literary-title,
+.auth-shell .studio-header .text-studio-ink {
+  color: var(--room-text);
+}
+
+.auth-paper {
+  border: 1px solid rgba(219, 208, 190, .8);
+  border-radius: 10px;
+  background: var(--paper-warm);
+  color: var(--ink-deep);
+  padding: clamp(1.5rem, 5vw, 2.6rem);
+  box-shadow: 0 20px 70px rgba(4, 12, 9, .28);
+}
+
+.auth-shell .auth-footer {
+  color: #aebbb4;
+}
+
+/* Editorial workspace ---------------------------------------------------- */
+.studio-shell--editor .studio-page-header {
+  border-bottom-color: #c8c1b6;
+}
+
+.studio-shell--editor .studio-subnav {
+  border-bottom-color: #c8c1b6;
+}
+
+.studio-shell--editor .surface {
+  box-shadow: 0 12px 30px rgba(38, 55, 47, .05);
+}
+
+/*
+ * The manuscript review screen used to devote a very narrow, very long rail to
+ * three substantial tools. Snippets and Writer memory already have dedicated
+ * library surfaces, so keep them out of the live reading rail. Marginalia is
+ * the context-sensitive tool that earns the space: give it a wider, sticky
+ * column so comments remain usable while the editor reads.
+ */
+@media (min-width: 1280px) {
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px) !important;
+    align-items: start;
+  }
+
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) > aside {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    align-self: start;
+    padding-right: .2rem;
+  }
+
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) [data-proto-card='Writer memory'],
+  .studio-shell--editor .studio-main div.grid:has(> aside [data-proto-card='Marginalia']) [data-proto-card='Snippets'] {
+    display: none;
+  }
+}
+
+/* Reading and commonplace get quiet but recognisable identities. */
+.studio-shell--writer:has(a[href='/app/writer/reading-room'][aria-current='page']) .studio-main,
+.studio-shell--writer:has(a[href^='/app/writer/documents'][aria-current='page']) .studio-main {
+  background: var(--paper-reading);
+}
+
+.studio-shell--writer:has(a[href='/app/writer/commonplace'][aria-current='page']) .studio-main {
+  background: linear-gradient(180deg, #e6ece1, #f1f2e9 36rem);
+}
+
+@media (max-width: 900px) {
+  .studio-shell .studio-main,
+  .public-paper {
+    border-radius: 0;
+  }
+
+  .public-hero {
+    padding-inline: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-shell,
+  .public-shell,
+  .auth-shell {
+    background-attachment: initial;
+  }
+}

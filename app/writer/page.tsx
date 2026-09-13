@@ -98,6 +98,13 @@ function encodeErrorMessage(message: string | null | undefined) {
 	return encodeURIComponent(message.slice(0, 140))
 }
 
+function isAbuWorkshop(workshop: WriterWorkshop) {
+	return (
+		isAbuWorkshopSlug(workshop.slug) ||
+		workshop.title.trim().toLowerCase() === 'authorised basic user'
+	)
+}
+
 async function detectSchemaMode() {
 	const adminData = createAdminDataClient()
 	const result = await adminData
@@ -445,12 +452,12 @@ export default async function WriterPage({
 	}
 
 	const isWorkshopRequired = mode === 'modern'
+	// In the invitation-only model the meaningful destination is the writer's
+	// actual group. ABU remains as a fallback/access category, not the default
+	// editorial destination when another membership exists.
 	const defaultWorkshopId =
-		workshops.find((workshop) => isAbuWorkshopSlug(workshop.slug))?.id ??
-		workshops.find(
-			(workshop) =>
-				workshop.title.trim().toLowerCase() === 'authorised basic user',
-		)?.id ??
+		workshops.find((workshop) => !isAbuWorkshop(workshop))?.id ??
+		workshops.find((workshop) => isAbuWorkshop(workshop))?.id ??
 		workshops[0]?.id ??
 		''
 	const submittedCount = submissions.filter(
@@ -465,9 +472,7 @@ export default async function WriterPage({
 	const composerWorkshops = workshops.map((workshop) => ({
 		id: workshop.id,
 		title: workshop.title,
-		isAbu:
-			isAbuWorkshopSlug(workshop.slug) ||
-			workshop.title.trim().toLowerCase() === 'authorised basic user',
+		isAbu: isAbuWorkshop(workshop),
 	}))
 
 	return (

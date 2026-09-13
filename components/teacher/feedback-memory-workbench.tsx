@@ -48,11 +48,14 @@ export function FeedbackMemoryWorkbench({
 }: {
 	initialEntries: FeedbackMemoryEntry[]
 }) {
-	const [entries] = useState(initialEntries)
+	const [entries, setEntries] = useState(initialEntries)
 	const [searchQuery, setSearchQuery] = useState('')
 	const [writerFilter, setWriterFilter] = useState('')
 	const [categoryFilter, setCategoryFilter] = useState('')
 	const [copiedId, setCopiedId] = useState<string | null>(null)
+	const [removingId, setRemovingId] = useState<string | null>(null)
+	const [notice, setNotice] = useState<string | null>(null)
+	const [error, setError] = useState<string | null>(null)
 
 	const writers = useMemo(() => {
 		return [...new Map(entries.map((entry) => [entry.writerId, entry.writerLabel]))]
@@ -104,8 +107,50 @@ export function FeedbackMemoryWorkbench({
 		}
 	}
 
+	const removeFromMemory = async (entry: FeedbackMemoryEntry) => {
+		if (removingId) return
+		const confirmed = window.confirm(
+			'Remove this comment from reusable memory? The feedback already returned to the writer will remain unchanged.',
+		)
+		if (!confirmed) return
+
+		setRemovingId(entry.id)
+		setNotice(null)
+		setError(null)
+		try {
+			const response = await fetch(`/api/teacher/feedback-memory/${entry.id}`, {
+				method: 'DELETE',
+			})
+			const payload = (await response.json()) as { notice?: string; error?: string }
+			if (!response.ok || payload.error) {
+				throw new Error(payload.error ?? 'Unable to remove comment from memory.')
+			}
+			setEntries((current) => current.filter((item) => item.id !== entry.id))
+			setNotice(payload.notice ?? 'Removed from reusable memory.')
+		} catch (removeError) {
+			setError(
+				removeError instanceof Error
+					? removeError.message
+					: 'Unable to remove comment from memory.',
+			)
+		} finally {
+			setRemovingId(null)
+		}
+	}
+
 	return (
 		<div className="space-y-4">
+			{notice ? (
+				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
+					{notice}
+				</p>
+			) : null}
+			{error ? (
+				<p role="alert" className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
+					{error}
+				</p>
+			) : null}
+
 			<section className="surface p-5 sm:p-6">
 				<div className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(12rem,0.8fr)_minmax(12rem,0.8fr)]">
 					<label className="block">
@@ -156,7 +201,7 @@ export function FeedbackMemoryWorkbench({
 				</div>
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-studio-line pt-3">
 					<p className="text-xs text-studio-muted">
-						{filteredEntries.length} shown from {entries.length} saved comments.
+						{filteredEntries.length} shown from {entries.length} reusable comments.
 						{focusedWriter ? ` ${focusedWriter} in focus.` : ''}
 					</p>
 					<button
@@ -174,7 +219,7 @@ export function FeedbackMemoryWorkbench({
 
 			{filteredEntries.length === 0 ? (
 				<section className="surface p-6">
-					<p className="text-sm text-studio-muted">No feedback memory matches.</p>
+					<p className="text-sm text-studio-muted">No reusable feedback matches.</p>
 				</section>
 			) : (
 				<section className="grid gap-3 lg:grid-cols-2">
@@ -252,6 +297,15 @@ export function FeedbackMemoryWorkbench({
 									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
 									Open
 								</Link>
+								<button
+									type="button"
+									disabled={removingId === entry.id}
+									onClick={() => {
+										void removeFromMemory(entry)
+									}}
+									className="rounded border border-rose-300/50 px-3 py-1.5 text-sm text-rose-800 transition hover:bg-rose-100 disabled:opacity-50">
+									{removingId === entry.id ? 'Removing…' : 'Remove from memory'}
+								</button>
 							</div>
 						</article>
 					))}

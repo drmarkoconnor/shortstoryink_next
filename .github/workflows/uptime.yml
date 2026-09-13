@@ -1,0 +1,30 @@
+name: Production availability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-availability
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check public home
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --show-error --location --max-time 20 https://shortstory.ink/)"
+          printf '%s' "$body" | grep -Fq 'shortstory.ink'
+
+      - name: Check sign-in page
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --show-error --location --max-time 20 https://shortstory.ink/auth/sign-in)"
+          printf '%s' "$body" | grep -Fq 'Sign in to your studio'

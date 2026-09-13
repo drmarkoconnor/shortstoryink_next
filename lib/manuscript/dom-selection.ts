@@ -60,15 +60,33 @@ function repairSingleParagraphOffsets({
 	selectedText: string
 }) {
 	const quote = paragraphText.slice(startOffset, endOffset)
-	if (!selectedText || quote === selectedText || quote.trim() === selectedText.trim()) {
+	if (!selectedText || quote === selectedText) {
 		return { startOffset, endOffset, quote }
 	}
 
-	const nearStart = Math.max(0, startOffset - 16)
-	const nearEnd = Math.min(paragraphText.length, endOffset + 16)
-	const nearMatch = paragraphText.slice(nearStart, nearEnd).indexOf(selectedText)
-	if (nearMatch >= 0) {
-		const repairedStart = nearStart + nearMatch
+	// Annotation controls can exist inside the rendered paragraph without being
+	// part of the canonical manuscript text. If measuring the DOM range drifts by
+	// a character, trust the browser's literal selected text and find the nearest
+	// matching occurrence in the manuscript before storing offsets.
+	const nearStart = Math.max(0, startOffset - 24)
+	const nearEnd = Math.min(paragraphText.length, endOffset + 24)
+	const nearText = paragraphText.slice(nearStart, nearEnd)
+	const matches: number[] = []
+	let searchFrom = 0
+
+	while (searchFrom <= nearText.length - selectedText.length) {
+		const match = nearText.indexOf(selectedText, searchFrom)
+		if (match < 0) break
+		matches.push(nearStart + match)
+		searchFrom = match + 1
+	}
+
+	if (matches.length > 0) {
+		const repairedStart = matches.reduce((closest, candidate) =>
+			Math.abs(candidate - startOffset) < Math.abs(closest - startOffset)
+				? candidate
+				: closest,
+		)
 		const repairedEnd = repairedStart + selectedText.length
 		return {
 			startOffset: repairedStart,
@@ -196,7 +214,8 @@ export function captureManuscriptSelection(
 	})
 
 	if (!isMultiBlockSelection) {
-		const selectedText = textContentWithoutIgnoredControls(range.cloneContents())
+		const selectedText =
+			selection.toString() || textContentWithoutIgnoredControls(range.cloneContents())
 		const repaired = repairSingleParagraphOffsets({
 			paragraphText: paragraphs[startIndex]?.text ?? '',
 			startOffset,

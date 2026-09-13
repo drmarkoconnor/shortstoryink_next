@@ -20,14 +20,15 @@ Avoid these mistakes:
 6. Do not design noisy dashboards. Use space, hierarchy, typography, and
    restraint.
 
-7. Do not default to heavy JavaScript frameworks. Prefer Eleventy, semantic
-   HTML, CSS, and light progressive enhancement.
+7. Do not default to heavy JavaScript frameworks. Prefer the lightest suitable
+   implementation, semantic HTML, clean CSS, and progressive enhancement where
+   possible. Do not introduce framework complexity merely for novelty.
 
 8. Do not let community become unmoderated social chatter. Feedback permissions
-   must be structured, teacher-led, and revocable.
+   must be structured, editor-led, and revocable.
 
 9. Do not let payment logic distort the first build. Payments are secondary to
-   the core learning loop.
+   the core writing and feedback loop.
 
 10. Do not use generic SaaS copy or visual language. The tone should feel
     literary, elegant, calm, and premium.
@@ -38,11 +39,11 @@ Avoid these mistakes:
 12. Do not create cluttered reading pages. Reading mode should feel focused,
     spacious, and highly legible.
 
-13. Do not make admin views data-dumps. Admin tools should reduce teacher
-    friction and support editorial judgment.
+13. Do not make editorial/admin views data-dumps. Editorial tools should reduce
+    reading and response friction and support judgment.
 
-14. Do not treat privacy and authorship as boilerplate. User ownership of
-    writing is part of the product’s ethical and marketing position.
+14. Do not treat privacy and authorship as boilerplate. Writers own their work;
+    this is part of the product's ethical and public position.
 
 15. If forced to choose, always preserve:
 
@@ -50,5 +51,16 @@ Avoid these mistakes:
 - readability
 - the submission-feedback-revision loop
 - calm UX
-- teacher control
+- editorial control
 - snippet capture
+
+16. Do not let unfinished course material become the organising product. Course
+    material may be developed privately in the Editorial Studio and shared as
+    individual readings or handouts when useful. It should become a writer-facing
+    course only after Mark deliberately decides it is complete enough to make
+    that promise.
+
+17. Visible language should treat participants as writers at different stages of
+    development. Prefer Writer, Editor or Workshop host, Trusted reader, Writing
+    group, Editorial desk, and Editorial studio. Internal database/auth role
+    names may remain unchanged when changing them would add technical risk.
