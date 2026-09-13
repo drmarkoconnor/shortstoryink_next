@@ -16,8 +16,10 @@ Mark's review is positive enough to proceed, with one deliberate reservation: th
 
 After the core writer-editor loop is stable, compare a small set of representative screens in at least three visual directions before any whole-site restyle:
 
-1. refined Literary Room — current concept with softer hierarchy and fewer boxed regions
-2. Modern Editorial Journal — stronger typography, asymmetry and whitespace, fewer explicit panels
-3. Contemporary Arts Magazine — more art direction and image/typographic contrast while remaining calm
+1. **Refined Literary Room** — current concept with softer hierarchy and fewer boxed regions.
+2. **Modern Editorial Journal** — stronger typography, asymmetry and whitespace, fewer explicit panels.
+3. **Contemporary Arts Magazine** — more art direction and image/typographic contrast while remaining calm.
+
+The comparison should use the same four representative screens in each direction: public home, writer home, manuscript/feedback reading, and Editorial desk. This keeps the comparison about design rather than feature differences.
 
 Do not propagate further visual complexity until the writer/editor workflows and data-safety checks are complete.
