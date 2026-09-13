@@ -12,7 +12,7 @@ export function ProtoCard({
 	action?: ReactNode
 }) {
 	return (
-		<section className="surface p-5 sm:p-6">
+		<section data-proto-card={title} className="surface p-5 sm:p-6">
 			<div className="mb-4 flex items-start justify-between gap-3">
 				<div>
 					<h3 className="literary-title text-2xl text-studio-ink">{title}</h3>
