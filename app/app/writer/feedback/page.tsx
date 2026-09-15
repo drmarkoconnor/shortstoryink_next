@@ -124,13 +124,13 @@ export default async function WriterFeedbackPage() {
 		<section className="space-y-8">
 			<div className="studio-page-header">
 				<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
-					Finished pieces
+					Returned feedback
 				</p>
 				<h1 className="studio-heading mt-3">
-					Finished pieces
+					Returned feedback
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
-					Returned work appears here after a teacher publishes feedback, ready
+					Returned work appears here after your editor publishes feedback, ready
 					to reread with notes in place.
 				</p>
 			</div>

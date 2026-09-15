@@ -2,6 +2,8 @@
 
 import { Children } from 'react'
 import Link from 'next/link'
+import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-reading-workspace'
+import { repairSingleBlockAnchor } from '@/lib/manuscript/anchor-repair'
 import { useRouter } from 'next/navigation'
 import {
 	useCallback,
@@ -303,6 +305,8 @@ function parseInitialActiveId(value: string | null | undefined) {
 export function TeacherReviewWorkspace({
 	submissionId,
 	title,
+	version,
+	createdAt,
 	paragraphs,
 	feedback,
 	snippets,
@@ -321,6 +325,8 @@ export function TeacherReviewWorkspace({
 }: {
 	submissionId: string
 	title: string
+	version: number
+	createdAt: string
 	paragraphs: Array<{ id: string; text: string }>
 	feedback: FeedbackItem[]
 	snippets: SnippetItem[]
@@ -365,7 +371,7 @@ export function TeacherReviewWorkspace({
 	const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
 	const [publishError, setPublishError] = useState<string | null>(null)
 	const [isPublishing, setIsPublishing] = useState(false)
-	const [showQueueReturnCue, setShowQueueReturnCue] = useState(false)
+	const [isWriterPreviewOpen, setIsWriterPreviewOpen] = useState(false)
 	const [commentDraft, setCommentDraft] = useState('')
 	const [commentCategoryId, setCommentCategoryId] = useState('')
 	const [commentTagsDraft, setCommentTagsDraft] = useState('')
@@ -392,6 +398,29 @@ export function TeacherReviewWorkspace({
 	const composerFormRef = useRef<HTMLFormElement | null>(null)
 	const inlineCommentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const publishTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+	const annotationMarkerRef = useRef<HTMLButtonElement | null>(null)
+
+	useEffect(() => {
+		if (!isPublishedReadOnly || isWriterPreviewOpen || !activeAnnotationId) return
+		const onKeyDown = (event: globalThis.KeyboardEvent) => {
+			if (event.key === 'Escape') {
+				setActiveAnnotationId(null)
+				annotationMarkerRef.current?.focus({ preventScroll: true })
+			}
+		}
+		const onOutsideClick = (event: globalThis.MouseEvent) => {
+			const target = event.target
+			if (target instanceof HTMLElement && !target.closest('[data-editor-note], button, a, input, textarea, select')) {
+				setActiveAnnotationId(null)
+			}
+		}
+		document.addEventListener('keydown', onKeyDown)
+		document.addEventListener('click', onOutsideClick)
+		return () => {
+			document.removeEventListener('keydown', onKeyDown)
+			document.removeEventListener('click', onOutsideClick)
+		}
+	}, [activeAnnotationId, isPublishedReadOnly, isWriterPreviewOpen])
 
 	useEffect(() => {
 		setFeedbackItems(feedback)
@@ -456,10 +485,10 @@ export function TeacherReviewWorkspace({
 	}, [selectedAnchor, isInlineEditingComment])
 
 	useEffect(() => {
-		if (isPublishModalOpen) {
+		if (isPublishModalOpen && !isWriterPreviewOpen) {
 			publishTextareaRef.current?.focus()
 		}
-	}, [isPublishModalOpen])
+	}, [isPublishModalOpen, isWriterPreviewOpen])
 
 	const pagedManuscript = useMemo(
 		() => paginateManuscript(paragraphs, readingPageOptions),
@@ -648,12 +677,13 @@ export function TeacherReviewWorkspace({
 
 		const clamped = Math.max(0, Math.min(nextPage, totalPages - 1))
 		setSelectedAnchor(null)
+		setActiveAnnotationId(null)
 		setPageIndex(clamped)
 	}, [totalPages])
 
 	usePagedArrowNavigation({
 		pageIndex,
-		totalPages,
+		totalPages: isWriterPreviewOpen ? 1 : totalPages,
 		onPageChange: goToPage,
 	})
 
@@ -1756,10 +1786,9 @@ export function TeacherReviewWorkspace({
 
 			setLiveSubmissionStatus(payload?.status ?? 'feedback_published')
 			setSummaryPublishedAt(payload?.publishedAt ?? new Date().toISOString())
-			setShowQueueReturnCue(true)
 			setIsPublishModalOpen(false)
 			setFlashNotice(payload?.notice ?? 'Feedback published to writer.')
-			router.push('/app/teacher/review-desk')
+			router.refresh()
 		} catch (error) {
 			setPublishError(
 				error instanceof Error ? error.message : 'Unable to publish feedback.',
@@ -1807,7 +1836,7 @@ export function TeacherReviewWorkspace({
 						</mark>
 						<button
 							type="button"
-							onClick={() => toggleAnnotation(item.id)}
+							onClick={(event) => { annotationMarkerRef.current = event.currentTarget; toggleAnnotation(item.id) }}
 							className={`ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 align-super text-xs font-medium transition ${annotationMarkerClass(item.type, isActive)}`}
 							aria-label={`${item.type === 'snippet' ? 'Snippet' : 'Comment'} marker`}>
 							{item.type === 'snippet' ? '◇' : '•'}
@@ -1826,9 +1855,23 @@ export function TeacherReviewWorkspace({
 		return nodes
 	}
 
+	if (isWriterPreviewOpen) {
+		return <WriterFeedbackReadingWorkspace
+			submissionId={submissionId} title={title} version={version} createdAt={createdAt}
+			status={liveSubmissionStatus} summary={publishSummary} publishedAt={summaryPublishedAt}
+			paragraphs={paragraphs}
+			feedback={feedbackItems.map(item => ({ ...item, anchor: item.anchor ? repairSingleBlockAnchor(item.anchor, paragraphs) : null }))}
+			preview={{ reviewUrl: `/app/workshop/${submissionId}`, includesOverviewDraft: true, onClose: () => setIsWriterPreviewOpen(false) }}
+		/>
+	}
+
 	return (
 		<div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_300px] 2xl:grid-cols-[minmax(0,1.7fr)_320px]">
 			<main ref={mainRef} onMouseUp={captureSelection} onKeyUp={captureSelection} className="relative min-w-0">
+				{isPublishedReadOnly ? <section className="surface mb-5 p-5" aria-label="Published overview">
+					<h2 className="literary-title text-2xl">Published overview</h2>
+					<p className="mt-3 whitespace-pre-wrap font-serif text-lg leading-8">{publishSummary.trim() || 'No overview note was published for this version.'}</p>
+				</section> : null}
 				{flashNotice ? (
 					<div className="pointer-events-none absolute right-4 top-3 z-30 rounded border border-emerald-300/40 bg-studio-canvas px-3 py-1.5 text-xs text-emerald-800 shadow-none">
 						{flashNotice}
@@ -1954,7 +1997,7 @@ export function TeacherReviewWorkspace({
 										: renderParagraphWithAnnotations(paragraph, blockItems)}
 								</p>
 								{shouldShowActiveBlockItem ? (
-									<div
+									<div data-editor-note
 										className={`max-w-[44rem] rounded-md border px-4 py-3 text-sm shadow-none ${annotationBorderClass(activeBlockItem.type)}`}>
 										<div className="flex flex-wrap items-center justify-between gap-2">
 											<div className="flex flex-wrap items-center gap-2">
@@ -1971,7 +2014,7 @@ export function TeacherReviewWorkspace({
 											</div>
 											<button
 												type="button"
-												onClick={() => setActiveAnnotationId(null)}
+												onClick={() => { setActiveAnnotationId(null); annotationMarkerRef.current?.focus({ preventScroll: true }) }}
 												className="text-xs text-current/85 transition hover:text-current">
 												Close
 											</button>
@@ -2142,11 +2185,11 @@ export function TeacherReviewWorkspace({
 					<div className="flex items-start justify-between gap-3">
 						<div>
 							<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
-								Feedback status
+								{isPublishedReadOnly ? 'Published feedback' : 'Feedback status'}
 							</p>
 							<p className="mt-1 text-sm text-studio-muted">
 								{isPublishedReadOnly
-									? 'Use this view for reference after publication.'
+									? 'Review what the writer received or prepare a feedback document.'
 									: canPublishFeedback
 										? 'Keep reading private until you are ready to return the piece.'
 										: 'Publish from the latest reviewable version in the chain.'}
@@ -2157,7 +2200,7 @@ export function TeacherReviewWorkspace({
 								<Link
 									href={`/app/workshop/${submissionId}/export`}
 									className="inline-flex rounded border border-studio-line bg-studio-tint px-3.5 py-2 text-sm text-studio-muted shadow-none transition hover:border-studio-line hover:bg-studio-tint hover:text-studio-ink">
-									Feedback document
+									Prepare feedback document
 								</Link>
 							) : null}
 							{!isPublishedReadOnly && canPublishFeedback ? (
@@ -2195,13 +2238,12 @@ export function TeacherReviewWorkspace({
 							Feedback must be published before export is available.
 						</p>
 					) : null}
-					{showQueueReturnCue ? (
-						<Link
-							href="/app/teacher/review-desk"
-							className="mt-3 inline-flex rounded border border-accent-300/50 bg-accent-300/12 px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-studio-accent shadow-none animate-pulse">
-							Back to queue
+					<div className="mt-3 flex flex-wrap gap-2">
+						<Link href={`/app/workshop/${submissionId}?view=writer`} className="studio-secondary">
+							{isPublishedReadOnly ? 'View published feedback' : 'Preview saved feedback'}
 						</Link>
-					) : null}
+						<Link href="/app/teacher/review-desk" className="studio-secondary">Back to editorial desk</Link>
+					</div>
 				</div>
 				{Children.toArray(sidebarHeader)}
 				{errorNotice ? (
@@ -2685,8 +2727,7 @@ export function TeacherReviewWorkspace({
 				) : (
 					<ProtoCard title="Selected annotation" meta="Reading-first workflow">
 						<p className="text-sm leading-relaxed text-studio-muted">
-							Comments are edited directly in the manuscript popup. Use this rail
-							to review the full list and refine snippets when needed.
+							{isPublishedReadOnly ? 'Select a comment marker to read the published note. Feedback for this version is read-only.' : 'Comments are edited directly in the manuscript popup. Use this rail to review the full list and refine snippets when needed.'}
 						</p>
 					</ProtoCard>
 				)}
@@ -2736,7 +2777,7 @@ export function TeacherReviewWorkspace({
 									{publishError}
 								</p>
 							) : null}
-							{/* TODO: later allow importing an earlier version summary into a new publish draft. */}
+							<button type="button" disabled={isPublishing} onClick={() => setIsWriterPreviewOpen(true)} className="studio-secondary">Preview writer view</button>
 							<div className="flex items-center justify-between gap-3">
 								<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">
 									{commentCount} anchored comments

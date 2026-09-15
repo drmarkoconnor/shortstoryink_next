@@ -1,3 +1,4 @@
+import { feedbackInReadingOrder } from '@/lib/feedback/reading-order'
 import { toManuscriptParagraphs } from '@/lib/manuscript/paragraphs'
 import { createServerDataClient } from '@/lib/data/client'
 
@@ -115,9 +116,9 @@ function normalizeDisplayName(
 }
 
 function normalizeTeacherDisplayName(value: string | null | undefined) {
-	const trimmed = normalizeDisplayName(value, 'Teacher')
+	const trimmed = normalizeDisplayName(value, 'Editor')
 
-	return trimmed.replace(/^dr\.?\s+/i, '').trim() || 'Teacher'
+	return trimmed.replace(/^dr\.?\s+/i, '').trim() || 'Editor'
 }
 
 function isAnchor(value: unknown): value is ExportAnchor {
@@ -334,13 +335,18 @@ export async function getFeedbackExportPacket(
 	}>).map((item) => ({
 		id: item.id,
 		createdAt: item.created_at,
-		exportedBy: authorNameById[item.exported_by] ?? 'Teacher',
+		exportedBy: authorNameById[item.exported_by] ?? 'Editor',
 		exportCopyVersion: Number(item.export_copy_version) || 1,
 		note: item.note,
 		packetTemplate: item.packet_template,
 	}))
 
-	const feedback: ExportFeedbackItem[] = feedbackRows.map((item, index) => {
+	const manuscriptParagraphs = toManuscriptParagraphs(submission.body)
+	const orderedFeedback = feedbackInReadingOrder(
+		feedbackRows.map(item => ({ ...item, anchor: normalizeAnchor(item.anchor) })),
+		manuscriptParagraphs,
+	)
+	const feedback: ExportFeedbackItem[] = orderedFeedback.map((item, index) => {
 		const anchor = normalizeAnchor(item.anchor)
 		const category = fallbackCategory(anchor)
 
@@ -350,7 +356,7 @@ export async function getFeedbackExportPacket(
 			comment: item.comment,
 			createdAt: item.created_at,
 			authorId: item.author_id,
-			authorName: authorNameById[item.author_id] ?? 'Teacher',
+			authorName: authorNameById[item.author_id] ?? 'Editor',
 			label: category.label,
 			slug: category.slug,
 			anchor,
@@ -383,7 +389,7 @@ export async function getFeedbackExportPacket(
 		commentCount: group.comments.length,
 	}))
 
-	const paragraphs = toManuscriptParagraphs(submission.body).map((paragraph) => ({
+	const paragraphs = manuscriptParagraphs.map((paragraph) => ({
 		id: paragraph.id,
 		text: paragraph.text,
 		comments: feedback.filter((item) => item.anchor?.blockId === paragraph.id),

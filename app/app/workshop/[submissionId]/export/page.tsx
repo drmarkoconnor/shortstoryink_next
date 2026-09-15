@@ -379,7 +379,7 @@ export default async function WorkshopSubmissionExportPage({
 				className="print-controls flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-ink-900/10 bg-studio-tint px-4 py-3">
 				<div>
 					<p className="text-xs uppercase tracking-[0.14em] text-studio-muted">
-						Packet composition
+						Document contents
 					</p>
 					<p className="mt-1 text-sm text-studio-ink/68">
 						Keep the manuscript central, and include the appendix only when it
@@ -395,13 +395,13 @@ export default async function WorkshopSubmissionExportPage({
 						defaultChecked={appendixEnabled}
 						className="h-4 w-4 rounded border-ink-900/20 text-studio-ink focus:ring-ink-900/20"
 					/>
-					{appendixEnabled ? 'Hide appendix' : 'Include appendix'}
+					Include appendix
 				</label>
 				{savedNotice ? <input type="hidden" name="saved" value={savedNotice} /> : null}
 				<button
 					type="submit"
 					className="rounded border border-ink-900/15 px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-ink/75 transition hover:bg-white">
-					Show feedback document
+					Update document preview
 				</button>
 			</form>
 
@@ -428,11 +428,10 @@ export default async function WorkshopSubmissionExportPage({
 							Feedback document notes
 						</p>
 						<h2 className="literary-title mt-2 text-2xl text-studio-ink">
-							Writer-facing additions
+							Document-only additions
 						</h2>
 						<p className="mt-2 max-w-2xl text-sm leading-6 text-studio-ink/64">
-							Use these fields only for material you want the writer to receive
-							in the feedback document.
+							These additions appear only in the document you print or save. Saving them does not change the published feedback in the writer’s account or send an email. Save your additions before printing.
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-2">
@@ -440,12 +439,12 @@ export default async function WorkshopSubmissionExportPage({
 							formAction={clearExportCopyAction}
 							type="submit"
 							className="studio-secondary">
-							Clear notes
+							Clear document additions
 						</button>
 						<button
 							type="submit"
 							className="studio-primary">
-							Save feedback notes
+							Save document additions
 						</button>
 					</div>
 				</div>

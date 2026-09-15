@@ -8,7 +8,7 @@ export const teacherTabs = [
 	{ href: '/app/teacher/groups', label: 'Groups' },
 	{ href: '/app/teacher-studio', label: 'Studio' },
 	{ href: '/app/teacher/feedback-memory', label: 'Memory' },
-	{ href: '/app/teacher/archive', label: 'Archive' },
+	{ href: '/app/teacher/archive', label: 'Published feedback' },
 ]
 
 export type SubmissionFeedbackItem = {
