@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { WriterFeedbackReadingWorkspace } from '@/components/writer/feedback-reading-workspace'
+import { repairSingleBlockAnchor } from '@/lib/manuscript/anchor-repair'
 import { TeacherReviewWorkspace } from '@/components/teacher/review-workspace'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import {
@@ -642,12 +644,26 @@ export default async function WorkshopSubmissionPage({
 	const latestVersionEntry =
 		versionHistory.length > 0 ? versionHistory[versionHistory.length - 1] : null
 
+	// This preview stays inside the existing editor guard and row-level access.
+	// Only writer-visible feedback is passed to the shared reader.
+	if (query.view === 'writer') {
+		return <WriterFeedbackReadingWorkspace
+			submissionId={submissionId} title={submissionTitle} status={submissionStatus}
+			version={currentVersion} createdAt={createdAt} summary={existingSummary}
+			publishedAt={summaryPublishedAt} paragraphs={paragraphs}
+			feedback={feedback.map(item => ({ ...item, anchor: item.anchor ? repairSingleBlockAnchor(item.anchor, paragraphs) : null }))}
+			preview={{ reviewUrl: `/app/workshop/${submissionId}` }}
+		/>
+	}
+
 	return (
 		<section className="space-y-4">
 			<TeacherReviewWorkspace
 				key={submissionId}
 				submissionId={submissionId}
 				title={submissionTitle}
+				version={currentVersion}
+				createdAt={createdAt}
 				paragraphs={paragraphs}
 				feedback={feedback}
 				snippets={snippets}
@@ -681,34 +697,6 @@ export default async function WorkshopSubmissionPage({
 						<p className="mt-3 text-xs leading-relaxed text-studio-muted">
 							{new Date(createdAt).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
-						<p
-							className={`mt-3 rounded-md border px-3 py-2 text-sm leading-relaxed ${
-								submissionStatus === 'feedback_published'
-									? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-800'
-									: 'border-burgundy-300/20 bg-studio-soft text-studio-accent'
-							}`}>
-							{submissionStatus === 'feedback_published'
-								? 'Feedback has been published for this version. It is now read-only. Use this view for reference; further feedback should happen on a new submission or revised version.'
-								: 'All comments remain private until you publish them.'}
-						</p>
-						<div className="mt-4 flex flex-wrap gap-2">
-							<Link
-								href="/app/teacher/review-desk"
-								className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
-								Back to queue
-							</Link>
-							{submissionStatus === 'feedback_published' ? (
-								<Link
-									href={`/app/workshop/${submissionId}/export`}
-									className="rounded border border-studio-line px-3 py-1.5 text-sm text-studio-muted transition hover:border-studio-line hover:text-studio-ink">
-									Feedback document
-								</Link>
-							) : (
-								<p className="rounded border border-studio-line px-3 py-1.5 text-xs text-studio-muted">
-									Feedback must be published before export is available.
-								</p>
-							)}
-						</div>
 						{latestVersionEntry && latestVersionEntry.id !== submissionId ? (
 							<div className="mt-4 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-800">
 								A newer revision exists in this chain.

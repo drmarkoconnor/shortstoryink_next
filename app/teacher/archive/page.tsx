@@ -63,10 +63,10 @@ export default async function TeacherArchivePage({
 
 			<div className="studio-page-header">
 				<p className="text-xs uppercase tracking-[0.12em] text-studio-muted">
-					Archive
+					Editorial desk
 				</p>
 				<h1 className="studio-heading mt-3">
-					Published feedback archive
+					Published feedback
 				</h1>
 				<p className="muted mt-3 max-w-prose text-sm leading-relaxed">
 					Reopen published pieces, revisit prior feedback, and move back into the
@@ -80,17 +80,17 @@ export default async function TeacherArchivePage({
 						Published pieces
 					</h2>
 					<p className="text-xs uppercase tracking-[0.11em] text-studio-muted">
-						{rows.length} archived
+						{rows.length} published
 					</p>
 				</div>
 
 				{loadError ? (
 					<p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
-						Unable to load archive: {loadError}
+						Unable to load published feedback: {loadError}
 					</p>
 				) : rows.length === 0 ? (
 					<p className="mt-4 text-sm text-studio-muted">
-						No published pieces in the archive yet.
+						No feedback has been published yet.
 					</p>
 				) : (
 					<div className="mt-4 space-y-4">
@@ -120,13 +120,17 @@ export default async function TeacherArchivePage({
 									</p>
 								</div>
 								<p className="mt-3 text-xs text-studio-muted">
-									Published {new Date(selectedArchive.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
+									Submitted {new Date(selectedArchive.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 								</p>
 								<Link
 									href={`/app/workshop/${selectedArchive.id}`}
 									className="mt-4 inline-flex rounded border border-accent-300/45 bg-accent-300/12 px-4 py-2 text-xs uppercase tracking-[0.1em] text-studio-accent transition hover:bg-accent-300/18">
-									Open manuscript
+									Open editorial view
 								</Link>
+								<div className="mt-3 flex flex-wrap gap-2">
+									<Link href={`/app/workshop/${selectedArchive.id}?view=writer`} className="studio-secondary">View published feedback</Link>
+									<Link href={`/app/workshop/${selectedArchive.id}/export`} className="studio-secondary">Prepare feedback document</Link>
+								</div>
 							</div>
 						) : null}
 					</div>

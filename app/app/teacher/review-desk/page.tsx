@@ -123,7 +123,6 @@ export default async function TeacherReviewDeskPage({
 
 	let queue: QueueSubmission[] = []
 	let queueError: string | null = null
-	let schemaMode: 'modern' | 'legacy' = 'modern'
 	let publishedCount = 0
 
 	let modernResult: {
@@ -233,8 +232,6 @@ export default async function TeacherReviewDeskPage({
 			})(),
 		}))
 	} else if (isSchemaCacheMissing(modernResult.error.message)) {
-		schemaMode = 'legacy'
-
 		const legacyResult = await dataClient
 			.from('submissions')
 			.select(
@@ -452,14 +449,14 @@ export default async function TeacherReviewDeskPage({
 									{inReviewCount}
 								</p>
 							</div>
-							<div className="rounded-md border border-studio-line bg-studio-canvas px-2.5 py-2">
+							<Link href="/app/teacher/archive" aria-label={`Published feedback: ${publishedCount} pieces`} className="rounded-md border border-studio-line bg-studio-canvas px-2.5 py-2">
 								<p className="text-xs uppercase tracking-[0.08em] leading-tight">
 									Published
 								</p>
 								<p className="mt-1 text-base text-studio-ink sm:text-lg">
 									{publishedCount}
 								</p>
-							</div>
+							</Link>
 						</div>
 						{queueError ? (
 							<p className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-800">
@@ -551,7 +548,7 @@ export default async function TeacherReviewDeskPage({
 
 					<ProtoCard title="Desk guide" meta="Operational note">
 						<p className="text-sm text-studio-muted">
-							Waiting pieces have not yet had a teacher response. In review
+							Waiting pieces have not yet had an editor response. In review
 							pieces already have notes started but are not yet published.
 						</p>
 						{oldestWaitingSubmission ? (
@@ -615,7 +612,7 @@ export default async function TeacherReviewDeskPage({
 						</p>
 					) : (
 						<p className="mt-5 rounded-md border border-studio-line bg-studio-canvas p-5 text-sm text-studio-muted">
-							Queue currently clear.
+							Queue currently clear. <Link href="/app/teacher/archive" className="underline underline-offset-2">Review published feedback</Link>.
 						</p>
 					)}
 					{hasNewerRevisionFlags ? (
@@ -624,9 +621,6 @@ export default async function TeacherReviewDeskPage({
 							latest version before publishing feedback where possible.
 						</p>
 					) : null}
-					<p className="mt-2 text-xs text-studio-muted">
-						Data mode: {schemaMode}
-					</p>
 				</main>
 			</div>
 		</section>

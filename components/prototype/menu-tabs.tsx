@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 const reviewTools = [
  { href: '/app/teacher/review-desk', label: 'Current submissions' },
- { href: '/app/teacher/archive', label: 'Archive' },
+ { href: '/app/teacher/archive', label: 'Published feedback' },
 ]
 const studioTools = [
  { href: '/app/teacher-studio', label: 'Overview' },
