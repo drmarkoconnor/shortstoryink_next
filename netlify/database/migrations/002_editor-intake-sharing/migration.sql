@@ -94,7 +94,7 @@ for select to public using (
 );
 
 create policy "share recipients visible only to participants" on public.submission_share_recipients
-as restrictive for select to public using (
+for select to public using (
   (select studio_auth.uid()) is not null and (
     (select private.workshop_is_teacher())
     or recipient_id = (select studio_auth.uid())
@@ -103,7 +103,7 @@ as restrictive for select to public using (
 );
 
 create policy "reader responses visible only to author responder or editor" on public.reader_responses
-as restrictive for select to public using (
+for select to public using (
   (select studio_auth.uid()) is not null and (
     (select private.workshop_is_teacher())
     or private.submission_is_owned_by(submission_id, (select studio_auth.uid()))
