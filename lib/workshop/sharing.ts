@@ -139,7 +139,7 @@ async function notifyNewRecipients(submissionId: string, recipientIds: string[])
 		.maybeSingle()
 	const writerLabel = String(author?.display_name ?? 'A writer')
 
-	await Promise.allSettled(
+	const results = await Promise.allSettled(
 		recipientIds.map(async (recipientId) => {
 			const email = await admin.auth.admin
 				.getUserById(recipientId)
@@ -154,6 +154,15 @@ async function notifyNewRecipients(submissionId: string, recipientIds: string[])
 			})
 		}),
 	)
+	results.forEach((result, index) => {
+		if (result.status === 'rejected') {
+			console.error('[notifyNewRecipients] Notification failed:', {
+				submissionId,
+				recipientId: recipientIds[index],
+				error: result.reason,
+			})
+		}
+	})
 }
 
 export async function setSubmissionSharing(
