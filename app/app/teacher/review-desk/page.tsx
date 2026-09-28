@@ -24,6 +24,7 @@ type QueueSubmission = {
 	feedbackDraftCount?: number
 	shareCount?: number
 	readerResponseCount?: number
+	source?: string
 }
 
 type ModernQueueRow = {
@@ -245,6 +246,7 @@ export default async function TeacherReviewDeskPage({
 					feedbackDraftCount: feedbackDraftCountBySubmission[item.id] ?? 0,
 					shareCount: shareCountBySubmission[item.id] ?? 0,
 					readerResponseCount: readerResponseCountBySubmission[item.id] ?? 0,
+					source: item.source ?? 'workshop',
 				}
 			})(),
 		}))
@@ -428,6 +430,11 @@ export default async function TeacherReviewDeskPage({
 				{item.version && item.version > 1 ? (
 					<p className="mt-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
 						Revision
+					</p>
+				) : null}
+				{item.source === 'editor_import' ? (
+					<p className="mt-2 ml-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
+						Added by editor
 					</p>
 				) : null}
 				{item.status === 'in_review' ? (
