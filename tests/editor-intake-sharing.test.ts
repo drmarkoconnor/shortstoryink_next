@@ -31,6 +31,7 @@ before(async () => {
     'netlify/database/migrations/001_workshop-baseline/migration.sql',
     'netlify/database/migrations/002_editor-intake-sharing/migration.sql',
     'netlify/database/migrations/003_require-current-author-membership/migration.sql',
+    'netlify/database/migrations/004_keep-anonymous-submission-denial-clean/migration.sql',
   ]) {
     const sql=await readFile(path,'utf8')
     assert.doesNotMatch(sql,/^\s*(?:begin|commit|rollback);\s*$/im)
@@ -46,6 +47,10 @@ before(async () => {
 })
 
 after(async()=>db.close())
+
+test('anonymous submission reads remain a clean empty result under sharing RLS', async () => {
+  assert.equal((await as('studio_anon',null,'select id from public.submissions')).rows.length,0)
+})
 
 test('editor intake creates a normal manuscript owned by the nominated writer', async () => {
   const r=await importPiece(101)
