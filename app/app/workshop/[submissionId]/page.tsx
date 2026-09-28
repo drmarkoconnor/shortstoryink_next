@@ -701,7 +701,7 @@ export default async function WorkshopSubmissionPage({
 								{reviewStatusLabel(submissionStatus)}
 							</p>
 							<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1">
-								{submissionSource}
+								{submissionSource === 'editor_import' ? 'Added by editor' : 'Writer submission'}
 							</p>
 						</div>
 						<p className="mt-3 text-xs leading-relaxed text-studio-muted">
