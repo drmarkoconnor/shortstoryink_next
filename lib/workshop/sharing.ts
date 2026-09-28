@@ -84,6 +84,7 @@ export async function getSharingContext(submissionId: string): Promise<SharingCo
 		.eq('submission_id', submissionId)
 
 	const authorId = String(submission.author_id)
+	const authorIsCurrentMember = memberIds.includes(authorId)
 	const eligibleReaders = writers
 		.filter((profile) => profile.role === 'writer' && profile.id !== authorId)
 		.map((profile) => ({
@@ -115,7 +116,10 @@ export async function getSharingContext(submissionId: string): Promise<SharingCo
 		eligibleReaders,
 		selectedRecipientIds,
 		responseCount: responseCount ?? 0,
-		canShare: !isAbuWorkshop(typedWorkshop) && eligibleReaders.length > 0,
+		canShare:
+			authorIsCurrentMember &&
+			!isAbuWorkshop(typedWorkshop) &&
+			eligibleReaders.length > 0,
 	}
 }
 
