@@ -147,6 +147,9 @@ export default async function SharedManuscriptPage({
 					Where were you most engaged? Was there anywhere you became uncertain or wanted
 					more? This is a response to the piece as a whole, not line-by-line editing.
 				</p>
+				<p className="mt-2 max-w-2xl text-xs leading-5 text-studio-muted">
+					Your response becomes part of the writer&apos;s record for this version. While the piece remains shared with you, you can return here to edit or remove it.
+				</p>
 				<form action={saveResponse} className="mt-5 space-y-4">
 					<textarea
 						name="body"
