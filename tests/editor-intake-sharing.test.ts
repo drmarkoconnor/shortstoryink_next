@@ -30,6 +30,7 @@ before(async () => {
   for (const path of [
     'netlify/database/migrations/001_workshop-baseline/migration.sql',
     'netlify/database/migrations/002_editor-intake-sharing/migration.sql',
+    'netlify/database/migrations/003_require-current-author-membership/migration.sql',
   ]) {
     const sql=await readFile(path,'utf8')
     assert.doesNotMatch(sql,/^\s*(?:begin|commit|rollback);\s*$/im)
@@ -169,6 +170,10 @@ test('moving a shared manuscript to ABU clears grants, and removing its author f
   await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,authoredId,[selected,unselected]])
   await db.query('delete from public.workshop_members where workshop_id=$1 and profile_id=$2',[group,author])
   assert.equal((await db.query('select * from public.submission_share_recipients where submission_id=$1',[authoredId])).rows.length,0)
+  await assert.rejects(
+    owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,authoredId,[selected]]),
+    /no longer attached to a current member/
+  )
   await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[group,author])
 })
 
