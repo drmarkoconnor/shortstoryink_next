@@ -122,7 +122,7 @@ test('leaving and rejoining a group does not resurrect an old grant', async () =
 test('editor-import corrections work only before review or sharing starts', async () => {
   const r=await importPiece(109), piece=(r.rows[0] as {result:{id:string}}).result.id
   await owner('select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',[teacher,piece,author,group,'Corrected title','Corrected manuscript'])
-  assert.equal((await db.query('select title from public.submissions where id=$1',[piece])).rows[0]?.title,'Corrected title')
+  assert.equal(((await db.query<{title:string}>('select title from public.submissions where id=$1',[piece])).rows[0]?.title),'Corrected title')
   await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,piece,[selected]])
   await owner('select public.stop_submission_sharing($1,$2)',[author,piece])
   await assert.rejects(owner('select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',[teacher,piece,author,group,'Too late','Changed']),/already in use/)
