@@ -15,7 +15,7 @@ export default async function CorrectEditorImportPage({
 	params: Promise<{ submissionId: string }>
 	searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-	const acting = await requireTeacher()
+	await requireTeacher()
 	const { submissionId } = await params
 	const query = searchParams ? await searchParams : {}
 	const admin = createAdminDataClient()
@@ -58,6 +58,8 @@ export default async function CorrectEditorImportPage({
 				'?error=This+manuscript+is+already+in+use+and+can+no+longer+be+altered.',
 		)
 	}
+	const authorId = String(submission.author_id)
+	const workshopId = String(submission.workshop_id)
 
 	async function saveCorrection(formData: FormData) {
 		'use server'
@@ -75,8 +77,8 @@ export default async function CorrectEditorImportPage({
 		const { error } = await data.rpc('correct_editor_assigned_submission', {
 			p_teacher_id: current.user.id,
 			p_submission_id: submissionId,
-			p_author_id: String(submission.author_id),
-			p_workshop_id: String(submission.workshop_id),
+			p_author_id: authorId,
+			p_workshop_id: workshopId,
 			p_title: title,
 			p_body: body,
 		})
