@@ -317,7 +317,7 @@ export default async function TeacherReviewDeskPage({
 			)
 		}
 
-		const [feedbackResult, childRevisionResult] = await Promise.all([
+		const [feedbackResult, childRevisionResult, shareResult, responseResult] = await Promise.all([
 			adminData
 				.from('feedback_items')
 				.select('id', { count: 'exact', head: true })
@@ -326,9 +326,17 @@ export default async function TeacherReviewDeskPage({
 				.from('submissions')
 				.select('id', { count: 'exact', head: true })
 				.eq('parent_submission_id', submissionId),
+			adminData
+				.from('submission_share_recipients')
+				.select('submission_id', { count: 'exact', head: true })
+				.eq('submission_id', submissionId),
+			adminData
+				.from('reader_responses')
+				.select('id', { count: 'exact', head: true })
+				.eq('submission_id', submissionId),
 		])
 
-		if (feedbackResult.error || childRevisionResult.error) {
+		if (feedbackResult.error || childRevisionResult.error || shareResult.error || responseResult.error) {
 			redirect(
 				'/app/teacher/review-desk?error=Unable+to+check+whether+the+submission+can+be+removed.',
 			)
@@ -343,6 +351,12 @@ export default async function TeacherReviewDeskPage({
 		if ((childRevisionResult.count ?? 0) > 0) {
 			redirect(
 				'/app/teacher/review-desk?error=Cannot+remove+a+submission+that+already+has+later+versions.',
+			)
+		}
+
+		if ((shareResult.count ?? 0) > 0 || (responseResult.count ?? 0) > 0) {
+			redirect(
+				'/app/teacher/review-desk?error=Stop+group+sharing+before+removing+this+submission.',
 			)
 		}
 
