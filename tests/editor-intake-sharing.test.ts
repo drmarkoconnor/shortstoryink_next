@@ -139,6 +139,39 @@ test('editor intake supports a guarded revision while keeping writer ownership',
   assert.equal(row.author_id,author); assert.equal(row.parent_submission_id,piece); assert.equal(row.source,'editor_import')
 })
 
+test('unselected writers cannot respond; selected writers update one response and editors can moderate it', async () => {
+  const r=await importPiece(113), piece=(r.rows[0] as {result:{id:string}}).result.id
+  await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,piece,[selected]])
+  await assert.rejects(owner('select public.save_reader_response($1,$2,$3)',[unselected,piece,'Not invited']),/not currently shared/)
+  const first=await owner('select public.save_reader_response($1,$2,$3) as result',[selected,piece,'First response'])
+  assert.equal((first.rows[0] as {result:{created:boolean}}).result.created,true)
+  const second=await owner('select public.save_reader_response($1,$2,$3) as result',[selected,piece,'Revised response'])
+  assert.equal((second.rows[0] as {result:{created:boolean}}).result.created,false)
+  const rows=(await db.query('select id,body from public.reader_responses where submission_id=$1',[piece])).rows as Array<{id:string;body:string}>
+  assert.equal(rows.length,1); assert.equal(rows[0].body,'Revised response')
+  await owner('select public.moderate_reader_response($1,$2)',[teacher,rows[0].id])
+  assert.equal((await db.query('select id from public.reader_responses where submission_id=$1',[piece])).rows.length,0)
+})
+
+test('the first editorial comment also locks an editor-imported manuscript', async () => {
+  const r=await importPiece(114), piece=(r.rows[0] as {result:{id:string}}).result.id
+  await owner('insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,$4)',[piece,teacher,{blockId:'p-1',startOffset:0,endOffset:8,quote:'Imported'},'Started'])
+  await assert.rejects(owner('select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',[teacher,piece,author,group,'Too late','Changed']),/already in use/)
+})
+
+test('moving a shared manuscript to ABU clears grants, and removing its author from the group clears all sharing', async () => {
+  const moved=await importPiece(115), movedId=(moved.rows[0] as {result:{id:string}}).result.id
+  await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,movedId,[selected]])
+  await db.query('update public.submissions set workshop_id=$1 where id=$2',[abu,movedId])
+  assert.equal((await db.query('select * from public.submission_share_recipients where submission_id=$1',[movedId])).rows.length,0)
+
+  const authored=await importPiece(116), authoredId=(authored.rows[0] as {result:{id:string}}).result.id
+  await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,authoredId,[selected,unselected]])
+  await db.query('delete from public.workshop_members where workshop_id=$1 and profile_id=$2',[group,author])
+  assert.equal((await db.query('select * from public.submission_share_recipients where submission_id=$1',[authoredId])).rows.length,0)
+  await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[group,author])
+})
+
 test('new privileged operations cannot be called directly by writer sessions', async () => {
   const r=await importPiece(112), piece=(r.rows[0] as {result:{id:string}}).result.id
   await assert.rejects(as('studio_authenticated',author,'select public.set_submission_sharing($1,$2,$3::uuid[])',[author,piece,[selected]]),/permission denied/)
