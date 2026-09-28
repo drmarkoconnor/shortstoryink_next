@@ -29,6 +29,20 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	sharingCount?: number
+	readerResponseCount?: number
+	source?: string
+	canShare?: boolean
+}
+
+type SharedGroupPiece = {
+	id: string
+	title: string
+	authorLabel: string
+	workshopTitle: string
+	version: number
+	createdAt: string
+	hasResponse: boolean
 }
 
 type WriterDocumentResource = {
@@ -301,6 +315,7 @@ export default async function WriterPage({
 	let submissions: WriterSubmission[] = []
 	let submissionsError: string | null = null
 	let availableDocuments: WriterDocumentResource[] = []
+	let sharedGroupPieces: SharedGroupPiece[] = []
 	let documentsError: string | null = null
 	let writerWorkshopIds: string[] = []
 
@@ -332,7 +347,7 @@ export default async function WriterPage({
 
 		const { data: submissionRows, error } = await adminData
 			.from('submissions')
-			.select('id, title, status, created_at, workshop_id, version')
+			.select('id, title, status, created_at, workshop_id, version, source')
 			.eq('author_id', user.id)
 			.order('created_at', { ascending: false })
 
@@ -352,6 +367,7 @@ export default async function WriterPage({
 					created_at: string
 					workshop_id: string
 					version: number
+					source: string
 				}>
 			).map((submission) => ({
 				id: submission.id,
@@ -359,11 +375,47 @@ export default async function WriterPage({
 				status: submission.status,
 				createdAt: submission.created_at,
 				version: submission.version,
+				source: submission.source,
 				workshopTitle:
 					workshopTitleById[submission.workshop_id] ?? 'Group unknown',
 			}))
 
 			const submissionIds = submissions.filter((submission) => submission.status === 'feedback_published').map((submission) => submission.id)
+
+			const ownSubmissionIds = submissions.map((submission) => submission.id)
+			if (ownSubmissionIds.length > 0) {
+				const [shareResult, responseResult] = await Promise.all([
+					adminData
+						.from('submission_share_recipients')
+						.select('submission_id')
+						.in('submission_id', ownSubmissionIds),
+					adminData
+						.from('reader_responses')
+						.select('submission_id')
+						.in('submission_id', ownSubmissionIds),
+				])
+				const shareCounts = (shareResult.data ?? []).reduce((acc, row) => {
+					const key = String(row.submission_id)
+					acc[key] = (acc[key] ?? 0) + 1
+					return acc
+				}, {} as Record<string, number>)
+				const responseCounts = (responseResult.data ?? []).reduce((acc, row) => {
+					const key = String(row.submission_id)
+					acc[key] = (acc[key] ?? 0) + 1
+					return acc
+				}, {} as Record<string, number>)
+				const workshopById = Object.fromEntries(workshops.map((workshop) => [workshop.id, workshop]))
+				submissions = submissions.map((submission) => {
+					const matching = (submissionRows ?? []).find((row) => String(row.id) === submission.id) as { workshop_id?: string } | undefined
+					const workshop = matching?.workshop_id ? workshopById[matching.workshop_id] : undefined
+					return {
+						...submission,
+						sharingCount: shareCounts[submission.id] ?? 0,
+						readerResponseCount: responseCounts[submission.id] ?? 0,
+						canShare: Boolean(workshop && !isAbuWorkshop(workshop)),
+					}
+				})
+			}
 
 			if (submissionIds.length > 0) {
 				const { data: feedbackRows } = await adminData
@@ -385,6 +437,44 @@ export default async function WriterPage({
 					commentCount: commentCountBySubmission[submission.id] ?? 0,
 				}))
 			}
+		}
+
+		const { data: recipientRows } = await adminData
+			.from('submission_share_recipients')
+			.select('submission_id')
+			.eq('recipient_id', user.id)
+		const sharedIds = (recipientRows ?? []).map((row) => String(row.submission_id))
+		if (sharedIds.length > 0) {
+			const scopedData = await createServerDataClient()
+			const { data: sharedRows } = await scopedData
+				.from('submissions')
+				.select('id, title, author_id, workshop_id, version, created_at')
+				.in('id', sharedIds)
+				.order('created_at', { ascending: false })
+			const accessibleRows = (sharedRows ?? []) as Array<{
+				id: string; title: string; author_id: string; workshop_id: string; version: number; created_at: string
+			}>
+			const authorIds = [...new Set(accessibleRows.map((row) => row.author_id))]
+			const { data: authorRows } = authorIds.length
+				? await adminData.from('profiles').select('id, display_name').in('id', authorIds)
+				: { data: [] }
+			const authorById = Object.fromEntries((authorRows ?? []).map((row) => [String(row.id), String(row.display_name ?? 'Writer')]))
+			const workshopById = Object.fromEntries(workshops.map((workshop) => [workshop.id, workshop.title]))
+			const { data: ownResponseRows } = await adminData
+				.from('reader_responses')
+				.select('submission_id')
+				.eq('author_id', user.id)
+				.in('submission_id', accessibleRows.map((row) => row.id))
+			const responded = new Set((ownResponseRows ?? []).map((row) => String(row.submission_id)))
+			sharedGroupPieces = accessibleRows.map((row) => ({
+				id: row.id,
+				title: row.title,
+				authorLabel: authorById[row.author_id] ?? 'Writer',
+				workshopTitle: workshopById[row.workshop_id] ?? 'Writing group',
+				version: row.version,
+				createdAt: row.created_at,
+				hasResponse: responded.has(row.id),
+			}))
 		}
 	} else {
 		const dataClient = await createServerDataClient()
@@ -502,6 +592,7 @@ export default async function WriterPage({
 				abuSubmissionWordLimit={ABU_SUBMISSION_WORD_LIMIT}
 				availableDocuments={availableDocuments}
 				documentsError={documentsError}
+				sharedGroupPieces={sharedGroupPieces}
 			/>
 		</section>
 	)
