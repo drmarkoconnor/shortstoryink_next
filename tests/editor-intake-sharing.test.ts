@@ -5,7 +5,7 @@ import { PGlite } from '@electric-sql/pglite'
 
 const db = new PGlite()
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-const teacher=id(1), author=id(2), selected=id(3), unselected=id(4), outsider=id(5), late=id(6)
+const teacher=id(1), author=id(2), selected=id(3), unselected=id(4), outsider=id(5), late=id(6), membershipTarget=id(7)
 const abu=id(20), group=id(21), otherGroup=id(22)
 
 async function as(role: string, user: string | null, sql: string, params: unknown[] = []) {
@@ -32,13 +32,14 @@ before(async () => {
     'netlify/database/migrations/002_editor-intake-sharing/migration.sql',
     'netlify/database/migrations/003_require-current-author-membership/migration.sql',
     'netlify/database/migrations/004_keep-anonymous-submission-denial-clean/migration.sql',
+    'netlify/database/migrations/005_harden-sharing-triggers/migration.sql',
   ]) {
     const sql=await readFile(path,'utf8')
     assert.doesNotMatch(sql,/^\s*(?:begin|commit|rollback);\s*$/im)
     await db.exec('begin'); await db.exec(sql); await db.exec('commit')
   }
   await db.exec('reset role')
-  for (const [user,role] of [[teacher,'teacher'],[author,'writer'],[selected,'writer'],[unselected,'writer'],[outsider,'writer'],[late,'writer']] as const) {
+  for (const [user,role] of [[teacher,'teacher'],[author,'writer'],[selected,'writer'],[unselected,'writer'],[outsider,'writer'],[late,'writer'],[membershipTarget,'writer']] as const) {
     await db.query('insert into studio_auth.users(id,email) values($1,$2)',[user,`${user}@example.invalid`])
     await db.query('insert into public.profiles(id,role,display_name) values($1,$2,$3)',[user,role,`User ${user.slice(-2)}`])
   }
@@ -180,6 +181,20 @@ test('moving a shared manuscript to ABU clears grants, and removing its author f
     /no longer attached to a current member/
   )
   await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[group,author])
+})
+
+test('an authenticated editor can remove membership and sharing is revoked without a privilege failure', async () => {
+  await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[group,membershipTarget])
+  const r=await importPiece(120), piece=(r.rows[0] as {result:{id:string}}).result.id
+  await owner('select public.set_submission_sharing($1,$2,$3::uuid[])',[author,piece,[membershipTarget]])
+  const removed=await as(
+    'studio_authenticated',
+    teacher,
+    'delete from public.workshop_members where workshop_id=$1 and profile_id=$2 returning profile_id',
+    [group,membershipTarget]
+  )
+  assert.equal(removed.rows.length,1)
+  assert.equal((await db.query('select * from public.submission_share_recipients where submission_id=$1',[piece])).rows.length,0)
 })
 
 test('a pristine root import can correct writer and group assignment, but a revision cannot', async () => {
