@@ -15,6 +15,8 @@ type RevisionRow = {
 	title: string
 	version: number
 	workshop_id: string
+	parent_submission_id: string | null
+	status: string
 }
 
 export default async function AddWriterPiecePage() {
@@ -28,8 +30,7 @@ export default async function AddWriterPiecePage() {
 			admin.from('workshop_members').select('profile_id, workshop_id'),
 			admin
 				.from('submissions')
-				.select('id, author_id, title, version, workshop_id')
-				.eq('status', 'feedback_published')
+				.select('id, author_id, title, version, workshop_id, parent_submission_id, status')
 				.order('created_at', { ascending: false }),
 		])
 
@@ -38,6 +39,16 @@ export default async function AddWriterPiecePage() {
 	const memberships = (membershipsResult.data ?? []) as MembershipRow[]
 	const writerProfiles = profiles.filter((profile) => profile.role === 'writer')
 	const writerIds = new Set(writerProfiles.map((profile) => profile.id))
+	const revisionRows = (revisionsResult.data ?? []) as RevisionRow[]
+	const latestByRoot = new Map<string, RevisionRow>()
+	for (const row of revisionRows) {
+		const rootId = row.parent_submission_id ?? row.id
+		const prior = latestByRoot.get(rootId)
+		if (!prior || row.version > prior.version) latestByRoot.set(rootId, row)
+	}
+	const availableRevisionSources = [...latestByRoot.values()].filter(
+		(row) => row.status === 'feedback_published',
+	)
 
 	const groupIdsByWriter = memberships.reduce<Record<string, string[]>>((acc, membership) => {
 		if (!writerIds.has(membership.profile_id)) return acc
@@ -150,15 +161,13 @@ export default async function AddWriterPiecePage() {
 					}))}
 					groups={workshops}
 					membersByGroup={membersByGroup}
-					revisionSources={((revisionsResult.data ?? []) as RevisionRow[]).map(
-						(row) => ({
-							id: row.id,
-							authorId: row.author_id,
-							title: row.title,
-							version: row.version,
-							workshopId: row.workshop_id,
-						}),
-					)}
+					revisionSources={availableRevisionSources.map((row) => ({
+						id: row.id,
+						authorId: row.author_id,
+						title: row.title,
+						version: row.version,
+						workshopId: row.workshop_id,
+					}))}
 					createAction={createAssignedPiece}
 				/>
 			</div>
