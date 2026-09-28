@@ -172,6 +172,27 @@ test('moving a shared manuscript to ABU clears grants, and removing its author f
   await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[group,author])
 })
 
+test('a pristine root import can correct writer and group assignment, but a revision cannot', async () => {
+  await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[otherGroup,unselected])
+  const root=await importPiece(117), rootId=(root.rows[0] as {result:{id:string}}).result.id
+  await owner('select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',[
+    teacher,rootId,unselected,otherGroup,'Reassigned story','Reassigned manuscript'
+  ])
+  const corrected=(await db.query('select author_id,workshop_id,title from public.submissions where id=$1',[rootId])).rows[0] as {author_id:string;workshop_id:string;title:string}
+  assert.equal(corrected.author_id,unselected); assert.equal(corrected.workshop_id,otherGroup); assert.equal(corrected.title,'Reassigned story')
+
+  const first=await importPiece(118), piece=(first.rows[0] as {result:{id:string}}).result.id
+  await owner('insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,$4)',[piece,teacher,{blockId:'p-1',startOffset:0,endOffset:8,quote:'Imported'},'Note'])
+  await owner('select public.publish_workshop_feedback($1,$2,$3)',[teacher,piece,'Summary'])
+  const rev=await importPiece(119,author,group,piece,'Revision text'), revisionId=(rev.rows[0] as {result:{id:string}}).result.id
+  await assert.rejects(
+    owner('select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',[
+      teacher,revisionId,unselected,otherGroup,'Wrong chain','Changed'
+    ]),
+    /same writer and group/
+  )
+})
+
 test('new privileged operations cannot be called directly by writer sessions', async () => {
   const r=await importPiece(112), piece=(r.rows[0] as {result:{id:string}}).result.id
   await assert.rejects(as('studio_authenticated',author,'select public.set_submission_sharing($1,$2,$3::uuid[])',[author,piece,[selected]]),/permission denied/)
