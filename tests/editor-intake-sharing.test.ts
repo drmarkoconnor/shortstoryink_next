@@ -33,6 +33,7 @@ before(async () => {
     'netlify/database/migrations/003_require-current-author-membership/migration.sql',
     'netlify/database/migrations/004_keep-anonymous-submission-denial-clean/migration.sql',
     'netlify/database/migrations/005_harden-sharing-triggers/migration.sql',
+    'netlify/database/migrations/006_serialize-sharing-lifecycle/migration.sql',
   ]) {
     const sql=await readFile(path,'utf8')
     assert.doesNotMatch(sql,/^\s*(?:begin|commit|rollback);\s*$/im)
