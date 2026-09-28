@@ -29,7 +29,7 @@ export default async function CorrectEditorImportPage({
 		redirect('/app/teacher/review-desk?error=That+piece+is+not+an+editor+import.')
 	}
 
-	const [{ data: writer }, { data: workshop }, feedbackResult] = await Promise.all([
+	const [{ data: writer }, { data: workshop }, feedbackResult, profilesResult, workshopsResult] = await Promise.all([
 		admin
 			.from('profiles')
 			.select('display_name')
@@ -44,6 +44,8 @@ export default async function CorrectEditorImportPage({
 			.from('feedback_items')
 			.select('id', { count: 'exact', head: true })
 			.eq('submission_id', submissionId),
+		admin.from('profiles').select('id, display_name, role').order('display_name'),
+		admin.from('workshops').select('id, title, slug').order('title'),
 	])
 
 	const locked =
@@ -60,25 +62,34 @@ export default async function CorrectEditorImportPage({
 	}
 	const authorId = String(submission.author_id)
 	const workshopId = String(submission.workshop_id)
+	const isRevision = Boolean(submission.parent_submission_id)
+	const writers = (profilesResult.data ?? []).filter((profile) => profile.role === 'writer')
+	const workshops = (workshopsResult.data ?? []).filter(
+		(group) =>
+			String(group.slug ?? '') !== 'authorised-basic-user' &&
+			String(group.title ?? '').trim().toLowerCase() !== 'authorised basic user',
+	)
 
 	async function saveCorrection(formData: FormData) {
 		'use server'
 		const current = await requireTeacher()
+		const nextAuthorId = String(formData.get('writerId') ?? '').trim()
+		const nextWorkshopId = String(formData.get('workshopId') ?? '').trim()
 		const title = String(formData.get('title') ?? '').trim()
 		const body = String(formData.get('body') ?? '')
-		if (!title || !body.trim()) {
+		if (!nextAuthorId || !nextWorkshopId || !title || !body.trim()) {
 			redirect(
 				'/app/teacher/review-desk/correct/' +
 					submissionId +
-					'?error=Title+and+manuscript+are+required.',
+					'?error=Writer,+group,+title+and+manuscript+are+required.',
 			)
 		}
 		const data = createAdminDataClient()
 		const { error } = await data.rpc('correct_editor_assigned_submission', {
 			p_teacher_id: current.user.id,
 			p_submission_id: submissionId,
-			p_author_id: authorId,
-			p_workshop_id: workshopId,
+			p_author_id: nextAuthorId,
+			p_workshop_id: nextWorkshopId,
 			p_title: title,
 			p_body: body,
 		})
@@ -121,6 +132,47 @@ export default async function CorrectEditorImportPage({
 			{error ? <p className="rounded border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-800">{error}</p> : null}
 
 			<form action={saveCorrection} className="surface space-y-5 p-6">
+				<div className="grid gap-5 md:grid-cols-2">
+					<label className="block">
+						<span className="mb-1.5 block text-sm text-studio-muted">Writer</span>
+						<select
+							name="writerId"
+							defaultValue={authorId}
+							disabled={isRevision}
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink disabled:opacity-60">
+							{writers.map((profile) => (
+								<option key={String(profile.id)} value={String(profile.id)}>
+									{String(profile.display_name ?? 'Writer')}
+								</option>
+							))}
+						</select>
+						{isRevision ? <input type="hidden" name="writerId" value={authorId} /> : null}
+					</label>
+					<label className="block">
+						<span className="mb-1.5 block text-sm text-studio-muted">Writing group</span>
+						<select
+							name="workshopId"
+							defaultValue={workshopId}
+							disabled={isRevision}
+							className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink disabled:opacity-60">
+							{workshops.map((group) => (
+								<option key={String(group.id)} value={String(group.id)}>
+									{String(group.title)}
+								</option>
+							))}
+						</select>
+						{isRevision ? <input type="hidden" name="workshopId" value={workshopId} /> : null}
+					</label>
+				</div>
+				{!isRevision ? (
+					<p className="text-xs leading-5 text-studio-muted">
+						If the piece was assigned to the wrong writer or group, correct it here before review begins. The selected writer must already belong to the selected group.
+					</p>
+				) : (
+					<p className="text-xs leading-5 text-studio-muted">
+						This is a revision, so its writer and writing group remain fixed to the existing manuscript chain.
+					</p>
+				)}
 				<label className="block">
 					<span className="mb-1.5 block text-sm text-studio-muted">Title</span>
 					<input
