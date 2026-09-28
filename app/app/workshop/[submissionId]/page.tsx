@@ -132,6 +132,7 @@ export default async function WorkshopSubmissionPage({
 	let writerName = 'Writer'
 	let submissionSource = 'workshop'
 	let sharingStartedAt: string | null = null
+	let readerResponseCount = 0
 	let latestVersionId: string | null = null
 	let rootSubmissionId: string | null = null
 	let currentAuthorId: string | null = null
@@ -276,6 +277,12 @@ export default async function WorkshopSubmissionPage({
 			.select('id, comment, anchor, created_at')
 			.eq('submission_id', submission.id)
 			.order('created_at', { ascending: true })
+
+		const readerResponseCountResult = await dataClient
+			.from('reader_responses')
+			.select('id', { count: 'exact', head: true })
+			.eq('submission_id', submission.id)
+		readerResponseCount = readerResponseCountResult.count ?? 0
 
 		feedback = (
 			(feedbackRows ?? []) as Array<{
@@ -708,6 +715,13 @@ export default async function WorkshopSubmissionPage({
 								href={`/app/teacher/review-desk/correct/${submissionId}`}
 								className="studio-secondary mt-4 inline-flex">
 								Correct imported piece
+							</Link>
+						) : null}
+						{readerResponseCount > 0 ? (
+							<Link
+								href={`/app/teacher/review-desk/responses/${submissionId}`}
+								className="studio-secondary mt-4 ml-2 inline-flex">
+								{readerResponseCount} group response{readerResponseCount === 1 ? '' : 's'}
 							</Link>
 						) : null}
 						{latestVersionEntry && latestVersionEntry.id !== submissionId ? (
