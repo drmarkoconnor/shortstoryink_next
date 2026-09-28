@@ -64,11 +64,7 @@ export default async function CorrectEditorImportPage({
 	const workshopId = String(submission.workshop_id)
 	const isRevision = Boolean(submission.parent_submission_id)
 	const writers = (profilesResult.data ?? []).filter((profile) => profile.role === 'writer')
-	const workshops = (workshopsResult.data ?? []).filter(
-		(group) =>
-			String(group.slug ?? '') !== 'authorised-basic-user' &&
-			String(group.title ?? '').trim().toLowerCase() !== 'authorised basic user',
-	)
+	const workshops = workshopsResult.data ?? []
 
 	async function saveCorrection(formData: FormData) {
 		'use server'
