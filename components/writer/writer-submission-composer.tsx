@@ -23,6 +23,20 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	sharingCount?: number
+	readerResponseCount?: number
+	source?: string
+	canShare?: boolean
+}
+
+type SharedGroupPiece = {
+	id: string
+	title: string
+	authorLabel: string
+	workshopTitle: string
+	version: number
+	createdAt: string
+	hasResponse: boolean
 }
 
 type WriterDocumentResource = {
@@ -55,6 +69,7 @@ export function WriterSubmissionComposer({
 	abuSubmissionWordLimit,
 	availableDocuments,
 	documentsError,
+	sharedGroupPieces,
 }: {
 	writerId: string
 	writerName: string
@@ -74,6 +89,7 @@ export function WriterSubmissionComposer({
 	abuSubmissionWordLimit: number
 	availableDocuments: WriterDocumentResource[]
 	documentsError: string | null
+	sharedGroupPieces: SharedGroupPiece[]
 }) {
 	const router = useRouter()
 	const recovery = useRecoveryDraft(writerId, 'new', {
@@ -179,6 +195,31 @@ export function WriterSubmissionComposer({
 					</div>
 				</aside>
 			</section>
+
+			{sharedGroupPieces.length > 0 ? (
+				<section className="border-y border-studio-line py-7">
+					<div className="flex flex-wrap items-end justify-between gap-3">
+						<div>
+							<p className="studio-eyebrow">From your group</p>
+							<h2 className="literary-title mt-3 text-3xl text-studio-ink">Writing shared with you</h2>
+							<p className="mt-2 max-w-2xl text-sm leading-6 text-studio-muted">
+								These writers have deliberately chosen to share this version with you. Read as a fellow writer and respond to the piece as a whole.
+							</p>
+						</div>
+						<p className="text-xs uppercase tracking-[0.1em] text-studio-muted">{sharedGroupPieces.length} shared</p>
+					</div>
+					<div className="mt-5 grid gap-3 md:grid-cols-2">
+						{sharedGroupPieces.map((piece) => (
+							<Link key={piece.id} href={`/app/writer/shared/${piece.id}`} className="rounded-md border border-studio-line bg-studio-canvas p-4 transition hover:bg-studio-tint">
+								<div className="flex items-start justify-between gap-3">
+									<div><p className="font-medium text-studio-ink">{piece.title}</p><p className="mt-1 text-xs text-studio-muted">{piece.authorLabel} · {piece.workshopTitle} · v{piece.version}</p></div>
+									<span className="rounded border border-studio-line px-2 py-1 text-xs text-studio-muted">{piece.hasResponse ? 'Response saved' : 'Read & respond'}</span>
+								</div>
+							</Link>
+						))}
+					</div>
+				</section>
+			) : null}
 
 			{(notice || savedNotice) && isSuccessModalOpen ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 backdrop-blur-sm">
