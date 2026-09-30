@@ -115,7 +115,7 @@ with sync_playwright() as p:
             root=sorted([n for n in state['nodes'] if n['parentId'] is None],key=lambda n:n['position']);assert root[0]['id']==a
             passed(engine+': pointer card ordering and whole-project snapshot restore with safety copy')
 
-            open_node(page,a);page.get_by_label('Move to…',exact=True).select_option(folder)
+            open_node(page,a);page.get_by_role('combobox',name=re.compile(r'^Move to')).select_option(folder)
             page.get_by_role('button',name='Move here',exact=True).click()
             page.get_by_role('button',name='Outline',exact=True).click()
             f=page.locator('[data-node-id="'+folder+'"]');f.get_by_role('button',name='Collapse',exact=True).click()
@@ -163,7 +163,7 @@ with sync_playwright() as p:
             tp=tablet.new_page();tp.goto(BASE+'/project-browser-test?projectId='+pid,wait_until='networkidle')
             assert tp.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
             tp.get_by_role('button',name='Outline',exact=True).tap();open_node(tp,a)
-            expect(tp.get_by_label('Move to…',exact=True)).to_be_visible()
+            expect(tp.get_by_role('combobox',name=re.compile(r'^Move to'))).to_be_visible()
             tp.screenshot(path=str(OUT/(engine+'-tablet.png')),full_page=True);tablet.close()
             passed(engine+': tablet layout and non-drag organising controls')
             assert not errors,errors
