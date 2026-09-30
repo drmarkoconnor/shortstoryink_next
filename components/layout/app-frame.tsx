@@ -10,7 +10,7 @@ const writerNavItems = [
 	{ href: '/app/writer', label: 'Writing' },
 	{ href: '/app/writer/feedback', label: 'Feedback' },
 	{ href: '/app/writer/reading-room', label: 'Reading', matches: ['/app/writer/documents', '/app/writer/examples'] },
-	{ href: '/app/writer/commonplace', label: 'Commonplace' },
+	{ href: '/app/writer/commonplace', label: 'Your notebook' },
 ]
 
 const editorNavItems = [
@@ -48,13 +48,13 @@ export async function AppFrame({
 				Skip to content
 			</a>
 			<header className="app-shell-header studio-header">
-				<BrandWordmark />
+				<BrandWordmark href={isWriter ? '/app/writer' : '/app/teacher/review-desk'} />
 				<AppNav items={visibleNav} />
 				<details className="studio-account">
 					<summary className="cursor-pointer text-sm">{displayName || 'Account'}</summary>
 					<div className="space-y-4">
 						<a className="block studio-link" href="/app/account">Account settings</a>
-						<a className="block studio-link" href="/guide/new-writers">Writing guide</a>
+						<a className="block studio-link" href="/guide/new-writers">How to use this site</a>
 						<SignOutForm ownerId={user.id} />
 					</div>
 				</details>
