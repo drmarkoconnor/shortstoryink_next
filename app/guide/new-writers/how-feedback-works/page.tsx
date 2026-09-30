@@ -11,7 +11,7 @@ export default function Page() { return <GuideShell activeHref="/guide/new-write
 <p>{"The editor can add an overview before confirming publication. The writer then receives the overview and the anchored comments together."}</p>
 <p>{"Nothing becomes visible to the writer just because a draft comment has been written."}</p>
 </GuideStep>
-<GuideStep number="03" title="Bring a teaching idea to life." image="handout" caption="An illustrated handout being prepared in the editorial studio.">
+<GuideStep number="03" title="Bring an editorial idea to life." image="handout" caption="An illustrated handout being prepared in the editorial studio.">
 <p>{"Editors can also prepare illustrated handouts and writing exercises. Materials shared with your group are available from the Reading room."}</p>
 </GuideStep>
 <NextGuideLink href="/guide/new-writers" label="Return to the guide overview" />
