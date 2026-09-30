@@ -5,7 +5,8 @@ import { PGlite } from '@electric-sql/pglite'
 
 const db = new PGlite()
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-const writer = id(1), other = id(2), teacher = id(3), outsider = id(4), group = id(10), hidden = id(11)
+const writer = id(1), other = id(2), teacher = id(3), outsider = id(4), newcomer = id(5)
+const group = id(10), hidden = id(11), realGroup = id(12), outsiderGroup = id(13)
 const piece = id(20), example = id(30)
 async function as(role: string, user: string | null, sql: string, params: unknown[] = []) {
 	await db.exec(`set role ${role}`)
@@ -23,14 +24,17 @@ before(async () => {
 	assert.doesNotMatch(baseline, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the migration transaction')
 	await db.exec('begin')
 	await db.exec(baseline)
+	const sharing = await readFile('netlify/database/migrations/002_editor-intake-group-sharing/migration.sql', 'utf8')
+	assert.doesNotMatch(sharing, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the sharing migration transaction')
+	await db.exec(sharing)
 	await db.exec('commit')
 	await db.exec('reset role')
-	for (const user of [writer, other, teacher, outsider]) {
+	for (const user of [writer, other, teacher, outsider, newcomer]) {
 		await db.query('insert into studio_auth.users(id,email) values ($1,$2)', [user, `${user}@example.invalid`])
 		await db.query('insert into public.profiles(id,role) values($1,$2)', [user, user === teacher ? 'teacher' : 'writer'])
 	}
-	await db.query("insert into public.workshops(id,title,slug) values ($1,'Authorised Basic User','authorised-basic-user'), ($2,'Hidden class','hidden')", [group, hidden])
-	await db.query('insert into public.workshop_members values ($1,$2),($1,$3),($4,$2)', [group, writer, other, hidden])
+	await db.query("insert into public.workshops(id,title,slug) values ($1,'Authorised Basic User','authorised-basic-user'), ($2,'Hidden class','hidden'), ($3,'Flax Bourton Writers','flax-bourton-writers'), ($4,'Other Writers','other-writers')", [group, hidden, realGroup, outsiderGroup])
+	await db.query('insert into public.workshop_members values ($1,$2),($1,$3),($4,$2),($5,$2),($5,$3),($6,$7)', [group, writer, other, hidden, realGroup, outsiderGroup, outsider])
 	await db.query("insert into public.submissions(id,author_id,workshop_id,title,body) values ($1,$2,$3,'Private','Secret manuscript')", [piece, writer, group])
 	await db.query('insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,$4)', [piece, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 6, quote: 'Secret' }, 'Unpublished teaching thought'])
 	await db.query("insert into public.teaching_examples(id,owner_id,title,body,status) values($1,$2,'Example','Example text','published')", [example, teacher])
@@ -143,4 +147,142 @@ test('private commonplace supports own saving and retry, but denies peers, teach
  assert.equal((await as('studio_anon',null,'select * from public.snippets where id=$1',[note])).rows.length,0)
  await assert.rejects(as('studio_authenticated',writer,save,[id(702),other,'Forged owner',anchor]),/row-level security/)
  assert.equal((await as('studio_authenticated',writer,'delete from public.snippets where id=$1 returning id',[note])).rows.length,1)
+})
+
+
+test('editor intake creates a writer-owned manuscript and records provenance', async () => {
+	const request = id(801)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Imported piece', 'Copied from a message.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string; version: number } }).result
+	assert.equal(created.version, 1)
+	const row = (await db.query<{author_id:string;workshop_id:string;source:string;body:string}>(
+		'select author_id,workshop_id,source,body from public.submissions where id=$1',[created.id])).rows[0]
+	assert.equal(row.author_id, writer)
+	assert.equal(row.workshop_id, realGroup)
+	assert.equal(row.source, 'editor_import')
+	assert.equal(row.body, 'Copied from a message.')
+	assert.equal((await as('studio_authenticated', writer, 'select id from public.submissions where id=$1', [created.id])).rows.length, 1)
+	assert.equal((await as('studio_authenticated', other, 'select id from public.submissions where id=$1', [created.id])).rows.length, 0)
+})
+
+test('editor can correct an untouched imported manuscript but sharing locks its text', async () => {
+	const request = id(802)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Import to correct', 'Bad line breaks', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await as('netlifydb_owner', null,
+		'select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',
+		[teacher, created.id, writer, realGroup, 'Corrected title', 'Corrected manuscript'])
+	assert.equal((await db.query<{body:string}>('select body from public.submissions where id=$1',[created.id])).rows[0].body, 'Corrected manuscript')
+	await as('netlifydb_owner', null,
+		'select public.set_submission_share_recipients($1,$2,$3::uuid[])',
+		[writer, created.id, [other]])
+	await assert.rejects(
+		as('netlifydb_owner', null,
+			'select public.correct_editor_assigned_submission($1,$2,$3,$4,$5,$6)',
+			[teacher, created.id, writer, realGroup, 'Changed again', 'Should fail']),
+		/locked/
+	)
+})
+
+test('sharing is explicit: selected group writer can read, unselected and other-group writers cannot', async () => {
+	const request = id(803)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Shared piece', 'For selected readers only.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+
+	assert.equal((await as('studio_authenticated', other, 'select id from public.submissions where id=$1',[created.id])).rows.length,0)
+	await as('netlifydb_owner', null,
+		'select public.set_submission_share_recipients($1,$2,$3::uuid[])',
+		[writer, created.id, [other]])
+
+	assert.equal((await as('studio_authenticated', other, 'select id from public.submissions where id=$1',[created.id])).rows.length,1)
+	assert.equal((await as('studio_authenticated', outsider, 'select id from public.submissions where id=$1',[created.id])).rows.length,0)
+
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[outsider]]),
+		/must belong/
+	)
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[writer]]),
+		/cannot share/
+	)
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[]]),
+		/at least one/
+	)
+})
+
+test('ABU never becomes a manuscript sharing group', async () => {
+	const request = id(804)
+	const result = await submit(804)
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[other]]),
+		/not a sharing group/
+	)
+})
+
+test('new group members do not gain old manuscripts unless explicitly selected', async () => {
+	const request = id(805)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Snapshot sharing', 'Existing readers only.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[other]])
+	await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[realGroup,newcomer])
+	assert.equal((await as('studio_authenticated', newcomer, 'select id from public.submissions where id=$1',[created.id])).rows.length,0)
+})
+
+test('reader responses stay separate from editorial feedback and private from other readers', async () => {
+	const request = id(806)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Response piece', 'Please respond as a reader.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[other,newcomer]])
+	await as('netlifydb_owner', null,'select public.save_reader_response($1,$2,$3)',[other,created.id,'I stayed with the ending.'])
+	assert.equal((await as('studio_authenticated', other, 'select body from public.reader_responses where submission_id=$1',[created.id])).rows.length,1)
+	assert.equal((await as('studio_authenticated', newcomer, 'select body from public.reader_responses where submission_id=$1',[created.id])).rows.length,0)
+	assert.equal((await as('studio_authenticated', writer, 'select body from public.reader_responses where submission_id=$1',[created.id])).rows.length,1)
+	assert.equal((await as('studio_authenticated', teacher, 'select body from public.reader_responses where submission_id=$1',[created.id])).rows.length,1)
+
+	await as('studio_authenticated', teacher,
+		"insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,'Private editorial comment')",
+		[created.id,teacher,{blockId:'p-1',startOffset:0,endOffset:6,quote:'Please'}])
+	assert.equal((await as('studio_authenticated', other, 'select * from public.feedback_items where submission_id=$1',[created.id])).rows.length,0)
+})
+
+test('stopping sharing revokes manuscript access but preserves the response for its writer', async () => {
+	const request = id(807)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Withdrawn share', 'A temporary share.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[other]])
+	await as('netlifydb_owner', null,'select public.save_reader_response($1,$2,$3)',[other,created.id,'A useful thought.'])
+	await as('netlifydb_owner', null,'select public.stop_submission_sharing($1,$2)',[writer,created.id])
+	assert.equal((await as('studio_authenticated', other, 'select id from public.submissions where id=$1',[created.id])).rows.length,0)
+	assert.equal((await as('studio_authenticated', writer, 'select body from public.reader_responses where submission_id=$1',[created.id])).rows.length,1)
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.save_reader_response($1,$2,$3)',[other,created.id,'Changed later']),
+		/not currently shared/
+	)
+})
+
+test('leaving a writing group removes sharing and rejoining does not silently restore it', async () => {
+	const request = id(808)
+	const result = await as('netlifydb_owner', null,
+		'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7) as result',
+		[teacher, writer, request, 'Membership share', 'Group membership matters.', realGroup, null])
+	const created = (result.rows[0] as { result: { id: string } }).result
+	await as('netlifydb_owner', null,'select public.set_submission_share_recipients($1,$2,$3::uuid[])',[writer,created.id,[other]])
+	await db.query('delete from public.workshop_members where workshop_id=$1 and profile_id=$2',[realGroup,other])
+	assert.equal((await db.query('select * from public.submission_share_recipients where submission_id=$1 and recipient_id=$2',[created.id,other])).rows.length,0)
+	await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2)',[realGroup,other])
+	assert.equal((await as('studio_authenticated', other, 'select id from public.submissions where id=$1',[created.id])).rows.length,0)
 })
