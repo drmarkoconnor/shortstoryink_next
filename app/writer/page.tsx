@@ -30,6 +30,7 @@ type WriterSubmission = {
 	version?: number
 	commentCount?: number
 	shareCount?: number
+	readerResponseCount?: number
 	source?: string
 }
 
@@ -403,11 +404,22 @@ export default async function WriterPage({
 
 			const ownSubmissionIds = submissions.map((submission) => submission.id)
 			if (ownSubmissionIds.length > 0) {
-				const { data: shareRows } = await adminData
-					.from('submission_share_recipients')
-					.select('submission_id')
-					.in('submission_id', ownSubmissionIds)
-				const shareCountBySubmission = (shareRows ?? []).reduce((acc, row) => {
+				const [shareResult, responseResult] = await Promise.all([
+					adminData
+						.from('submission_share_recipients')
+						.select('submission_id')
+						.in('submission_id', ownSubmissionIds),
+					adminData
+						.from('reader_responses')
+						.select('submission_id')
+						.in('submission_id', ownSubmissionIds),
+				])
+				const shareCountBySubmission = (shareResult.data ?? []).reduce((acc, row) => {
+					const key = String(row.submission_id)
+					acc[key] = (acc[key] ?? 0) + 1
+					return acc
+				}, {} as Record<string, number>)
+				const responseCountBySubmission = (responseResult.data ?? []).reduce((acc, row) => {
 					const key = String(row.submission_id)
 					acc[key] = (acc[key] ?? 0) + 1
 					return acc
@@ -415,6 +427,7 @@ export default async function WriterPage({
 				submissions = submissions.map((submission) => ({
 					...submission,
 					shareCount: shareCountBySubmission[submission.id] ?? 0,
+					readerResponseCount: responseCountBySubmission[submission.id] ?? 0,
 				}))
 			}
 		}
