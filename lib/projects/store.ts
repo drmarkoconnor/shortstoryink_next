@@ -5,7 +5,10 @@ const changes=new Set(['add','save','move','trash','snapshot','restore','restore
 export async function executeProjectCommand(client:SqlClient,actor:string,projectId:string|null,action:string,input:Record<string,unknown>):Promise<unknown> {
  await client.query('begin')
  try {
-  await client.query("set local search_path=public; set local timezone='UTC'; set local statement_timeout='30s'")
+  // Keep these separate: prepared-statement drivers do not permit multi-commands.
+  await client.query('set local search_path=public')
+  await client.query("set local timezone='UTC'")
+  await client.query("set local statement_timeout='30s'")
   await client.query("select set_config('request.jwt.claim.sub',$1,true)",[actor])
   if(projectId) await client.query('select id from public.writer_projects where id=$1 and owner_id=$2 for update',[projectId,actor])
   let replayed=false
