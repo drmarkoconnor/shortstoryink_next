@@ -88,10 +88,15 @@ export default async function WriterSharingPage({
 		.eq('submission_id', submissionId)
 		.order('created_at', { ascending: true })
 	const responderIds = [...new Set((responses ?? []).map((response) => response.author_id))]
-	const { data: responderProfiles } = responderIds.length > 0
-		? await admin.from<ProfileRow>('profiles').select('id, display_name, role').in('id', responderIds)
-		: { data: [] as ProfileRow[], error: null, count: null }
-	const responderNames = Object.fromEntries((responderProfiles ?? []).map((profile) => [profile.id, profile.display_name?.trim() || 'Writer']))
+	let responderProfiles: ProfileRow[] = []
+	if (responderIds.length > 0) {
+		const responderProfileResult = await admin
+			.from<ProfileRow>('profiles')
+			.select('id, display_name, role')
+			.in('id', responderIds)
+		responderProfiles = responderProfileResult.data ?? []
+	}
+	const responderNames = Object.fromEntries(responderProfiles.map((profile) => [profile.id, profile.display_name?.trim() || 'Writer']))
 
 	async function saveSharingAction(formData: FormData) {
 		'use server'
