@@ -406,9 +406,12 @@ begin
      or exists(select 1 from public.reader_responses where submission_id=p_submission_id) then
     raise exception 'This manuscript is locked because reading or feedback has begun.' using errcode='22023';
   end if;
+  if p_author_id<>piece.author_id then
+    raise exception 'Imported manuscript ownership cannot be reassigned after it reaches the desk.' using errcode='22023';
+  end if;
   if piece.parent_submission_id is not null
-     and (p_author_id<>piece.author_id or p_workshop_id<>piece.workshop_id) then
-    raise exception 'A revision cannot be reassigned to a different writer or group.' using errcode='22023';
+     and p_workshop_id<>piece.workshop_id then
+    raise exception 'A revision cannot be moved to a different writing group.' using errcode='22023';
   end if;
   if not exists(
     select 1 from public.profiles where id=p_author_id and role::text='writer'
