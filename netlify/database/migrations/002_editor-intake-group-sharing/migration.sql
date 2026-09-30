@@ -313,7 +313,7 @@ create or replace function public.delete_reader_response(
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 declare removed integer;
 begin
   if not exists (
@@ -331,7 +331,7 @@ begin
   get diagnostics removed=row_count;
   return jsonb_build_object('removed',removed);
 end;
-$;
+$$;
 
 create or replace function public.create_editor_assigned_submission(
   p_editor_id uuid,
