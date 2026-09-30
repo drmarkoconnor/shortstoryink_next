@@ -62,11 +62,16 @@ export default async function WriterSharingPage({
 		.eq('workshop_id', workshop.id)
 
 	const memberIds = (memberships ?? []).map((row) => row.profile_id).filter((id) => id !== writer.user.id)
-	const { data: profiles } = memberIds.length > 0
-		? await admin.from<ProfileRow>('profiles').select('id, display_name, role').in('id', memberIds)
-		: { data: [] as ProfileRow[], error: null, count: null }
+	let profiles: ProfileRow[] = []
+	if (memberIds.length > 0) {
+		const profileResult = await admin
+			.from<ProfileRow>('profiles')
+			.select('id, display_name, role')
+			.in('id', memberIds)
+		profiles = profileResult.data ?? []
+	}
 
-	const eligibleRecipients = isAbu ? [] : (profiles ?? [])
+	const eligibleRecipients = isAbu ? [] : profiles
 		.filter((profile) => profile.role === 'writer')
 		.map((profile) => ({ id: profile.id, name: profile.display_name?.trim() || 'Writer' }))
 		.sort((a, b) => a.name.localeCompare(b.name))
