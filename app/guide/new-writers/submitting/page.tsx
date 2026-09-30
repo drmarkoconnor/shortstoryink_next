@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { GuideShell, GuideHero, GuideStep, NextGuideLink } from '../guide-content'
-export const metadata: Metadata = { title: "Submitting | New Writer Guide", description: "Bring one piece, add its title, and send it for a close read when you are ready." }
+export const metadata: Metadata = { title: "Submitting | How to use this site", description: "Bring one piece, add its title, and send it for a close read when you are ready." }
 export default function Page() { return <GuideShell activeHref="/guide/new-writers/submitting">
 <GuideHero kicker="Submitting" title="Give your draft room to be read." body="Bring one piece, add its title, and send it for a close read when you are ready." />
 <GuideStep number="01" title="Write, then check the details." image="draft-filled" caption="Write in the shaded draft area, then add the submission details below it.">
