@@ -10,3 +10,7 @@
 
 [db.migrations]
   path = "netlify/database/migrations"
+
+# Do not let a preview apply a new migration before its regression tests pass.
+[context.deploy-preview]
+  command = "npm test && npm run build"
