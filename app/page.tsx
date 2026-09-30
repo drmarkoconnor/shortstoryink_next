@@ -68,9 +68,9 @@ export default function HomePage() {
 					<div className="mt-12 grid gap-7 border-t border-studio-line pt-9 lg:grid-cols-[1.2fr_.8fr]">
 						<div>
 							<p className="studio-eyebrow">Other rooms, when useful</p>
-							<h2 className="literary-title mt-3 text-3xl">Reading and a private commonplace.</h2>
+							<h2 className="literary-title mt-3 text-3xl">Reading and a private notebook.</h2>
 							<p className="mt-4 max-w-2xl leading-7 text-studio-muted">
-								There are readings, annotated examples and a place to keep passages or observations
+								There are readings, annotated examples and a private notebook for passages or observations
 								worth returning to. None of them are prerequisites for submitting a piece.
 							</p>
 						</div>

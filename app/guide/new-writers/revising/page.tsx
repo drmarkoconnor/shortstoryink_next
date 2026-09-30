@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { GuideShell, GuideHero, GuideStep, NextGuideLink } from '../guide-content'
-export const metadata: Metadata = { title: "Revising | New Writer Guide", description: "A revision continues the same piece while preserving the earlier manuscript and its feedback." }
+export const metadata: Metadata = { title: "Revising | How to use this site", description: "A revision continues the same piece while preserving the earlier manuscript and its feedback." }
 export default function Page() { return <GuideShell activeHref="/guide/new-writers/revising">
 <GuideHero kicker="Revising" title="Make room for the next version." body="A revision continues the same piece while preserving the earlier manuscript and its feedback." />
 <GuideStep number="01" title="Begin from the returned piece." image="start-revision" caption="The confirmation keeps the move from reading to revising deliberate.">
@@ -13,5 +13,5 @@ export default function Page() { return <GuideShell activeHref="/guide/new-write
 <GuideStep number="03" title="Keep your history close." image="version-history" caption="Version history connects the drafts of one piece.">
 <p>{"Open Version history to return to earlier feedback. Each published response remains with the version it describes."}</p>
 </GuideStep>
-<NextGuideLink href="/guide/new-writers/how-feedback-works" label="Optional: how teaching works" />
+<NextGuideLink href="/guide/new-writers/how-feedback-works" label="Optional: how feedback works" />
 </GuideShell> }

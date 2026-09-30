@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Figure, GuideHero, GuideShell } from './guide-content'
 
-export const metadata: Metadata = { title: 'New Writer Guide | shortstory.ink', description: 'A spacious walkthrough of writing, feedback and revision in shortstory.ink.' }
+export const metadata: Metadata = { title: 'How to use this site | shortstory.ink', description: 'A spacious walkthrough of writing, feedback and revision in shortstory.ink.' }
 const chapters = [
  { number: '01', title: 'Make yourself at home', body: 'Create your account, confirm your email and find your way back to the studio.', href: 'getting-started', link: 'Getting started' },
  { number: '02', title: 'Bring one draft', body: 'Write or paste your piece, check its title and group, then submit it for a close read.', href: 'submitting', link: 'Submitting' },
@@ -11,7 +11,7 @@ const chapters = [
 ]
 export default function Page() {
  return <GuideShell activeHref="/guide/new-writers">
-  <GuideHero kicker="Your writing companion" title="One draft. A close reading. A new beginning." body="You do not need to learn everything at once. Follow the four chapters in order, or return to the part you need. Each step has a current screenshot you can open at full size." />
+  <GuideHero kicker="How to use this site" title="One draft. A close reading. A new beginning." body="You do not need to learn everything at once. Follow the four chapters in order, or return to the part you need. Each step has a current screenshot you can open at full size." />
   <section aria-label="The four guide chapters" className="pb-14">{chapters.map(chapter => <article key={chapter.number} className="guide-chapter-row">
    <p className="studio-eyebrow pt-2">{chapter.number}</p><div><h2 className="literary-title text-3xl">{chapter.title}</h2><p className="mt-4 max-w-[55ch] text-base leading-8 text-studio-muted">{chapter.body}</p></div><Link className="studio-secondary" href={`/guide/new-writers/${chapter.href}`}>{chapter.link} →</Link>
   </article>)}</section>

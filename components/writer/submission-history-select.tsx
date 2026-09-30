@@ -11,6 +11,10 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	sharingCount?: number
+	readerResponseCount?: number
+	source?: string
+	canShare?: boolean
 }
 
 function statusLabel(value: string) {
@@ -118,6 +122,11 @@ export function SubmissionHistorySelect({
 									<p className="mt-1 text-xs uppercase tracking-[0.1em] text-studio-accent">
 										{statusLabel(selectedSubmission.status)}
 									</p>
+									{selectedSubmission.source === 'editor_import' ? (
+										<p className="mt-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs text-studio-muted">
+											Added by your editor
+										</p>
+									) : null}
 								</div>
 								<p className="rounded border border-studio-line bg-studio-tint px-2.5 py-1 text-xs text-studio-muted">
 									{selectedSubmission.commentCount ?? 0} comments
@@ -141,8 +150,34 @@ export function SubmissionHistorySelect({
 										Go to feedback
 									</Link>
 								) : null}
+								{selectedSubmission.canShare ? (
+									<Link
+										href={`/app/writer/sharing/${selectedSubmission.id}`}
+										className="studio-secondary">
+										{(selectedSubmission.sharingCount ?? 0) > 0 ? 'Edit sharing' : 'Share with your group'}
+									</Link>
+								) : null}
+								{(selectedSubmission.readerResponseCount ?? 0) > 0 ? (
+									<Link
+										href={`/app/writer/responses/${selectedSubmission.id}`}
+										className="studio-secondary">
+										Read group responses
+									</Link>
+								) : null}
 								{selectedSubmission.status === 'submitted' ? (
-									<form action={deleteSubmissionAction}>
+									<form
+										action={deleteSubmissionAction}
+										onSubmit={(event) => {
+											if (
+												((selectedSubmission.sharingCount ?? 0) > 0 ||
+													(selectedSubmission.readerResponseCount ?? 0) > 0) &&
+												!window.confirm(
+													'Delete this piece? This will also remove it from your group and permanently delete the reader responses attached to it.',
+												)
+											) {
+												event.preventDefault()
+											}
+										}}>
 										<input
 											type="hidden"
 											name="submissionId"

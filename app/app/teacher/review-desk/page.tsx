@@ -22,6 +22,9 @@ type QueueSubmission = {
 	newerRevisionStatus?: string | null
 	isLatestVersion?: boolean
 	feedbackDraftCount?: number
+	shareCount?: number
+	readerResponseCount?: number
+	source?: string
 }
 
 type ModernQueueRow = {
@@ -151,6 +154,8 @@ export default async function TeacherReviewDeskPage({
 		const submissionIds = rows.map((item) => item.id)
 		let writerById: Record<string, string> = {}
 		let feedbackDraftCountBySubmission: Record<string, number> = {}
+		let shareCountBySubmission: Record<string, number> = {}
+		let readerResponseCountBySubmission: Record<string, number> = {}
 		const revisionChainByRootId: Record<string, RevisionChainRow[]> = {}
 
 		if (authorIds.length > 0) {
@@ -181,12 +186,13 @@ export default async function TeacherReviewDeskPage({
 		}
 
 		if (submissionIds.length > 0) {
-			const { data: feedbackRows } = await dataClient
-				.from('feedback_items')
-				.select('submission_id')
-				.in('submission_id', submissionIds)
+			const [feedbackResult, shareResult, responseResult] = await Promise.all([
+				dataClient.from('feedback_items').select('submission_id').in('submission_id', submissionIds),
+				dataClient.from('submission_share_recipients').select('submission_id').in('submission_id', submissionIds),
+				dataClient.from('reader_responses').select('submission_id').in('submission_id', submissionIds),
+			])
 
-			feedbackDraftCountBySubmission = (feedbackRows ?? []).reduce(
+			feedbackDraftCountBySubmission = (feedbackResult.data ?? []).reduce(
 				(acc, row) => {
 					const key = row.submission_id as string
 					acc[key] = (acc[key] ?? 0) + 1
@@ -194,6 +200,16 @@ export default async function TeacherReviewDeskPage({
 				},
 				{} as Record<string, number>,
 			)
+			shareCountBySubmission = (shareResult.data ?? []).reduce((acc, row) => {
+				const key = String(row.submission_id)
+				acc[key] = (acc[key] ?? 0) + 1
+				return acc
+			}, {} as Record<string, number>)
+			readerResponseCountBySubmission = (responseResult.data ?? []).reduce((acc, row) => {
+				const key = String(row.submission_id)
+				acc[key] = (acc[key] ?? 0) + 1
+				return acc
+			}, {} as Record<string, number>)
 		}
 
 		const publishedCountResult = await dataClient
@@ -228,6 +244,9 @@ export default async function TeacherReviewDeskPage({
 					newerRevisionStatus: newerRevision?.status ?? null,
 					isLatestVersion: latestVersion ? latestVersion.id === item.id : true,
 					feedbackDraftCount: feedbackDraftCountBySubmission[item.id] ?? 0,
+					shareCount: shareCountBySubmission[item.id] ?? 0,
+					readerResponseCount: readerResponseCountBySubmission[item.id] ?? 0,
+					source: item.source ?? 'workshop',
 				}
 			})(),
 		}))
@@ -274,6 +293,8 @@ export default async function TeacherReviewDeskPage({
 		(item) =>
 			(item.status === 'submitted' || item.status === 'in_review') &&
 			(item.feedbackDraftCount ?? 0) === 0 &&
+			(item.shareCount ?? 0) === 0 &&
+			(item.readerResponseCount ?? 0) === 0 &&
 			!item.newerRevisionId,
 	)
 	const oldestWaitingSubmission = waitingQueue[0] ?? null
@@ -317,7 +338,7 @@ export default async function TeacherReviewDeskPage({
 			)
 		}
 
-		const [feedbackResult, childRevisionResult] = await Promise.all([
+		const [feedbackResult, childRevisionResult, shareResult, responseResult] = await Promise.all([
 			adminData
 				.from('feedback_items')
 				.select('id', { count: 'exact', head: true })
@@ -326,9 +347,17 @@ export default async function TeacherReviewDeskPage({
 				.from('submissions')
 				.select('id', { count: 'exact', head: true })
 				.eq('parent_submission_id', submissionId),
+			adminData
+				.from('submission_share_recipients')
+				.select('submission_id', { count: 'exact', head: true })
+				.eq('submission_id', submissionId),
+			adminData
+				.from('reader_responses')
+				.select('id', { count: 'exact', head: true })
+				.eq('submission_id', submissionId),
 		])
 
-		if (feedbackResult.error || childRevisionResult.error) {
+		if (feedbackResult.error || childRevisionResult.error || shareResult.error || responseResult.error) {
 			redirect(
 				'/app/teacher/review-desk?error=Unable+to+check+whether+the+submission+can+be+removed.',
 			)
@@ -343,6 +372,12 @@ export default async function TeacherReviewDeskPage({
 		if ((childRevisionResult.count ?? 0) > 0) {
 			redirect(
 				'/app/teacher/review-desk?error=Cannot+remove+a+submission+that+already+has+later+versions.',
+			)
+		}
+
+		if ((shareResult.count ?? 0) > 0 || (responseResult.count ?? 0) > 0) {
+			redirect(
+				'/app/teacher/review-desk?error=Stop+group+sharing+before+removing+this+submission.',
 			)
 		}
 
@@ -397,9 +432,19 @@ export default async function TeacherReviewDeskPage({
 						Revision
 					</p>
 				) : null}
+				{item.source === 'editor_import' ? (
+					<p className="mt-2 ml-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
+						Added by editor
+					</p>
+				) : null}
 				{item.status === 'in_review' ? (
 					<p className="mt-2 inline-flex rounded border border-burgundy-300/30 bg-studio-soft px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-accent">
 						{item.feedbackDraftCount ?? 0} draft comments
+					</p>
+				) : null}
+				{(item.shareCount ?? 0) > 0 ? (
+					<p className="mt-2 ml-2 inline-flex rounded border border-studio-line bg-studio-tint px-2 py-0.5 text-xs uppercase tracking-[0.1em] text-studio-muted">
+						Shared with {item.shareCount} writer{item.shareCount === 1 ? '' : 's'}
 					</p>
 				) : null}
 				{item.newerRevisionId ? (
@@ -416,7 +461,16 @@ export default async function TeacherReviewDeskPage({
 	return (
 		<section className="space-y-5">
 			<MenuTabs tabs={teacherTabs} active="/app/teacher/review-desk" />
-            <header className="studio-page-header"><p className="studio-eyebrow">Read. Respond. Encourage.</p><h1 className="studio-heading mt-3">The review queue</h1><p className="mt-4 text-studio-muted">A clear place for each piece, from its first reading to published feedback.</p></header>
+            <header className="studio-page-header">
+				<div className="flex flex-wrap items-start justify-between gap-4">
+					<div>
+						<p className="studio-eyebrow">Read. Respond. Encourage.</p>
+						<h1 className="studio-heading mt-3">The review queue</h1>
+						<p className="mt-4 text-studio-muted">A clear place for each piece, from its first reading to published feedback.</p>
+					</div>
+					<Link href="/app/teacher/review-desk/add" className="studio-primary">Add a writer&apos;s piece</Link>
+				</div>
+			</header>
 
 			{notice ? (
 				<p className="rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-800">
