@@ -25,6 +25,12 @@ function executor(privileged: boolean): ExecuteSql {
 const rpcParameters: Record<string, string[]> = {
 	submit_workshop_draft: ['p_author_id','p_request_id','p_title','p_body','p_workshop_id','p_source_id'],
 	publish_workshop_feedback: ['p_teacher_id','p_submission_id','p_summary'],
+	create_editor_assigned_submission: ['p_editor_id','p_author_id','p_request_id','p_title','p_body','p_workshop_id','p_source_id'],
+	correct_editor_assigned_submission: ['p_editor_id','p_submission_id','p_author_id','p_workshop_id','p_title','p_body'],
+	set_submission_share_recipients: ['p_actor_id','p_submission_id','p_recipient_ids'],
+	stop_submission_sharing: ['p_actor_id','p_submission_id'],
+	save_reader_response: ['p_actor_id','p_submission_id','p_body'],
+	delete_reader_response: ['p_actor_id','p_submission_id'],
 }
 function makeClient(privileged: boolean) {
 	const execute = executor(privileged)
@@ -35,7 +41,8 @@ function makeClient(privileged: boolean) {
 				const names = rpcParameters[name]
 				if (!privileged || !names || Object.keys(args).some(k=>!names.includes(k))) throw new Error('Unsupported database operation')
 				const user = await getStudioUser()
-				if (!user || (args.p_author_id ?? args.p_teacher_id) !== user.id) throw new Error('The operation must belong to the signed-in account')
+				const actingId = args.p_actor_id ?? args.p_editor_id ?? args.p_teacher_id ?? args.p_author_id
+				if (!user || actingId !== user.id) throw new Error('The operation must belong to the signed-in account')
 				const result = await execute(`select public.${name}(${names.map((_,i)=>`$${i+1}`).join(',')}) as result`,names.map(k=>args[k]??null))
 				return { data: result.rows[0].result, error:null, count:null }
 			} catch(error) {
