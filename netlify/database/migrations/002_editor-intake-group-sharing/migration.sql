@@ -131,66 +131,6 @@ create trigger validate_share_recipient
 before insert or update on public.submission_share_recipients
 for each row execute function private.validate_share_recipient();
 
-create or replace function public.set_submission_share_recipients(
-  p_actor_id uuid,
-  p_submission_id uuid,
-  p_recipient_ids uuid[]
-) returns jsonb
-language plpgsql
-security invoker
-set search_path = ''
-as $$
-declare
-  piece public.submissions%rowtype;
-  actor_role text;
-  cleaned uuid[];
-  recipient uuid;
-  before_ids uuid[];
-  added_ids uuid[];
-begin
-  select * into piece from public.submissions where id = p_submission_id for update;
-  if not found then raise exception 'Submission unavailable.' using errcode = '22023'; end if;
-
-  select role::text into actor_role from public.profiles where id = p_actor_id;
-  if actor_role not in ('teacher','admin') and piece.author_id <> p_actor_id then
-    raise exception 'Only the writer or editor can change sharing.' using errcode = '42501';
-  end if;
-
-  select array_agg(distinct x) into cleaned
-  from unnest(coalesce(p_recipient_ids, array[]::uuid[])) x
-  where x is not null;
-
-  if coalesce(array_length(cleaned,1),0) = 0 then
-    raise exception 'Choose at least one writer, or stop sharing instead.' using errcode = '22023';
-  end if;
-
-  select array_agg(recipient_id order by recipient_id) into before_ids
-  from public.submission_share_recipients where submission_id = p_submission_id;
-
-  foreach recipient in array cleaned loop
-    perform private.validate_share_recipient_row(p_submission_id, recipient);
-  end loop;
-
-  delete from public.submission_share_recipients
-  where submission_id = p_submission_id
-    and recipient_id <> all(cleaned);
-
-  insert into public.submission_share_recipients(submission_id, recipient_id, shared_by)
-  select p_submission_id, x, p_actor_id
-  from unnest(cleaned) x
-  on conflict (submission_id, recipient_id) do nothing;
-
-  select array_agg(x order by x) into added_ids
-  from unnest(cleaned) x
-  where not (x = any(coalesce(before_ids,array[]::uuid[])));
-
-  return jsonb_build_object(
-    'recipientIds', cleaned,
-    'addedRecipientIds', coalesce(added_ids,array[]::uuid[])
-  );
-end;
-$$;
-
 -- Helper callable from the transactional share RPC without depending on trigger NEW.
 create or replace function private.validate_share_recipient_row(
   p_submission_id uuid,
@@ -247,7 +187,7 @@ begin
   select * into piece from public.submissions where id = p_submission_id for update;
   if not found then raise exception 'Submission unavailable.' using errcode = '22023'; end if;
   select role::text into actor_role from public.profiles where id = p_actor_id;
-  if actor_role not in ('teacher','admin') and piece.author_id <> p_actor_id then
+  if actor_role is null or (actor_role not in ('teacher','admin') and piece.author_id <> p_actor_id) then
     raise exception 'Only the writer or editor can change sharing.' using errcode = '42501';
   end if;
   select array_agg(distinct x) into cleaned
@@ -291,7 +231,7 @@ begin
   select * into piece from public.submissions where id=p_submission_id for update;
   if not found then raise exception 'Submission unavailable.' using errcode='22023'; end if;
   select role::text into actor_role from public.profiles where id=p_actor_id;
-  if actor_role not in ('teacher','admin') and piece.author_id<>p_actor_id then
+  if actor_role is null or (actor_role not in ('teacher','admin') and piece.author_id<>p_actor_id) then
     raise exception 'Only the writer or editor can stop sharing.' using errcode='42501';
   end if;
   delete from public.submission_share_recipients where submission_id=p_submission_id;
