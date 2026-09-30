@@ -77,6 +77,13 @@ test('transaction operations cannot be invoked directly by writers or anonymous 
 	for (const role of ['studio_authenticated', 'studio_anon']) {
 		await assert.rejects(as(role, writer, 'select public.publish_workshop_feedback($1,$2,$3)', [teacher, piece, 'Forged']), /permission denied/)
 		await assert.rejects(as(role, writer, 'select public.submit_workshop_draft($1,$2,$3,$4,$5,null)', [writer, id(90), 'Title', 'Text', group]), /permission denied/)
+		await assert.rejects(as(role, writer, 'select public.set_submission_share_recipients($1,$2,$3::uuid[])', [writer, piece, [other]]), /permission denied/)
+		await assert.rejects(as(role, writer, 'select public.stop_submission_sharing($1,$2)', [writer, piece]), /permission denied/)
+		await assert.rejects(as(role, writer, 'select public.save_reader_response($1,$2,$3)', [writer, piece, 'Forged']), /permission denied/)
+		await assert.rejects(as(role, writer, 'select public.delete_reader_response($1,$2)', [writer, piece]), /permission denied/)
+		await assert.rejects(as(role, writer,
+			'select public.create_editor_assigned_submission($1,$2,$3,$4,$5,$6,$7)',
+			[writer, writer, id(91), 'Forged', 'Text', realGroup, null]), /permission denied/)
 	}
 	await assert.rejects(as('studio_authenticated', writer, "insert into public.submissions(author_id,workshop_id,title,body,status) values($1,$2,'Title','Text','feedback_published')", [writer, group]), /row-level security/)
 })
