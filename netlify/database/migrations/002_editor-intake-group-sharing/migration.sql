@@ -48,12 +48,12 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select p_profile_id is not null and exists (
     select 1 from public.submissions s
     where s.id = p_submission_id and s.author_id = p_profile_id
   );
-$;
+$$;
 
 create or replace function private.can_read_shared_submission(
   p_submission_id uuid,
@@ -63,7 +63,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select p_profile_id is not null and exists (
     select 1
     from public.submission_share_recipients sr
@@ -77,7 +77,7 @@ as $
       and coalesce(w.slug,'') <> 'authorised-basic-user'
       and lower(btrim(w.title)) <> 'authorised basic user'
   );
-$;
+$$;
 
 revoke all on function private.is_submission_author(uuid,uuid) from public;
 revoke all on function private.can_read_shared_submission(uuid,uuid) from public;
