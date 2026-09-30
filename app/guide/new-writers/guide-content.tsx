@@ -10,18 +10,18 @@ export const guideNav = [
  { href: '/guide/new-writers/submitting', label: 'Submitting' },
  { href: '/guide/new-writers/feedback', label: 'Reading feedback' },
  { href: '/guide/new-writers/revising', label: 'Revising' },
- { href: '/guide/new-writers/how-feedback-works', label: 'How teaching works' },
+ { href: '/guide/new-writers/how-feedback-works', label: 'How feedback works' },
 ]
 
 export function GuideShell({ activeHref, children }: { activeHref: string; children: ReactNode }) {
  return <div className="min-h-screen bg-studio-canvas text-studio-ink">
   <a href="#guide-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 studio-primary">Skip to guide</a>
-  <header className="studio-header"><BrandWordmark /><Link href="/app" className="studio-secondary">Back to the studio</Link></header>
-  <nav aria-label="Writing guide chapters" className="guide-chapters">
+  <header className="studio-header"><BrandWordmark href="/app" /><Link href="/app" className="studio-secondary">Back to the studio</Link></header>
+  <nav aria-label="How to use this site" className="guide-chapters">
    {guideNav.map(item => <Link key={item.href} href={item.href} aria-current={activeHref === item.href ? 'page' : undefined}>{item.label}</Link>)}
   </nav>
   <main id="guide-content" className="guide-content">{children}</main>
-  <footer className="guide-footer"><p>Screenshots show the current interface with fictional example writing.</p><Link href="/guide/new-writers" className="studio-link">All guide chapters</Link></footer>
+  <footer className="guide-footer"><p>Screenshots show the current interface with fictional example writing.</p><Link href="/guide/new-writers" className="studio-link">Guide overview</Link></footer>
  </div>
 }
 
