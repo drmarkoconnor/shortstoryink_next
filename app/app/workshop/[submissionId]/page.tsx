@@ -131,6 +131,7 @@ export default async function WorkshopSubmissionPage({
 	let currentVersion = 1
 	let writerName = 'Writer'
 	let submissionSource = 'workshop'
+	let shareCount = 0
 	let latestVersionId: string | null = null
 	let rootSubmissionId: string | null = null
 	let currentAuthorId: string | null = null
@@ -255,7 +256,7 @@ export default async function WorkshopSubmissionPage({
 		currentVersion = submission.version
 		currentAuthorId = submission.author_id
 		rootSubmissionId = submission.parent_submission_id ?? submission.id
-		submissionSource = 'workshop'
+		submissionSource = submission.source ?? 'workshop'
 
 		const { data: profileData } = await dataClient
 			.from('profiles')
@@ -273,6 +274,12 @@ export default async function WorkshopSubmissionPage({
 			.select('id, comment, anchor, created_at')
 			.eq('submission_id', submission.id)
 			.order('created_at', { ascending: true })
+
+		const { count: currentShareCount } = await dataClient
+			.from('submission_share_recipients')
+			.select('submission_id', { count: 'exact', head: true })
+			.eq('submission_id', submission.id)
+		shareCount = currentShareCount ?? 0
 
 		feedback = (
 			(feedbackRows ?? []) as Array<{
@@ -697,6 +704,13 @@ export default async function WorkshopSubmissionPage({
 						<p className="mt-3 text-xs leading-relaxed text-studio-muted">
 							{new Date(createdAt).toLocaleString('en-GB', { timeZone: 'Europe/London' })}
 						</p>
+						{submissionSource === 'editor_import' && submissionStatus === 'submitted' && feedback.length === 0 && shareCount === 0 ? (
+							<Link
+								href={`/app/teacher/review-desk/add/${submissionId}`}
+								className="studio-link mt-3 inline-block text-xs">
+								Correct imported piece
+							</Link>
+						) : null}
 						{latestVersionEntry && latestVersionEntry.id !== submissionId ? (
 							<div className="mt-4 rounded-md border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-800">
 								A newer revision exists in this chain.
