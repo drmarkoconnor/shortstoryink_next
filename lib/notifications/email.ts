@@ -124,3 +124,44 @@ export async function sendSubmissionReceivedNotification({
 		text: `A new piece is waiting for review in shortstory.ink.\n\n${title}\n\nWriter: ${writerLine}\nGroup: ${workshopTitle}\nWord count: ${wordCount.toLocaleString()}\n\nOpen the submission:\n${destination}`,
 	})
 }
+
+
+export async function sendPieceSharedNotification({
+	email,
+	writerName,
+	title,
+	submissionId,
+}: {
+	email: string
+	writerName: string
+	title: string
+	submissionId: string
+}) {
+	const destination = buildSignInUrl(\`/app/writer/group/\${submissionId}\`)
+	await sendEmail({
+		to: email,
+		subject: \`\${writerName} shared “\${title}” with you\`,
+		html: \`<p>\${escapeHtml(writerName)} has shared a piece with you in shortstory.ink.</p><p><strong>\${escapeHtml(title)}</strong></p><p><a href="\${destination}">Read the piece</a></p>\`,
+		text: \`\${writerName} has shared a piece with you in shortstory.ink.\\n\\n\${title}\\n\\nRead the piece:\\n\${destination}\`,
+	})
+}
+
+export async function sendReaderResponseNotification({
+	email,
+	responderName,
+	title,
+	submissionId,
+}: {
+	email: string
+	responderName: string
+	title: string
+	submissionId: string
+}) {
+	const destination = buildSignInUrl(\`/app/writer/sharing/\${submissionId}\`)
+	await sendEmail({
+		to: email,
+		subject: \`\${responderName} responded to “\${title}”\`,
+		html: \`<p>\${escapeHtml(responderName)} has left a reader response on your piece.</p><p><strong>\${escapeHtml(title)}</strong></p><p><a href="\${destination}">Read the response</a></p>\`,
+		text: \`\${responderName} has left a reader response on your piece.\\n\\n\${title}\\n\\nRead the response:\\n\${destination}\`,
+	})
+}
