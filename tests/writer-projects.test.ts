@@ -8,15 +8,15 @@ import { handleProjectRequest } from '../lib/projects/http'
 import { compileDocx, compileHtml } from '../lib/projects/compile'
 import { orderedNodes, canMove, compiledText, defaultCompileSettings, validateArchive, validateCompileSettings, downloadName, type ProjectState, type Section, type Compiled, type SaveReply } from '../lib/projects/model'
 
-const db=new PGlite(),author=randomUUID(),peer=randomUUID(),editor=randomUUID(),group=randomUUID(),project=randomUUID()
+const db=new PGlite(),author:string=randomUUID(),peer:string=randomUUID(),editor:string=randomUUID(),group:string=randomUUID(),project:string=randomUUID()
 const migrations=['001_workshop-baseline','002_editor-intake-sharing','003_require-current-author-membership','004_keep-anonymous-submission-denial-clean','005_harden-sharing-triggers','006_serialize-sharing-lifecycle','007_writer-projects','008_writer-projects-history']
 const sql:SqlClient={query:async(text,values=[])=>{const r=await db.query<Record<string,unknown>>(text,values);return {rows:r.rows}}}
-async function command<T>(action:string,input:Record<string,unknown>={},pid=project,actor=author):Promise<T>{await db.exec('set role netlifydb_owner');try{return await executeProjectCommand(sql,actor,pid,action,input) as T}finally{await db.exec('reset role')}}
-async function mutate<T>(action:string,input:Record<string,unknown>={},pid=project){const s=await command<ProjectState>('state',{},pid);return command<T>(action,{requestId:randomUUID(),structureVersion:s.project.structureVersion,contentVersion:s.project.contentVersion,...input},pid)}
-async function add(title:string,body='',kind='section',parentId:string|null=null,pid=project){const nodeId=randomUUID();await mutate('add',{nodeId,parentId,kind,title,body,synopsis:'private synopsis',status:'Draft'},pid);return nodeId}
+async function command<T>(action:string,input:Record<string,unknown>={},pid:string=project,actor:string=author):Promise<T>{await db.exec('set role netlifydb_owner');try{return await executeProjectCommand(sql,actor,pid,action,input) as T}finally{await db.exec('reset role')}}
+async function mutate<T>(action:string,input:Record<string,unknown>={},pid:string=project){const s=await command<ProjectState>('state',{},pid);return command<T>(action,{requestId:randomUUID(),structureVersion:s.project.structureVersion,contentVersion:s.project.contentVersion,...input},pid)}
+async function add(title:string,body='',kind='section',parentId:string|null=null,pid:string=project){const nodeId=randomUUID();await mutate('add',{nodeId,parentId,kind,title,body,synopsis:'private synopsis',status:'Draft'},pid);return nodeId}
 async function scoped(actor:string,query:string,values:unknown[]=[]){await db.exec('set role studio_authenticated');try{await db.query("select set_config('request.jwt.claim.sub',$1,false)",[actor]);return await db.query(query,values)}finally{await db.exec('reset role')}}
-async function section(nodeId:string,pid=project){const s=await command<ProjectState>('state',{},pid);return {...s.nodes.find(n=>n.id===nodeId)!,...await command<Section>('section',{nodeId},pid)}}
-async function save(nodeId:string,body:string,pid=project,revisionId?:string){const n=await section(nodeId,pid);return command<SaveReply>('save',{requestId:randomUUID(),nodeId,revisionId:revisionId??n.revisionId,title:n.title,body,synopsis:n.synopsis,status:n.status},pid)}
+async function section(nodeId:string,pid:string=project){const s=await command<ProjectState>('state',{},pid);return {...s.nodes.find(n=>n.id===nodeId)!,...await command<Section>('section',{nodeId},pid)}}
+async function save(nodeId:string,body:string,pid:string=project,revisionId?:string){const n=await section(nodeId,pid);return command<SaveReply>('save',{requestId:randomUUID(),nodeId,revisionId:revisionId??n.revisionId,title:n.title,body,synopsis:n.synopsis,status:n.status},pid)}
 function entries(zip:Buffer){const result:Record<string,string>={};let p=0;while(zip.readUInt32LE(p)===0x04034b50){const size=zip.readUInt32LE(p+18),len=zip.readUInt16LE(p+26),extra=zip.readUInt16LE(p+28),name=zip.subarray(p+30,p+30+len).toString();result[name]=zip.subarray(p+30+len+extra,p+30+len+extra+size).toString();p+=30+len+extra+size}return result}
 let first:string,second:string,folder:string
 before(async()=>{
@@ -26,7 +26,7 @@ before(async()=>{
  for(const [id,role] of [[author,'writer'],[peer,'writer'],[editor,'teacher']]){await db.query('insert into studio_auth.users(id,email) values($1,$2)',[id,id+'@example.invalid']);await db.query('insert into public.profiles(id,role,display_name) values($1,$2,$3)',[id,role,'Synthetic '+role])}
  await db.query("insert into public.workshops(id,title,slug) values($1,'Project rehearsal','project-rehearsal')",[group]);await db.query('insert into public.workshop_members(workshop_id,profile_id) values($1,$2),($1,$3)',[group,author,peer])
  await command('create',{title:'A private novel'})
- folder=await add('Part One','','folder');first=await add('The station','First paragraph.\n\n  Whitespace, café, “quotes”, and 🐈 remain.', 'section',folder);second=await add('The river','Second scene.')
+ folder=await add('Part One','','folder');first=await add('The station','First paragraph.\n\n  Whitespace, café, “quotes”, and 🐈 remain.','section',folder);second=await add('The river','Second scene.')
 })
 after(()=>db.close())
 
@@ -52,8 +52,7 @@ test('a stale device preserves both versions and cannot silently overwrite curre
 })
 test('section snapshots restore text as a new working revision with a safety snapshot',async()=>{
  const old=await section(first);const taken=await mutate<{snapshotId:string}>('snapshot',{nodeId:first,label:'Before viewpoint change'})
- await save(first,'A different viewpoint')
- await mutate('restore',{snapshotId:taken.snapshotId})
+ await save(first,'A different viewpoint');await mutate('restore',{snapshotId:taken.snapshotId})
  const restored=await section(first);assert.equal(restored.body,old.body);assert.notEqual(restored.revisionId,old.revisionId)
  const state=await command<ProjectState>('state');assert.ok(state.snapshots.some(s=>s.kind==='safety'));assert.ok(state.snapshots.some(s=>s.id===taken.snapshotId))
 })
@@ -140,7 +139,6 @@ test('HTTP routes deny impersonation, editor browsing, cross-origin writes and p
 test('100,000 words across 200 sections load as metadata until reading or compiling',async()=>{
  const big=randomUUID();await command('create',{title:'Synthetic long manuscript'},big)
  const text=Array(500).fill('word').join(' ')
- // Bulk fixture setup, not 200 browser saves; all normal structure invariants retained.
  await db.exec('begin')
  for(let i=0;i<200;i++){const node=randomUUID(),revision=randomUUID();await db.query("insert into public.writer_project_nodes(id,project_id,kind,position) values($1,$2,'section',$3)",[node,big,i]);await db.query('insert into public.writer_project_revisions(id,project_id,node_id,title,body) values($1,$2,$3,$4,$5)',[revision,big,node,'Section '+i,text]);await db.query('update public.writer_project_nodes set current_revision_id=$1 where id=$2',[revision,node])}
  await db.exec('commit')

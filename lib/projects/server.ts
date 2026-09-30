@@ -28,7 +28,7 @@ export async function projectContext(): Promise<ProjectContext> {
    const row=(await db.pool.query('select s.title,s.body,w.title as group_title,p.display_name,u.email from public.submissions s join public.workshops w on w.id=s.workshop_id join public.profiles p on p.id=s.author_id join studio_auth.users u on u.id=p.id where s.id=$1 and s.author_id=$2',[submission.id,user.id])).rows[0]
    if(!row)return
    const editors=await db.pool.query("select u.email from public.profiles p join studio_auth.users u on u.id=p.id where p.role::text in ('teacher','admin') and not u.blocked")
-   await sendSubmissionReceivedNotification({emails:editors.rows.map(r=>String(r.email)),title:String(row.title),writerLabel:String(row.display_name??'Writer'),writerEmail:String(row.email),workshopTitle:String(row.group_title),wordCount:countWords(String(row.body)),submissionId:submission.id})
+   await sendSubmissionReceivedNotification({emails:editors.rows.map((r:{email:unknown})=>String(r.email)),title:String(row.title),writerLabel:String(row.display_name??'Writer'),writerEmail:String(row.email),workshopTitle:String(row.group_title),wordCount:countWords(String(row.body)),submissionId:submission.id})
   },
  }
 }
