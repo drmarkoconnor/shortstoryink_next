@@ -232,7 +232,7 @@ begin
   if exists(select 1 from unnest(wanted) a(id) where not exists(select 1 from public.writer_project_nodes where id=a.id and project_id=p_id and kind='section' and deleted_at is null)) then raise exception 'The selection contains an unavailable section.' using errcode='22023'; end if;
   with recursive outline as (
    select id,parent_id,kind,position,current_revision_id,array[position] as path from public.writer_project_nodes where project_id=p_id and parent_id is null and deleted_at is null
-   union all select n.id,n.parent_id,n.kind,n.position,n.current_revision_id,o.path||n.position from public.writer_project_nodes n join outline o on n.parent_id=o.id where n.project_id=p_id and n.deleted_at is null
+   union all select child.id,child.parent_id,child.kind,child.position,child.current_revision_id,o.path||child.position from public.writer_project_nodes child join outline o on child.parent_id=o.id where child.project_id=p_id and child.deleted_at is null
   ) select jsonb_build_object('title',p.title,'nodes',jsonb_agg(jsonb_build_object('id',id,'parentId',parent_id,'kind',kind,'position',position,'revisionId',current_revision_id) order by path,id)) into manifest from outline where id=any(wanted);
   if jsonb_array_length(manifest->'nodes')<>cardinality(wanted) then raise exception 'The outline is incomplete. Nothing has been compiled.' using errcode='22023'; end if;
   if jsonb_typeof(p_input->'settings') is distinct from 'object' then raise exception 'Compile settings are required.' using errcode='22023'; end if;

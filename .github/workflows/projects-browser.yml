@@ -1,0 +1,67 @@
+name: Writer projects browser rehearsal
+on:
+  pull_request:
+    paths:
+      - 'lib/projects/**'
+      - 'components/projects/**'
+      - 'app/**/projects/**'
+      - 'netlify/database/migrations/**'
+      - 'tests/project-browser-fixture.ts'
+      - 'scripts/*project*'
+      - '.github/workflows/projects-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: writer-projects-browser-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_BROWSER_FIXTURE: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      PROJECT_TEST_BROWSERS: chromium,webkit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: python -m pip install playwright==1.57.0
+      - run: python -m playwright install --with-deps chromium webkit
+      - name: Generate isolated test routes, not a production authentication shortcut
+        run: node scripts/prepare-project-browser-fixture.mjs
+      - name: Start local rehearsal server
+        run: |
+          mkdir -p artifacts/projects/browser
+          npm run dev -- --hostname 127.0.0.1 --port 3100 > artifacts/projects/browser/server.log 2>&1 &
+          echo $! > "$RUNNER_TEMP/project-browser.pid"
+          for i in $(seq 1 90); do
+            if curl -s -o /dev/null http://127.0.0.1:3100; then exit 0; fi
+            sleep 2
+          done
+          cat artifacts/projects/browser/server.log
+          exit 1
+      - name: Rehearse actual workspace in Chromium and WebKit without real accounts or mail
+        run: python scripts/verify-projects-browser.py
+      - name: Remove synthetic routes and restore the production configuration
+        if: always()
+        run: |
+          node scripts/prepare-project-browser-fixture.mjs --clean
+          if [ -f "$RUNNER_TEMP/project-browser.pid" ]; then kill "$(cat "$RUNNER_TEMP/project-browser.pid")" || true; fi
+          test ! -e app/project-browser-test
+          test ! -e app/api/project-browser-test
+          git diff --exit-code -- next.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: writer-projects-browser-evidence
+          path: artifacts/projects/browser
+          retention-days: 7

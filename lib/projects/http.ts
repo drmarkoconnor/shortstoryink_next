@@ -32,7 +32,12 @@ export async function handleProjectRequest(request:Request,context:ProjectContex
    return json({error:'Choose Word, print/PDF, text or archive.'},400)
   }
   if(request.method!=='POST')return json({error:'Method not allowed.'},405)
-  if(request.headers.get('origin')!==url.origin || !request.headers.get('content-type')?.includes('application/json'))return json({error:'Invalid request origin or content type.'},403)
+  // Next may use an internal URL hostname. Host remains the browser-facing
+  // authority; a proxy-supplied protocol accounts for TLS termination.
+  const forwarded=request.headers.get('x-forwarded-proto')
+  const protocol=forwarded==='https'||forwarded==='http'?forwarded+':':url.protocol
+  const expectedOrigin=protocol+'//'+(request.headers.get('host')??url.host)
+  if(request.headers.get('origin')!==expectedOrigin || !request.headers.get('content-type')?.includes('application/json'))return json({error:'Invalid request origin or content type.'},403)
   if(Number(request.headers.get('content-length')??0)>3000000)return json({error:'This request is too large.'},413)
   const text=await request.text();if(text.length>3000000)return json({error:'This request is too large.'},413)
   const value=JSON.parse(text) as {action?:unknown;projectId?:unknown;input?:unknown}

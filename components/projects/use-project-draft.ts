@@ -40,7 +40,11 @@ export function useProjectDraft(ownerId: string, projectId: string, api: Transpo
     ref.current={...current,revisionId:result.revisionId};setDraft(ref.current);pending.current=null;dirty.current=changed
     if(changed){persist();setStatus('Unsaved changes')}else{clear(sent.id);setStatus('Saved to your account');setProblem('')}
     return !changed
-   } catch(error){setStatus('Not saved — retry or download your copy');setProblem(error instanceof Error?error.message:'Unable to save.');persist();return false}
+   } catch(error){
+    const code=(error as {status?:number}).status
+    if(code===400||code===409)pending.current=null // A rejected transaction may be corrected and retried with a new payload.
+    setStatus('Not saved — retry or download your copy');setProblem(error instanceof Error?error.message:'Unable to save.');persist();return false
+   }
   }
   flight.current=save()
   try{return await flight.current}finally{flight.current=null}
