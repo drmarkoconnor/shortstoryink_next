@@ -94,7 +94,7 @@ export default async function WriterSharingPage({
 		const targetId = String(formData.get('submissionId') ?? '').trim()
 		const recipientIds = [...new Set(formData.getAll('recipientIds').map(String).filter(Boolean))]
 		if (!targetId || recipientIds.length === 0) {
-			redirect(\`/app/writer/sharing/\${submissionId}?error=Choose+at+least+one+writer.\`)
+			redirect(`/app/writer/sharing/${submissionId}?error=Choose+at+least+one+writer.`)
 		}
 		const data = createAdminDataClient()
 		const owned = await data.from<SubmissionRow>('submissions').select('id, title').eq('id', targetId).eq('author_id', actor.user.id).maybeSingle()
@@ -106,7 +106,7 @@ export default async function WriterSharingPage({
 			p_recipient_ids: recipientIds,
 		})
 		if (result.error) {
-			redirect(\`/app/writer/sharing/\${targetId}?error=\${encodeError(result.error.message)}\`)
+			redirect(`/app/writer/sharing/${targetId}?error=${encodeError(result.error.message)}`)
 		}
 
 		const addedIds = Array.isArray(result.data?.addedRecipientIds)
@@ -129,8 +129,8 @@ export default async function WriterSharingPage({
 		}))
 
 		revalidatePath('/app/writer')
-		revalidatePath(\`/app/writer/sharing/\${targetId}\`)
-		redirect(\`/app/writer/sharing/\${targetId}?notice=Sharing+updated.\`)
+		revalidatePath(`/app/writer/sharing/${targetId}`)
+		redirect(`/app/writer/sharing/${targetId}?notice=Sharing+updated.`)
 	}
 
 	async function stopSharingAction(formData: FormData) {
@@ -144,10 +144,10 @@ export default async function WriterSharingPage({
 			p_actor_id: actor.user.id,
 			p_submission_id: targetId,
 		})
-		if (result.error) redirect(\`/app/writer/sharing/\${targetId}?error=\${encodeError(result.error.message)}\`)
+		if (result.error) redirect(`/app/writer/sharing/${targetId}?error=${encodeError(result.error.message)}`)
 		revalidatePath('/app/writer')
-		revalidatePath(\`/app/writer/sharing/\${targetId}\`)
-		redirect(\`/app/writer/sharing/\${targetId}?notice=This+version+is+private+again.\`)
+		revalidatePath(`/app/writer/sharing/${targetId}`)
+		redirect(`/app/writer/sharing/${targetId}?notice=This+version+is+private+again.`)
 	}
 
 	return (
@@ -167,7 +167,7 @@ export default async function WriterSharingPage({
 			<section className="surface p-6 lg:p-8">
 				<p className="studio-eyebrow">Responses from your group</p>
 				<h2 className="literary-title mt-3 text-3xl">
-					{(responses ?? []).length === 0 ? 'No reader responses yet' : \`\${(responses ?? []).length} reader response\${(responses ?? []).length === 1 ? '' : 's'}\`}
+					{(responses ?? []).length === 0 ? 'No reader responses yet' : `${(responses ?? []).length} reader response${(responses ?? []).length === 1 ? '' : 's'}`}
 				</h2>
 				{(responses ?? []).length > 0 ? (
 					<div className="mt-6 space-y-5">
