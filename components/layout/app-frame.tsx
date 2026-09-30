@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
@@ -55,7 +56,7 @@ export async function AppFrame({
 					<summary className="cursor-pointer text-sm">{displayName || 'Account'}</summary>
 					<div className="space-y-4">
 						{isWriter && projectsEnabled() ? (
-							<a className="block studio-link" href="/app/writer/projects">Your projects</a>
+							<Link className="block studio-link" href="/app/writer/projects">Your projects</Link>
 						) : null}
 						<a className="block studio-link" href="/app/account">Account settings</a>
 						<a className="block studio-link" href="/guide/new-writers">How to use this site</a>
