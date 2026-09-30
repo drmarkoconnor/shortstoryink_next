@@ -81,8 +81,8 @@ $$;
 
 revoke all on function private.is_submission_author(uuid,uuid) from public;
 revoke all on function private.can_read_shared_submission(uuid,uuid) from public;
-grant execute on function private.is_submission_author(uuid,uuid) to studio_authenticated, netlifydb_owner;
-grant execute on function private.can_read_shared_submission(uuid,uuid) to studio_authenticated, netlifydb_owner;
+grant execute on function private.is_submission_author(uuid,uuid) to studio_anon, studio_authenticated, netlifydb_owner;
+grant execute on function private.can_read_shared_submission(uuid,uuid) to studio_anon, studio_authenticated, netlifydb_owner;
 
 create policy "share rows visible to participants and editors"
 on public.submission_share_recipients
