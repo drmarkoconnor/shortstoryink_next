@@ -12,6 +12,7 @@ type WriterSubmission = {
 	version?: number
 	commentCount?: number
 	shareCount?: number
+	readerResponseCount?: number
 	source?: string
 }
 
@@ -155,7 +156,15 @@ export function SubmissionHistorySelect({
 									</Link>
 								) : null}
 								{selectedSubmission.status === 'submitted' ? (
-									<form action={deleteSubmissionAction}>
+									<form
+										action={deleteSubmissionAction}
+										onSubmit={(event) => {
+											const hasGroupHistory = (selectedSubmission.shareCount ?? 0) > 0 || (selectedSubmission.readerResponseCount ?? 0) > 0
+											const message = hasGroupHistory
+												? 'Delete this piece? It will be removed from group sharing and any reader responses attached to it will be permanently deleted.'
+												: 'Delete this submitted draft?'
+											if (!window.confirm(message)) event.preventDefault()
+										}}>
 										<input
 											type="hidden"
 											name="submissionId"
