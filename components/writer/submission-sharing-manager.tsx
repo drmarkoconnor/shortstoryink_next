@@ -102,7 +102,7 @@ export function SubmissionSharingManager({
 						) : null}
 						<div className="mt-5 flex flex-wrap gap-3">
 							<button type="submit" disabled={selected.length === 0} className="studio-primary">
-								{existingRecipientIds.length > 0 ? 'Save sharing' : \`Share with \${selected.length} writer\${selected.length === 1 ? '' : 's'}\`}
+								{existingRecipientIds.length > 0 ? 'Save sharing' : `Share with ${selected.length} writer${selected.length === 1 ? '' : 's'}`}
 							</button>
 							{existingRecipientIds.length > 0 ? (
 								<button
