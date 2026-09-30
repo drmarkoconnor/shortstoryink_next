@@ -29,6 +29,18 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	shareCount?: number
+	source?: string
+}
+
+type SharedGroupPiece = {
+	id: string
+	title: string
+	authorName: string
+	workshopTitle: string
+	version: number
+	createdAt: string
+	hasResponse: boolean
 }
 
 type WriterDocumentResource = {
@@ -303,6 +315,7 @@ export default async function WriterPage({
 	let availableDocuments: WriterDocumentResource[] = []
 	let documentsError: string | null = null
 	let writerWorkshopIds: string[] = []
+	let sharedGroupPieces: SharedGroupPiece[] = []
 
 	if (mode === 'modern') {
 		const adminData = createAdminDataClient()
@@ -332,7 +345,7 @@ export default async function WriterPage({
 
 		const { data: submissionRows, error } = await adminData
 			.from('submissions')
-			.select('id, title, status, created_at, workshop_id, version')
+			.select('id, title, status, created_at, workshop_id, version, source')
 			.eq('author_id', user.id)
 			.order('created_at', { ascending: false })
 
@@ -352,6 +365,7 @@ export default async function WriterPage({
 					created_at: string
 					workshop_id: string
 					version: number
+					source: string
 				}>
 			).map((submission) => ({
 				id: submission.id,
@@ -359,6 +373,7 @@ export default async function WriterPage({
 				status: submission.status,
 				createdAt: submission.created_at,
 				version: submission.version,
+				source: submission.source,
 				workshopTitle:
 					workshopTitleById[submission.workshop_id] ?? 'Group unknown',
 			}))
@@ -383,6 +398,23 @@ export default async function WriterPage({
 				submissions = submissions.map((submission) => ({
 					...submission,
 					commentCount: commentCountBySubmission[submission.id] ?? 0,
+				}))
+			}
+
+			const ownSubmissionIds = submissions.map((submission) => submission.id)
+			if (ownSubmissionIds.length > 0) {
+				const { data: shareRows } = await adminData
+					.from('submission_share_recipients')
+					.select('submission_id')
+					.in('submission_id', ownSubmissionIds)
+				const shareCountBySubmission = (shareRows ?? []).reduce((acc, row) => {
+					const key = String(row.submission_id)
+					acc[key] = (acc[key] ?? 0) + 1
+					return acc
+				}, {} as Record<string, number>)
+				submissions = submissions.map((submission) => ({
+					...submission,
+					shareCount: shareCountBySubmission[submission.id] ?? 0,
 				}))
 			}
 		}
@@ -419,6 +451,47 @@ export default async function WriterPage({
 
 	if (mode === 'modern') {
 		writerWorkshopIds = workshops.map((workshop) => workshop.id)
+	}
+
+	if (mode === 'modern') {
+		const serverData = await createServerDataClient()
+		const { data: shareRows } = await serverData
+			.from('submission_share_recipients')
+			.select('submission_id')
+			.eq('recipient_id', user.id)
+		const sharedIds = [...new Set((shareRows ?? []).map((row) => String(row.submission_id)))]
+		if (sharedIds.length > 0) {
+			const { data: pieceRows } = await serverData
+				.from('submissions')
+				.select('id, title, author_id, workshop_id, version, created_at')
+				.in('id', sharedIds)
+				.order('created_at', { ascending: false })
+			const visiblePieces = pieceRows ?? []
+			const authorIds = [...new Set(visiblePieces.map((row) => String(row.author_id)))]
+			const workshopIds = [...new Set(visiblePieces.map((row) => String(row.workshop_id)))]
+			const adminData = createAdminDataClient()
+			const [profileResult, workshopResult, responseResult] = await Promise.all([
+				authorIds.length
+					? adminData.from('profiles').select('id, display_name').in('id', authorIds)
+					: Promise.resolve({ data: [], error: null, count: null }),
+				workshopIds.length
+					? adminData.from('workshops').select('id, title').in('id', workshopIds)
+					: Promise.resolve({ data: [], error: null, count: null }),
+				serverData.from('reader_responses').select('submission_id').eq('author_id', user.id),
+			])
+			const authorById = Object.fromEntries((profileResult.data ?? []).map((row) => [String(row.id), String(row.display_name ?? 'Writer')]))
+			const workshopById = Object.fromEntries((workshopResult.data ?? []).map((row) => [String(row.id), String(row.title ?? 'Writing group')]))
+			const responded = new Set((responseResult.data ?? []).map((row) => String(row.submission_id)))
+			sharedGroupPieces = visiblePieces.map((row) => ({
+				id: String(row.id),
+				title: String(row.title),
+				authorName: authorById[String(row.author_id)] ?? 'Writer',
+				workshopTitle: workshopById[String(row.workshop_id)] ?? 'Writing group',
+				version: Number(row.version ?? 1),
+				createdAt: String(row.created_at),
+				hasResponse: responded.has(String(row.id)),
+			}))
+		}
 	}
 
 	if (mode === 'modern' && writerWorkshopIds.length > 0) {
@@ -502,6 +575,7 @@ export default async function WriterPage({
 				abuSubmissionWordLimit={ABU_SUBMISSION_WORD_LIMIT}
 				availableDocuments={availableDocuments}
 				documentsError={documentsError}
+				sharedGroupPieces={sharedGroupPieces}
 			/>
 		</section>
 	)
