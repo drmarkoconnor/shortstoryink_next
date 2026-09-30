@@ -23,6 +23,18 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	shareCount?: number
+	source?: string
+}
+
+type SharedGroupPiece = {
+	id: string
+	title: string
+	authorName: string
+	workshopTitle: string
+	version: number
+	createdAt: string
+	hasResponse: boolean
 }
 
 type WriterDocumentResource = {
@@ -55,6 +67,7 @@ export function WriterSubmissionComposer({
 	abuSubmissionWordLimit,
 	availableDocuments,
 	documentsError,
+	sharedGroupPieces,
 }: {
 	writerId: string
 	writerName: string
@@ -74,6 +87,7 @@ export function WriterSubmissionComposer({
 	abuSubmissionWordLimit: number
 	availableDocuments: WriterDocumentResource[]
 	documentsError: string | null
+	sharedGroupPieces: SharedGroupPiece[]
 }) {
 	const router = useRouter()
 	const recovery = useRecoveryDraft(writerId, 'new', {
@@ -179,6 +193,37 @@ export function WriterSubmissionComposer({
 					</div>
 				</aside>
 			</section>
+
+			{sharedGroupPieces.length > 0 ? (
+				<section className="border-b border-studio-line pb-8">
+					<div className="flex flex-wrap items-end justify-between gap-3">
+						<div>
+							<p className="studio-eyebrow">From your group</p>
+							<h2 className="literary-title mt-3 text-3xl">Writing shared with you</h2>
+						</div>
+						<p className="text-sm text-studio-muted">{sharedGroupPieces.length} piece{sharedGroupPieces.length === 1 ? '' : 's'}</p>
+					</div>
+					<div className="mt-5 grid gap-3 md:grid-cols-2">
+						{sharedGroupPieces.map((piece) => (
+							<Link
+								key={piece.id}
+								href={`/app/writer/group/${piece.id}`}
+								className="rounded-md border border-studio-line bg-studio-canvas p-4 transition hover:bg-studio-tint">
+								<div className="flex items-start justify-between gap-3">
+									<div>
+										<p className="font-medium text-studio-ink">{piece.title}</p>
+										<p className="mt-1 text-xs text-studio-muted">{piece.authorName} · {piece.workshopTitle} · v{piece.version}</p>
+									</div>
+									{piece.hasResponse ? (
+										<span className="rounded border border-studio-line bg-studio-paper px-2 py-1 text-xs text-studio-muted">Responded</span>
+									) : null}
+								</div>
+								<span className="studio-link mt-3 inline-block text-sm">Read and respond →</span>
+							</Link>
+						))}
+					</div>
+				</section>
+			) : null}
 
 			{(notice || savedNotice) && isSuccessModalOpen ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 backdrop-blur-sm">
