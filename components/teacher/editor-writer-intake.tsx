@@ -188,7 +188,7 @@ export function EditorWriterIntake({
 							<span className="text-sm text-studio-muted">The safe default.</span>
 						</span>
 					</label>
-					<label className={\`flex gap-3 \${eligibleRecipients.length === 0 ? 'opacity-50' : ''}\`}>
+					<label className={`flex gap-3 ${eligibleRecipients.length === 0 ? 'opacity-50' : ''}`}>
 						<input
 							type="radio"
 							checked={share}
@@ -238,7 +238,7 @@ export function EditorWriterIntake({
 							<p><span className="text-studio-muted">Writer</span><br /><strong>{writer?.name}</strong></p>
 							<p><span className="text-studio-muted">Group</span><br /><strong>{group?.title}</strong></p>
 							<p><span className="text-studio-muted">Title</span><br /><strong>{title}</strong></p>
-							<p><span className="text-studio-muted">Sharing</span><br /><strong>{share ? \`\${selectedRecipients.length} writers\` : 'Private'}</strong></p>
+							<p><span className="text-studio-muted">Sharing</span><br /><strong>{share ? `${selectedRecipients.length} writers` : 'Private'}</strong></p>
 						</div>
 						<div className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded border border-studio-line bg-studio-paper p-5 font-serif leading-8 text-studio-ink">
 							{body}
