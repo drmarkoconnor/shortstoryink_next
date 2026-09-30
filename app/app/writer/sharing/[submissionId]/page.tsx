@@ -112,7 +112,7 @@ export default async function WriterSharingPage({
 		const addedIds = Array.isArray(result.data?.addedRecipientIds)
 			? result.data.addedRecipientIds.map(String)
 			: []
-		const writerName = writer.displayName || actor.user.email?.split('@')[0] || 'A writer'
+		const writerName = actor.displayName || actor.user.email?.split('@')[0] || 'A writer'
 		await Promise.all(addedIds.map(async (recipientId) => {
 			try {
 				const userResult = await data.auth.admin.getUserById(recipientId)
