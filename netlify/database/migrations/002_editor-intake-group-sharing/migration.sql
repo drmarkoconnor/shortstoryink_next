@@ -39,58 +39,16 @@ grant select on public.reader_responses to studio_authenticated;
 grant select, insert, update, delete on public.submission_share_recipients to netlifydb_owner;
 grant select, insert, update, delete on public.reader_responses to netlifydb_owner;
 
--- Narrow SECURITY DEFINER lookups keep sharing checks out of recursive RLS paths.
-create or replace function private.is_submission_author(
-  p_submission_id uuid,
-  p_profile_id uuid
-) returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p_profile_id is not null and exists (
-    select 1 from public.submissions s
-    where s.id = p_submission_id and s.author_id = p_profile_id
-  );
-$$;
-
-create or replace function private.can_read_shared_submission(
-  p_submission_id uuid,
-  p_profile_id uuid
-) returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select p_profile_id is not null and exists (
-    select 1
-    from public.submission_share_recipients sr
-    join public.submissions s on s.id = sr.submission_id
-    join public.workshop_members wm
-      on wm.profile_id = sr.recipient_id
-     and wm.workshop_id = s.workshop_id
-    join public.workshops w on w.id = s.workshop_id
-    where sr.submission_id = p_submission_id
-      and sr.recipient_id = p_profile_id
-      and coalesce(w.slug,'') <> 'authorised-basic-user'
-      and lower(btrim(w.title)) <> 'authorised basic user'
-  );
-$$;
-
-revoke all on function private.is_submission_author(uuid,uuid) from public;
-revoke all on function private.can_read_shared_submission(uuid,uuid) from public;
-grant execute on function private.is_submission_author(uuid,uuid) to studio_anon, studio_authenticated, netlifydb_owner;
-grant execute on function private.can_read_shared_submission(uuid,uuid) to studio_anon, studio_authenticated, netlifydb_owner;
-
 create policy "share rows visible to participants and editors"
 on public.submission_share_recipients
 for select to studio_authenticated
 using (
   recipient_id = studio_auth.uid()
   or shared_by = studio_auth.uid()
-  or private.is_submission_author(submission_id, studio_auth.uid())
+  or exists (
+    select 1 from public.submissions s
+    where s.id = submission_id and s.author_id = studio_auth.uid()
+  )
   or public.current_user_is_teacher()
 );
 
@@ -99,7 +57,10 @@ on public.reader_responses
 for select to studio_authenticated
 using (
   author_id = studio_auth.uid()
-  or private.is_submission_author(submission_id, studio_auth.uid())
+  or exists (
+    select 1 from public.submissions s
+    where s.id = submission_id and s.author_id = studio_auth.uid()
+  )
   or public.current_user_is_teacher()
 );
 
@@ -111,7 +72,18 @@ for select to public using (
   and (
     author_id = studio_auth.uid()
     or private.workshop_is_teacher()
-    or private.can_read_shared_submission(id, studio_auth.uid())
+    or exists (
+      select 1
+      from public.submission_share_recipients sr
+      join public.workshop_members wm
+        on wm.profile_id = sr.recipient_id
+       and wm.workshop_id = submissions.workshop_id
+      join public.workshops w on w.id = submissions.workshop_id
+      where sr.submission_id = submissions.id
+        and sr.recipient_id = studio_auth.uid()
+        and coalesce(w.slug,'') <> 'authorised-basic-user'
+        and lower(btrim(w.title)) <> 'authorised basic user'
+    )
   )
 );
 
@@ -316,16 +288,6 @@ set search_path = ''
 as $$
 declare removed integer;
 begin
-  if not exists (
-    select 1
-    from public.submission_share_recipients sr
-    join public.submissions s on s.id=sr.submission_id
-    join public.workshop_members wm
-      on wm.workshop_id=s.workshop_id and wm.profile_id=sr.recipient_id
-    where sr.submission_id=p_submission_id and sr.recipient_id=p_actor_id
-  ) then
-    raise exception 'This piece is not currently shared with you.' using errcode='42501';
-  end if;
   delete from public.reader_responses
   where submission_id=p_submission_id and author_id=p_actor_id;
   get diagnostics removed=row_count;
@@ -444,12 +406,9 @@ begin
      or exists(select 1 from public.reader_responses where submission_id=p_submission_id) then
     raise exception 'This manuscript is locked because reading or feedback has begun.' using errcode='22023';
   end if;
-  if p_author_id<>piece.author_id then
-    raise exception 'Imported manuscript ownership cannot be reassigned after it reaches the desk.' using errcode='22023';
-  end if;
   if piece.parent_submission_id is not null
-     and p_workshop_id<>piece.workshop_id then
-    raise exception 'A revision cannot be moved to a different writing group.' using errcode='22023';
+     and (p_author_id<>piece.author_id or p_workshop_id<>piece.workshop_id) then
+    raise exception 'A revision cannot be reassigned to a different writer or group.' using errcode='22023';
   end if;
   if not exists(
     select 1 from public.profiles where id=p_author_id and role::text='writer'
