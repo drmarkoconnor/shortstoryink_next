@@ -109,13 +109,16 @@ export default async function CorrectImportedPiecePage({
 				<form action={correctAction} className="surface space-y-5 p-6 lg:p-8">
 					<label className="block">
 						<span className="mb-1.5 block text-sm text-studio-muted">Writer</span>
-						<select name="writerId" defaultValue={submission.author_id} disabled={Boolean(submission.parent_submission_id)} className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink">
+						<input type="hidden" name="writerId" value={submission.author_id} />
+						<select value={submission.author_id} disabled className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink opacity-70">
 							{writers.map((writer) => <option key={writer.id} value={writer.id}>{writer.display_name?.trim() || 'Writer'}</option>)}
 						</select>
+						<p className="mt-1.5 text-xs text-studio-muted">Ownership is fixed once the imported piece has been added to the desk.</p>
 					</label>
 					<label className="block">
 						<span className="mb-1.5 block text-sm text-studio-muted">Writing group</span>
-						<select name="workshopId" defaultValue={submission.workshop_id} disabled={Boolean(submission.parent_submission_id)} className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink">
+						{submission.parent_submission_id ? <input type="hidden" name="workshopId" value={submission.workshop_id} /> : null}
+						<select name={submission.parent_submission_id ? undefined : 'workshopId'} defaultValue={submission.workshop_id} disabled={Boolean(submission.parent_submission_id)} className="w-full rounded border border-studio-line bg-studio-paper px-3 py-2.5 text-studio-ink disabled:opacity-70">
 							{memberships
 								.filter((membership) => membership.profile_id === submission.author_id)
 								.map((membership) => workshopById[membership.workshop_id])
