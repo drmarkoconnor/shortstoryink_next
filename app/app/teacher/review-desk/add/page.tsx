@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { EditorWriterIntake, type EditorIntakeWriter } from '@/components/teacher/editor-writer-intake'
 import { requireTeacher } from '@/lib/auth/get-current-profile'
 import { createAdminDataClient } from '@/lib/data/client'
+import { sendPieceSharedNotification } from '@/lib/notifications/email'
 import { isAbuWorkshopSlug } from '@/lib/workshop/access-groups'
 
 type ProfileRow = { id: string; display_name: string | null; role: string }
@@ -135,6 +136,29 @@ export default async function AddWriterPiecePage({
 			if (sharing.error) {
 				// The manuscript was created safely but remains private if sharing validation fails.
 				redirect(`/app/workshop/${created.id}?error=${encodeError('Piece added privately; sharing was not saved: ' + sharing.error.message)}`)
+			}
+
+			try {
+				const { data: writerProfile } = await admin
+					.from<ProfileRow>('profiles')
+					.select('id, display_name, role')
+					.eq('id', writerId)
+					.maybeSingle()
+				const writerName = writerProfile?.display_name?.trim() || 'A writer'
+				await Promise.all(recipientIds.map(async (recipientId) => {
+					const identity = await admin.auth.admin.getUserById(recipientId)
+					const email = identity.data.user?.email
+					if (email) {
+						await sendPieceSharedNotification({
+							email,
+							writerName,
+							title,
+							submissionId: String(created.id),
+						})
+					}
+				}))
+			} catch (notificationError) {
+				console.error('[editor-intake] sharing notification failed', notificationError)
 			}
 		}
 
