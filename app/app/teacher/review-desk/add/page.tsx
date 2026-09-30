@@ -120,7 +120,7 @@ export default async function AddWriterPiecePage({
 			p_source_id: sourceSubmissionId,
 		})
 		if (error || !created?.id) {
-			redirect(\`/app/teacher/review-desk/add?error=\${encodeError(error?.message ?? 'Unable to add the manuscript.')}\`)
+			redirect(`/app/teacher/review-desk/add?error=${encodeError(error?.message ?? 'Unable to add the manuscript.')}`)
 		}
 
 		if (shareRequested) {
@@ -134,11 +134,11 @@ export default async function AddWriterPiecePage({
 			})
 			if (sharing.error) {
 				// The manuscript was created safely but remains private if sharing validation fails.
-				redirect(\`/app/workshop/\${created.id}?error=\${encodeError('Piece added privately; sharing was not saved: ' + sharing.error.message)}\`)
+				redirect(`/app/workshop/${created.id}?error=${encodeError('Piece added privately; sharing was not saved: ' + sharing.error.message)}`)
 			}
 		}
 
-		redirect(\`/app/workshop/\${created.id}?notice=Writer%27s+piece+added+to+the+editorial+desk.\`)
+		redirect(`/app/workshop/${created.id}?notice=Writer%27s+piece+added+to+the+editorial+desk.`)
 	}
 
 	return (
