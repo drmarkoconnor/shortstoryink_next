@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { GuideShell, GuideHero, GuideStep, NextGuideLink } from '../guide-content'
-export const metadata: Metadata = { title: "Reading feedback | New Writer Guide", description: "Open My feedback to find the pieces your teacher has returned. An email may also let you know when feedback is ready." }
+export const metadata: Metadata = { title: "Reading feedback | How to use this site", description: "Open My feedback to find the pieces your editor has returned. An email may also let you know when feedback is ready." }
 export default function Page() { return <GuideShell activeHref="/guide/new-writers/feedback">
-<GuideHero kicker="Reading feedback" title="Return to the words with fresh eyes." body="Open My feedback to find the pieces your teacher has returned. An email may also let you know when feedback is ready." />
+<GuideHero kicker="Reading feedback" title="Return to the words with fresh eyes." body="Open My feedback to find the pieces your editor has returned. An email may also let you know when feedback is ready." />
 <GuideStep number="01" title="Begin with the overview." image="feedback-overview" caption="The overview introduces the feedback before you work through individual passages.">
 <p>{"Read the editorial letter for the larger response to your piece. The title and version identify exactly which draft the feedback belongs to."}</p>
 <p>{"Take your time. You can return to the same feedback later."}</p>
