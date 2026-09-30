@@ -45,7 +45,7 @@ export default async function SharedGroupPiecePage({
 		.maybeSingle()
 
 	if (error || !submission) redirect('/app/writer?error=That+shared+piece+is+not+available.')
-	if (submission.author_id === writer.user.id) redirect(\`/app/writer/sharing/\${submission.id}\`)
+	if (submission.author_id === writer.user.id) redirect(`/app/writer/sharing/${submission.id}`)
 
 	const admin = createAdminDataClient()
 	const [{ data: author }, { data: workshop }, responseResult] = await Promise.all([
@@ -60,14 +60,14 @@ export default async function SharedGroupPiecePage({
 		const actor = await requireWriter()
 		const body = String(formData.get('body') ?? '').trim()
 		const targetId = String(formData.get('submissionId') ?? '').trim()
-		if (!body) redirect(\`/app/writer/group/\${targetId}?error=Write+a+response+before+saving.\`)
+		if (!body) redirect(`/app/writer/group/${targetId}?error=Write+a+response+before+saving.`)
 		const data = createAdminDataClient()
 		const result = await data.rpc('save_reader_response', {
 			p_actor_id: actor.user.id,
 			p_submission_id: targetId,
 			p_body: body,
 		})
-		if (result.error) redirect(\`/app/writer/group/\${targetId}?error=\${encodeError(result.error.message)}\`)
+		if (result.error) redirect(`/app/writer/group/${targetId}?error=${encodeError(result.error.message)}`)
 
 		if (result.data?.created === true) {
 			try {
@@ -96,9 +96,9 @@ export default async function SharedGroupPiecePage({
 			}
 		}
 
-		revalidatePath(\`/app/writer/group/\${targetId}\`)
-		revalidatePath(\`/app/writer/sharing/\${targetId}\`)
-		redirect(\`/app/writer/group/\${targetId}?notice=Your+reader+response+has+been+saved.\`)
+		revalidatePath(`/app/writer/group/${targetId}`)
+		revalidatePath(`/app/writer/sharing/${targetId}`)
+		redirect(`/app/writer/group/${targetId}?notice=Your+reader+response+has+been+saved.`)
 	}
 
 	async function deleteResponseAction(formData: FormData) {
@@ -110,10 +110,10 @@ export default async function SharedGroupPiecePage({
 			p_actor_id: actor.user.id,
 			p_submission_id: targetId,
 		})
-		if (result.error) redirect(\`/app/writer/group/\${targetId}?error=\${encodeError(result.error.message)}\`)
-		revalidatePath(\`/app/writer/group/\${targetId}\`)
-		revalidatePath(\`/app/writer/sharing/\${targetId}\`)
-		redirect(\`/app/writer/group/\${targetId}?notice=Your+response+has+been+removed.\`)
+		if (result.error) redirect(`/app/writer/group/${targetId}?error=${encodeError(result.error.message)}`)
+		revalidatePath(`/app/writer/group/${targetId}`)
+		revalidatePath(`/app/writer/sharing/${targetId}`)
+		redirect(`/app/writer/group/${targetId}?notice=Your+response+has+been+removed.`)
 	}
 
 	return (
