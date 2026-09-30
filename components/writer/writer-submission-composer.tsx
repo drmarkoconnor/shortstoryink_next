@@ -24,6 +24,7 @@ type WriterSubmission = {
 	version?: number
 	commentCount?: number
 	shareCount?: number
+	readerResponseCount?: number
 	source?: string
 }
 
