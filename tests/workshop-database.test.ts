@@ -272,6 +272,10 @@ test('stopping sharing revokes manuscript access but preserves the response for 
 		as('netlifydb_owner', null,'select public.save_reader_response($1,$2,$3)',[other,created.id,'Changed later']),
 		/not currently shared/
 	)
+	await assert.rejects(
+		as('netlifydb_owner', null,'select public.delete_reader_response($1,$2)',[other,created.id]),
+		/not currently shared/
+	)
 })
 
 test('leaving a writing group removes sharing and rejoining does not silently restore it', async () => {
