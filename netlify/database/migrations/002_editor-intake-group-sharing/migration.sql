@@ -313,15 +313,25 @@ create or replace function public.delete_reader_response(
 language plpgsql
 security invoker
 set search_path = ''
-as $$
+as $
 declare removed integer;
 begin
+  if not exists (
+    select 1
+    from public.submission_share_recipients sr
+    join public.submissions s on s.id=sr.submission_id
+    join public.workshop_members wm
+      on wm.workshop_id=s.workshop_id and wm.profile_id=sr.recipient_id
+    where sr.submission_id=p_submission_id and sr.recipient_id=p_actor_id
+  ) then
+    raise exception 'This piece is not currently shared with you.' using errcode='42501';
+  end if;
   delete from public.reader_responses
   where submission_id=p_submission_id and author_id=p_actor_id;
   get diagnostics removed=row_count;
   return jsonb_build_object('removed',removed);
 end;
-$$;
+$;
 
 create or replace function public.create_editor_assigned_submission(
   p_editor_id uuid,
