@@ -10,7 +10,7 @@ export type ExecuteSql = (sql: string, values: unknown[]) => Promise<{ rows: Dat
 const tables = new Set(['profiles', 'workshops', 'workshop_members', 'submissions', 'feedback_items',
 	'feedback_summaries', 'feedback_export_events', 'feedback_categories', 'snippets', 'snippet_categories',
 	'teacher_documents', 'teaching_examples', 'teaching_example_annotations', 'teaching_example_hidden_groups',
-	'teaching_library_items', 'review_summaries'])
+	'teaching_library_items', 'review_summaries', 'submission_share_recipients', 'reader_responses'])
 const jsonColumns = new Set(['feedback_items.anchor', 'snippets.anchor', 'teacher_documents.body', 'teaching_example_annotations.anchor'])
 export function identifier(value: string) {
 	if (!/^[a-z_][a-z0-9_]*$/.test(value)) throw new Error('Invalid database identifier')
