@@ -38,7 +38,7 @@ before(async () => {
 	await db.query("insert into public.submissions(id,author_id,workshop_id,title,body) values ($1,$2,$3,'Private','Secret manuscript')", [piece, writer, group])
 	await db.query('insert into public.feedback_items(submission_id,author_id,anchor,comment) values($1,$2,$3,$4)', [piece, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 6, quote: 'Secret' }, 'Unpublished teaching thought'])
 	await db.query("insert into public.teaching_examples(id,owner_id,title,body,status) values($1,$2,'Example','Example text','published')", [example, teacher])
-	await db.query('insert into public.teaching_example_hidden_groups(example_id,workshop_id) values($1,$2),($1,$3)', [example, group, hidden])
+	await db.query('insert into public.teaching_example_hidden_groups(example_id,workshop_id) values($1,$2),($1,$3),($1,$4),($1,$5)', [example, group, hidden, realGroup, outsiderGroup])
 	await db.query('insert into public.teaching_example_annotations(example_id,author_id,anchor,comment) values($1,$2,$3,$4)', [example, teacher, { blockId: 'p-1', startOffset: 0, endOffset: 7, quote: 'Example' }, 'Note'])
 })
 after(async () => { await db.close() })
