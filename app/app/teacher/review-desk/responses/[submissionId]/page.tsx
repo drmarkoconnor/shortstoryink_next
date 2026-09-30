@@ -37,10 +37,15 @@ export default async function GroupResponsesPage({
 		.order('created_at', { ascending: true })
 
 	const responderIds = [...new Set((responses ?? []).map((response) => response.author_id))]
-	const { data: profiles } = responderIds.length > 0
-		? await admin.from<ProfileRow>('profiles').select('id, display_name').in('id', responderIds)
-		: { data: [] as ProfileRow[], error: null, count: null }
-	const names = Object.fromEntries((profiles ?? []).map((profile) => [profile.id, profile.display_name?.trim() || 'Writer']))
+	let profiles: ProfileRow[] = []
+	if (responderIds.length > 0) {
+		const profileResult = await admin
+			.from<ProfileRow>('profiles')
+			.select('id, display_name')
+			.in('id', responderIds)
+		profiles = profileResult.data ?? []
+	}
+	const names = Object.fromEntries(profiles.map((profile) => [profile.id, profile.display_name?.trim() || 'Writer']))
 
 	async function removeResponseAction(formData: FormData) {
 		'use server'
