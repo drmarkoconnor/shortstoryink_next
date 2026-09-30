@@ -137,12 +137,12 @@ export async function sendPieceSharedNotification({
 	title: string
 	submissionId: string
 }) {
-	const destination = buildSignInUrl(\`/app/writer/group/\${submissionId}\`)
+	const destination = buildSignInUrl(`/app/writer/group/${submissionId}`)
 	await sendEmail({
 		to: email,
-		subject: \`\${writerName} shared “\${title}” with you\`,
-		html: \`<p>\${escapeHtml(writerName)} has shared a piece with you in shortstory.ink.</p><p><strong>\${escapeHtml(title)}</strong></p><p><a href="\${destination}">Read the piece</a></p>\`,
-		text: \`\${writerName} has shared a piece with you in shortstory.ink.\\n\\n\${title}\\n\\nRead the piece:\\n\${destination}\`,
+		subject: `${writerName} shared “${title}” with you`,
+		html: `<p>${escapeHtml(writerName)} has shared a piece with you in shortstory.ink.</p><p><strong>${escapeHtml(title)}</strong></p><p><a href="${destination}">Read the piece</a></p>`,
+		text: `${writerName} has shared a piece with you in shortstory.ink.\\n\\n${title}\\n\\nRead the piece:\\n${destination}`,
 	})
 }
 
@@ -157,11 +157,11 @@ export async function sendReaderResponseNotification({
 	title: string
 	submissionId: string
 }) {
-	const destination = buildSignInUrl(\`/app/writer/sharing/\${submissionId}\`)
+	const destination = buildSignInUrl(`/app/writer/sharing/${submissionId}`)
 	await sendEmail({
 		to: email,
-		subject: \`\${responderName} responded to “\${title}”\`,
-		html: \`<p>\${escapeHtml(responderName)} has left a reader response on your piece.</p><p><strong>\${escapeHtml(title)}</strong></p><p><a href="\${destination}">Read the response</a></p>\`,
-		text: \`\${responderName} has left a reader response on your piece.\\n\\n\${title}\\n\\nRead the response:\\n\${destination}\`,
+		subject: `${responderName} responded to “${title}”`,
+		html: `<p>${escapeHtml(responderName)} has left a reader response on your piece.</p><p><strong>${escapeHtml(title)}</strong></p><p><a href="${destination}">Read the response</a></p>`,
+		text: `${responderName} has left a reader response on your piece.\\n\\n${title}\\n\\nRead the response:\\n${destination}`,
 	})
 }
