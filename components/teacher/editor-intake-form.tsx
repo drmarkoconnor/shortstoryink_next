@@ -316,7 +316,7 @@ export function EditorIntakeForm({
 					</p>
 					{error ? <p role="alert" className="text-sm text-amber-800">{error}</p> : null}
 					<div className="flex flex-wrap justify-between gap-3">
-						<button type="button" onClick={() => setReviewing(false)} className="studio-secondary">Back and correct</button>
+						<button type="button" disabled={pending} onClick={() => setReviewing(false)} className="studio-secondary disabled:opacity-50">Back and correct</button>
 						<button type="button" disabled={pending} onClick={submit} className="studio-primary">
 							{pending ? 'Adding…' : 'Add to editorial desk'}
 						</button>
