@@ -80,17 +80,17 @@ export default async function CorrectImportedPiecePage({
 			p_body: body,
 		})
 		if (result.error) {
-			redirect(\`/app/teacher/review-desk/add/\${submissionId}?error=\${encodeError(result.error.message)}\`)
+			redirect(`/app/teacher/review-desk/add/${submissionId}?error=${encodeError(result.error.message)}`)
 		}
-		revalidatePath(\`/app/workshop/\${submissionId}\`)
+		revalidatePath(`/app/workshop/${submissionId}`)
 		revalidatePath('/app/teacher/review-desk')
 		revalidatePath('/app/writer')
-		redirect(\`/app/workshop/\${submissionId}?notice=Imported+piece+corrected.\`)
+		redirect(`/app/workshop/${submissionId}?notice=Imported+piece+corrected.`)
 	}
 
 	return (
 		<section className="mx-auto max-w-[950px] space-y-6">
-			<Link href={\`/app/workshop/\${submissionId}\`} className="studio-link">← Back to manuscript</Link>
+			<Link href={`/app/workshop/${submissionId}`} className="studio-link">← Back to manuscript</Link>
 			<header>
 				<p className="studio-eyebrow">Imported manuscript</p>
 				<h1 className="studio-heading mt-3">Correct the writer&apos;s piece</h1>
