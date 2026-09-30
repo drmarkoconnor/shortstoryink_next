@@ -11,6 +11,8 @@ type WriterSubmission = {
 	workshopTitle?: string | null
 	version?: number
 	commentCount?: number
+	shareCount?: number
+	source?: string
 }
 
 function statusLabel(value: string) {
@@ -131,9 +133,20 @@ export function SubmissionHistorySelect({
 								{selectedSubmission.version
 									? ` · Version ${selectedSubmission.version}`
 									: ''}
+								{selectedSubmission.source === 'editor_import' ? ' · Added by editor' : ''}
+							</p>
+							<p className="mt-2 text-xs text-studio-muted">
+								{(selectedSubmission.shareCount ?? 0) > 0
+									? `Shared with ${selectedSubmission.shareCount} writer${selectedSubmission.shareCount === 1 ? '' : 's'}`
+									: 'Private to you and the editor'}
 							</p>
 
 							<div className="mt-4 flex flex-wrap gap-2">
+								<Link
+									href={`/app/writer/sharing/${selectedSubmission.id}`}
+									className="studio-secondary">
+									{(selectedSubmission.shareCount ?? 0) > 0 ? 'Manage sharing' : 'Share with group'}
+								</Link>
 								{selectedSubmission.status === 'feedback_published' ? (
 									<Link
 										href={`/app/writer/feedback/${selectedSubmission.id}`}
