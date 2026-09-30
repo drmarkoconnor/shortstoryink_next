@@ -191,7 +191,7 @@ export function WriterSubmissionComposer({
 					</Link>
 					<div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-studio-line pt-5 text-sm">
 						<Link href="/app/writer/reading-room" className="studio-link">Reading</Link>
-						<Link href="/app/writer/commonplace" className="studio-link">Commonplace</Link>
+						<Link href="/app/writer/commonplace" className="studio-link">Your notebook</Link>
 					</div>
 				</aside>
 			</section>
