@@ -24,9 +24,14 @@ before(async () => {
 	assert.doesNotMatch(baseline, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the migration transaction')
 	await db.exec('begin')
 	await db.exec(baseline)
-	const sharing = await readFile('netlify/database/migrations/002_editor-intake-group-sharing/migration.sql', 'utf8')
-	assert.doesNotMatch(sharing, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own the sharing migration transaction')
-	await db.exec(sharing)
+	for (const migrationPath of [
+		'netlify/database/migrations/002_editor-intake-group-sharing/migration.sql',
+		'netlify/database/migrations/003_editor-intake-sharing-hardening/migration.sql',
+	]) {
+		const migration = await readFile(migrationPath, 'utf8')
+		assert.doesNotMatch(migration, /^\s*(?:begin|commit|rollback);\s*$/im, 'Netlify must own migration transactions')
+		await db.exec(migration)
+	}
 	await db.exec('commit')
 	await db.exec('reset role')
 	for (const user of [writer, other, teacher, outsider, newcomer]) {
