@@ -1,7 +1,7 @@
 """Actual project UI + HTTP + migrated isolated PostgreSQL, synthetic sessions only.
 This is not a Netlify Identity sign-in test. Never sends real email.
 """
-import json, os, re, time, uuid, zipfile
+import json, os, re, time, traceback, uuid, zipfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 BASE=os.environ.get('PROJECT_BROWSER_BASE','http://127.0.0.1:3100')
@@ -35,7 +35,21 @@ def seed(ctx, label):
 
 def open_node(page,nid):
     page.locator('[data-tree-node="'+nid+'"]').click()
-    expect(page.get_by_role('textbox',name='Manuscript',exact=True)).to_be_visible(timeout=30000)
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    expect(field).to_be_visible(timeout=30000)
+    expect(field).to_have_attribute('contenteditable','true')
+    expect(page.get_by_text('Opening the paragraph editor…',exact=True)).not_to_be_visible()
+
+def end_of_manuscript(page):
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    field.click();field.press('ControlOrMeta+End')
+    # Native selectionchange is asynchronous. Do not type Enter against the
+    # previous ProseMirror selection or mistake the wrong paragraph for a Tab bug.
+    page.wait_for_function('''() => {
+        const editor=document.querySelector('[role="textbox"][aria-label="Manuscript"]')?.editor
+        return editor && editor.state.selection.empty &&
+            editor.state.selection.to === editor.state.doc.content.size - 1
+    }''',timeout=5000)
 
 def fill_manuscript(page,text):
     field=page.get_by_role('textbox',name='Manuscript',exact=True)
@@ -72,11 +86,13 @@ with sync_playwright() as p:
             page.reload(wait_until='networkidle');open_node(page,a);expect(page.get_by_role('textbox',name='Manuscript',exact=True)).to_contain_text('Eleanor kept the letter.')
             passed(engine+': cloud acknowledgement, exact text and reload persistence')
             field=page.get_by_role('textbox',name='Manuscript',exact=True)
-            field.click();page.keyboard.press('ControlOrMeta+End');page.keyboard.press('Enter')
+            end_of_manuscript(page);page.keyboard.press('Enter')
+            expect(field.locator('p')).to_have_count(3)
             page.keyboard.insert_text('“I will stay,” she said.');page.keyboard.press('Shift+Enter');page.keyboard.insert_text('For one more night.')
             page.keyboard.press('Tab');expect(field).to_be_focused();saved(page)
             paragraph_doc=call(c,'section',pid,{'nodeId':a})['document']
-            assert paragraph_doc['content'][-1]['attrs']['firstLineIndent']=='indent'
+            assert paragraph_doc['content'][-1]['attrs']['firstLineIndent']=='indent', paragraph_doc
+            assert call(c,'section',pid,{'nodeId':a})['body']==exact+'\n\n“I will stay,” she said.\nFor one more night.'
             assert any(x['type']=='hardBreak' for x in paragraph_doc['content'][-1]['content'])
             page.keyboard.press('Shift+Tab');expect(field).to_be_focused();saved(page)
             assert call(c,'section',pid,{'nodeId':a})['document']['content'][-1]['attrs']['firstLineIndent']=='none'
@@ -196,7 +212,11 @@ with sync_playwright() as p:
             assert not errors,errors
         except Exception as error:
             page.screenshot(path=str(OUT/(engine+'-failure.png')),full_page=True)
-            (OUT/(engine+'-failure.txt')).write_text(str(error)+'\n'+'\n'.join(errors))
+            (OUT/(engine+'-failure.txt')).write_text(traceback.format_exc()+'\n'+'\n'.join(errors))
+            field=page.get_by_role('textbox',name='Manuscript',exact=True)
+            if field.count():
+                state=field.evaluate('el => ({html:el.innerHTML,selection:el.editor?.state.selection.toJSON(),document:el.editor?.getJSON()})')
+                (OUT/(engine+'-editor-state.json')).write_text(json.dumps(state,indent=2))
             raise
         finally:
             (OUT/'report.json').write_text(json.dumps({'checks':checks,'identity':'synthetic isolated sessions; not live Netlify Identity','emails':'no real email sent'},indent=2))
