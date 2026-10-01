@@ -9,7 +9,7 @@ import { compileDocx, compileHtml } from '../lib/projects/compile'
 import { orderedNodes, canMove, compiledText, defaultCompileSettings, validateArchive, validateCompileSettings, downloadName, type ProjectState, type Section, type Compiled, type SaveReply } from '../lib/projects/model'
 
 const db=new PGlite(),author:string=randomUUID(),peer:string=randomUUID(),editor:string=randomUUID(),group:string=randomUUID(),project:string=randomUUID()
-const migrations=['001_workshop-baseline','002_editor-intake-sharing','003_require-current-author-membership','004_keep-anonymous-submission-denial-clean','005_harden-sharing-triggers','006_serialize-sharing-lifecycle','007_writer-projects','008_writer-projects-history','009_project-paragraph-documents']
+const migrations=['001_workshop-baseline','002_editor-intake-sharing','003_require-current-author-membership','004_keep-anonymous-submission-denial-clean','005_harden-sharing-triggers','006_serialize-sharing-lifecycle','007_writer-projects','008_writer-projects-history','009_project-paragraph-documents','010_project-document-labels']
 const sql:SqlClient={query:async(text,values=[])=>{const r=await db.query<Record<string,unknown>>(text,values);return {rows:r.rows}}}
 async function command<T>(action:string,input:Record<string,unknown>={},pid:string=project,actor:string=author):Promise<T>{await db.exec('set role netlifydb_owner');try{return await executeProjectCommand(sql,actor,pid,action,input) as T}finally{await db.exec('reset role')}}
 async function mutate<T>(action:string,input:Record<string,unknown>={},pid:string=project){const s=await command<ProjectState>('state',{},pid);return command<T>(action,{requestId:randomUUID(),structureVersion:s.project.structureVersion,contentVersion:s.project.contentVersion,...input},pid)}
@@ -191,10 +191,107 @@ test('starter arrangements are optional, atomic and never duplicated on a creati
  const pid=randomUUID()
  await command('create',{title:'Chaptered',starter:'chaptered'},pid)
  const first=await command<ProjectState>('state',{},pid)
- assert.equal(first.nodes.length,2);const folder=first.nodes.find(n=>n.kind==='folder')!,opening=first.nodes.find(n=>n.kind==='section')!
- assert.equal(opening.parentId,folder.id);assert.equal((await section(opening.id,pid)).document?.type,'doc')
+ assert.equal(first.nodes.length,1);const chapter=first.nodes[0]
+ assert.equal(chapter.kind,'section');assert.equal(chapter.parentId,null);assert.equal(chapter.title,'Chapter 1')
+ assert.equal(chapter.documentLabel,'Chapter');assert.equal((await section(chapter.id,pid)).document?.type,'doc')
  await command('create',{title:'Chaptered',starter:'chaptered'},pid)
- assert.equal((await command<ProjectState>('state',{},pid)).nodes.length,2)
+ assert.equal((await command<ProjectState>('state',{},pid)).nodes.length,1)
  const invalid=randomUUID();await assert.rejects(command('create',{title:'Invalid',starter:'invented'},invalid),/starting arrangement/)
  assert.equal((await db.query('select id from public.writer_projects where id=$1',[invalid])).rows.length,0)
+})
+
+
+// Document labels never determine whether an item contains text or children.
+test('labelled documents and grouping folders have separate, durable identities',async()=>{
+ const pid=randomUUID();await command('create',{title:'Clear document labels',starter:'blank'},pid)
+ const parent=await add('Part One','','folder',null,pid)
+ for(const label of ['Text','Chapter','Scene','Research','Notes']){
+  const id=randomUUID()
+  await mutate('add',{nodeId:id,parentId:parent,kind:'section',documentLabel:label,title:label+' example',body:'Exact writing.',synopsis:'',status:'Draft'},pid)
+  const s=await section(id,pid)
+  assert.equal(s.documentLabel,label);assert.equal(s.kind,'section');assert.equal(s.body,'Exact writing.')
+  assert.equal(s.parentId,parent)
+ }
+ assert.equal((await section(parent,pid)).documentLabel,null)
+ assert.equal((await section(parent,pid)).body,'')
+})
+test('label edits survive text saves and old clients do not remove labels',async()=>{
+ const pid=randomUUID();await command('create',{title:'Label preservation'},pid)
+ const id=await add('A scene','Untouched.','section',null,pid),n=await section(id,pid)
+ const input={requestId:randomUUID(),nodeId:id,revisionId:n.revisionId,title:n.title,body:n.body,synopsis:n.synopsis,status:n.status,documentLabel:'Scene'}
+ const saved=await command<SaveReply>('save',input,pid)
+ assert.equal((await command<SaveReply>('save',input,pid)).revisionId,saved.revisionId)
+ assert.equal((await section(id,pid)).documentLabel,'Scene')
+ await save(id,'An old client changed the text.',pid)
+ assert.equal((await section(id,pid)).documentLabel,'Scene')
+ const revision=await command<Section>('revision',{revisionId:saved.revisionId},pid)
+ assert.equal(revision.documentLabel,'Scene');assert.equal(revision.body,'Untouched.')
+})
+test('whole project and document restores recover labels without relabelling old history',async()=>{
+ const pid=randomUUID();await command('create',{title:'Label snapshot'},pid)
+ const id=await add('Station notes','Exact notes.','section',null,pid),n=await section(id,pid)
+ await command('save',{requestId:randomUUID(),nodeId:id,revisionId:n.revisionId,title:n.title,body:n.body,synopsis:'',status:n.status,documentLabel:'Research'},pid)
+ const research=await section(id,pid)
+ for(const scope of [null,id]){
+  const snapshot=await mutate<{snapshotId:string}>('snapshot',{nodeId:scope,label:'Research before change'},pid)
+  const s=await section(id,pid)
+  await command('save',{requestId:randomUUID(),nodeId:id,revisionId:s.revisionId,title:s.title,body:'Changed manuscript.',synopsis:'',status:s.status,documentLabel:'Chapter'},pid)
+  await mutate('restore',{snapshotId:snapshot.snapshotId},pid)
+  assert.equal((await section(id,pid)).documentLabel,'Research')
+  assert.equal((await section(id,pid)).body,'Exact notes.')
+ }
+ const current=await section(id,pid)
+ await command('save',{requestId:randomUUID(),nodeId:id,revisionId:current.revisionId,title:current.title,body:current.body,synopsis:'',status:current.status,documentLabel:'Notes'},pid)
+ await mutate('restore-revision',{revisionId:research.revisionId},pid)
+ assert.equal((await section(id,pid)).documentLabel,'Research')
+ assert.equal((await command<Section>('revision',{revisionId:n.revisionId},pid)).documentLabel,'Text')
+ assert.equal((await command<Section>('revision',{revisionId:n.revisionId},pid)).body,'Exact notes.')
+})
+test('conflicting devices retain both labels and return the remote label for resolution',async()=>{
+ const pid=randomUUID();await command('create',{title:'Label conflict'},pid)
+ const id=await add('Scene','Prose.','section',null,pid),n=await section(id,pid)
+ const payload={nodeId:id,revisionId:n.revisionId,title:n.title,body:n.body,synopsis:'',status:n.status}
+ await command('save',{...payload,requestId:randomUUID(),documentLabel:'Research'},pid)
+ const conflict=await command<SaveReply>('save',{...payload,requestId:randomUUID(),documentLabel:'Scene'},pid)
+ assert.equal(conflict.conflict,true);assert.equal(conflict.current?.documentLabel,'Research')
+ assert.equal((await command<Section>('revision',{revisionId:conflict.incomingRevisionId},pid)).documentLabel,'Scene')
+})
+test('compiling research requires explicit confirmation and remains a fixed selection on retry',async()=>{
+ const pid=randomUUID();await command('create',{title:'Safe compile'},pid)
+ const id=randomUUID();await mutate('add',{nodeId:id,kind:'section',documentLabel:'Research',title:'Private source notes',body:'Not manuscript prose.',status:'Draft'},pid)
+ const state=await command<ProjectState>('state',{},pid)
+ const input={requestId:randomUUID(),structureVersion:state.project.structureVersion,contentVersion:state.project.contentVersion,sectionIds:[id],settings:{...defaultCompileSettings,title:'Research copy'}}
+ const before=(await db.query('select id from public.writer_project_compiles where project_id=$1',[pid])).rows.length
+ await assert.rejects(command('compile',input,pid),/Confirm inclusion/)
+ assert.equal((await db.query('select id from public.writer_project_compiles where project_id=$1',[pid])).rows.length,before)
+ const compiled=await command<{compileId:string}>('compile',{...input,includeSupportingDocuments:true},pid)
+ const doc=await command<Compiled>('compiled',{compileId:compiled.compileId},pid)
+ assert.equal(doc.nodes[0].documentLabel,'Research')
+ assert.equal(compiledText(doc),'Not manuscript prose.')
+ const n=await section(id,pid)
+ await command('save',{requestId:randomUUID(),nodeId:id,revisionId:n.revisionId,title:n.title,body:'New text.',synopsis:'',status:n.status,documentLabel:'Chapter'},pid)
+ const replayed=await command<{compileId:string}>('compile',{...input,includeSupportingDocuments:true},pid)
+ assert.equal(replayed.compileId,compiled.compileId)
+ assert.equal((await command<Compiled>('compiled',{compileId:compiled.compileId},pid)).nodes[0].documentLabel,'Research')
+ assert.equal(compiledText(await command<Compiled>('compiled',{compileId:compiled.compileId},pid)),'Not manuscript prose.')
+})
+test('labels cannot be used to give folders text or bypass project permissions',async()=>{
+ const pid=randomUUID();await command('create',{title:'Label validation'},pid)
+ const input={nodeId:randomUUID(),kind:'section',title:'Text',body:'Retain.',status:'Draft',documentLabel:'Invented'}
+ const initial=(await command<ProjectState>('state',{},pid)).nodes.length
+ await assert.rejects(mutate('add',input,pid),/Choose Text/)
+ await assert.rejects(mutate('add',{...input,documentLabel:42},pid),/Choose Text/)
+ await assert.rejects(mutate('add',{...input,kind:'folder',documentLabel:'Chapter'},pid),/folder groups documents/)
+ assert.equal((await command<ProjectState>('state',{},pid)).nodes.length,initial)
+ const n=await add('Private research','Exact.','section',null,pid)
+ await assert.rejects(command('save',{requestId:randomUUID(),nodeId:n,documentLabel:'Text'},pid,peer),/unavailable/)
+})
+test('project archive includes revision-owned labels and frozen snapshots',async()=>{
+ const pid=randomUUID();await command('create',{title:'Archive labels'},pid)
+ const nid=randomUUID()
+ await mutate('add',{nodeId:nid,kind:'section',documentLabel:'Notes',title:'My notes',body:'Keep these.',status:'Draft'},pid)
+ await mutate('snapshot',{label:'Keep labels'},pid)
+ const archive=await command<{revisions:Array<{document_label:string;body:string}>}>('archive-export',{},pid)
+ assert.equal(validateArchive(archive),true)
+ assert.ok(archive.revisions.some(r=>r.document_label==='Notes'&&r.body==='Keep these.'))
 })
