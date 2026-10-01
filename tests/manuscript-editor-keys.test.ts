@@ -40,6 +40,9 @@ test('paragraph keys change formatting without inserting whitespace and survive 
   await act(async()=>{root.render(React.createElement(Wrapper));await new Promise(resolve=>setTimeout(resolve,25))})
   const field=dom.window.document.querySelector('[role="textbox"][aria-label="Manuscript"]') as HTMLElement & {editor:Editor}
   assert.ok(field?.editor)
+  assert.ok(field.classList.contains('font-serif'), 'The prose must not inherit the small sans-serif interface font.')
+  assert.ok(field.classList.contains('text-[19px]'))
+  assert.ok(field.classList.contains('leading-[1.8]'))
   const editor=field.editor
   const key=async(name:string,shift=false)=>act(async()=>{field.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:name,bubbles:true,cancelable:true,shiftKey:shift}))})
   await act(async()=>{editor.commands.setTextSelection(editor.state.doc.content.size-1);field.focus()})

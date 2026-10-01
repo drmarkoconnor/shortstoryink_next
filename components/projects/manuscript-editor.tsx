@@ -40,7 +40,7 @@ export function ManuscriptEditor({sectionId,body,document,disabled,onChange}:{
   content:document??proseFromLegacy(body),
   editable:!disabled,
   editorProps:{
-   attributes:{role:'textbox','aria-label':'Manuscript','aria-multiline':'true','aria-describedby':'manuscript-keyboard-help',class:'prose-manuscript writing-manuscript min-h-[28rem] outline-none p-5 sm:p-7'},
+   attributes:{role:'textbox','aria-label':'Manuscript','aria-multiline':'true','aria-describedby':'manuscript-keyboard-help',class:'prose-manuscript writing-manuscript font-serif text-[19px] leading-[1.8] min-h-[28rem] outline-none p-5 sm:p-7'},
    handleKeyDown:(_view,event)=>{
     if(event.key==='Escape'&&!event.isComposing){event.preventDefault();toolbar.current?.focus();return true}
     return false
