@@ -9,7 +9,7 @@ import { compileDocx, compileHtml } from '../lib/projects/compile'
 import { orderedNodes, canMove, compiledText, defaultCompileSettings, validateArchive, validateCompileSettings, downloadName, type ProjectState, type Section, type Compiled, type SaveReply } from '../lib/projects/model'
 
 const db=new PGlite(),author:string=randomUUID(),peer:string=randomUUID(),editor:string=randomUUID(),group:string=randomUUID(),project:string=randomUUID()
-const migrations=['001_workshop-baseline','002_editor-intake-sharing','003_require-current-author-membership','004_keep-anonymous-submission-denial-clean','005_harden-sharing-triggers','006_serialize-sharing-lifecycle','007_writer-projects','008_writer-projects-history']
+const migrations=['001_workshop-baseline','002_editor-intake-sharing','003_require-current-author-membership','004_keep-anonymous-submission-denial-clean','005_harden-sharing-triggers','006_serialize-sharing-lifecycle','007_writer-projects','008_writer-projects-history','009_project-paragraph-documents']
 const sql:SqlClient={query:async(text,values=[])=>{const r=await db.query<Record<string,unknown>>(text,values);return {rows:r.rows}}}
 async function command<T>(action:string,input:Record<string,unknown>={},pid:string=project,actor:string=author):Promise<T>{await db.exec('set role netlifydb_owner');try{return await executeProjectCommand(sql,actor,pid,action,input) as T}finally{await db.exec('reset role')}}
 async function mutate<T>(action:string,input:Record<string,unknown>={},pid:string=project){const s=await command<ProjectState>('state',{},pid);return command<T>(action,{requestId:randomUUID(),structureVersion:s.project.structureVersion,contentVersion:s.project.contentVersion,...input},pid)}
@@ -82,7 +82,7 @@ test('compilation includes only selected sections in saved outline order and rem
  const s=await command<ProjectState>('state'),settings={...defaultCompileSettings,title:'Submission copy',anonymous:true,author:'MUST NOT EXPORT',titlePage:true}
  const chosen=[first,second],r=await mutate<{compileId:string}>('compile',{sectionIds:chosen.slice().reverse(),settings:validateCompileSettings(settings)})
  const before=await command<Compiled>('compiled',{compileId:r.compileId});assert.deepEqual(before.nodes.map(n=>n.id),orderedNodes(s.nodes).filter(n=>chosen.includes(n.id)).map(n=>n.id))
- await save(first,'Private subsequent writing')
+ await save(first,'Private edits after compiling');await mutate('move',{nodeId:second,parentId:folder,index:0})
  const after=await command<Compiled>('compiled',{compileId:r.compileId});assert.equal(compiledText(after),compiledText(before));assert.ok(!compiledText(after).includes('private synopsis'))
  await assert.rejects(command('compiled',{compileId:r.compileId},project,peer),/unavailable/)
 })
@@ -145,4 +145,56 @@ test('100,000 words across 200 sections load as metadata until reading or compil
  const state=await command<ProjectState>('state',{},big);assert.equal(state.nodes.length,200);assert.ok(state.nodes.every(n=>!('body' in n)))
  const read=await command<Section[]>('read',{},big);assert.equal(read.reduce((sum,n)=>sum+n.body.split(' ').length,0),100000)
  const snap=await mutate<{snapshotId:string}>('snapshot',{label:'Entire long manuscript'},big);const preview=await command<{nodes:Section[]}>('snapshot-preview',{snapshotId:snap.snapshotId},big);assert.equal(preview.nodes.length,200)
+})
+
+// v1.4: new paragraph-aware revisions keep old history immutable.
+test('new paragraph structure, indentation and soft breaks survive save, snapshots, restore and compile',async()=>{
+ const pid=randomUUID();await command('create',{title:'Paragraph roundtrip',starter:'short'},pid)
+ const initial=await command<ProjectState>('state',{},pid),nid=initial.nodes[0].id
+ const before=await section(nid,pid)
+ const document={type:'doc',content:[{type:'paragraph',attrs:{firstLineIndent:'none'},content:[{type:'text',text:'“Wait.”'}]},{type:'paragraph',attrs:{firstLineIndent:'indent'},content:[{type:'text',text:'She turned.'},{type:'hardBreak'},{type:'text',text:'“Why?”'}]}]}
+ const body='“Wait.”\n\nShe turned.\n“Why?”'
+ const input={requestId:randomUUID(),nodeId:nid,revisionId:before.revisionId,title:before.title,body,document,synopsis:'',status:'Draft'}
+ const saved=await command<SaveReply>('save',input,pid),replayed=await command<SaveReply>('save',input,pid)
+ assert.equal(saved.revisionId,replayed.revisionId);assert.deepEqual((await section(nid,pid)).document,document)
+ const snap=await mutate<{snapshotId:string}>('snapshot',{label:'Before unindenting'},pid)
+ const current=await section(nid,pid),edited=structuredClone(document);edited.content[1].attrs.firstLineIndent='none'
+ await command('save',{...input,requestId:randomUUID(),revisionId:current.revisionId,document:edited},pid)
+ const conflict=await command<SaveReply>('save',{...input,requestId:randomUUID(),revisionId:current.revisionId},pid)
+ assert.equal(conflict.conflict,true);assert.deepEqual(conflict.current?.document,edited)
+ const conflictRevision=await command<Section>('revision',{revisionId:conflict.incomingRevisionId},pid);assert.deepEqual(conflictRevision.document,document)
+ await mutate('restore',{snapshotId:snap.snapshotId},pid)
+ assert.deepEqual((await section(nid,pid)).document,document)
+ const compile=await mutate<{compileId:string}>('compile',{sectionIds:[nid],settings:{...defaultCompileSettings,title:'Dialogue format',anonymous:true}},pid)
+ const compiled=await command<Compiled>('compiled',{compileId:compile.compileId},pid)
+ assert.deepEqual(compiled.nodes[0].document,document)
+ const xml=entries(compileDocx(compiled))['word/document.xml'];assert.match(xml,/<w:ind w:firstLine="720"/);assert.match(xml,/<w:br\/>/)
+ assert.ok(xml.includes('She turned.'));assert.ok(xml.includes('Wait.'))
+})
+
+test('paragraph document validation is atomic and an older editor cannot discard formatting',async()=>{
+ const pid=randomUUID();await command('create',{title:'Paragraph guards',starter:'short'},pid)
+ const n=(await command<ProjectState>('state',{},pid)).nodes[0],s=await section(n.id,pid)
+ const body='A paragraph.',document={type:'doc',content:[{type:'paragraph',attrs:{firstLineIndent:'indent'},content:[{type:'text',text:body}]}]}
+ const payload={requestId:randomUUID(),nodeId:n.id,revisionId:s.revisionId,title:s.title,body,document,status:'Draft',synopsis:''}
+ await assert.rejects(command('save',{...payload,body:'Mismatch'},pid),/does not match/)
+ assert.equal((await section(n.id,pid)).body,'')
+ await command('save',payload,pid)
+ const saved=await section(n.id,pid)
+ await assert.rejects(command('save',{...payload,document:null,revisionId:saved.revisionId,requestId:randomUUID(),body:'Old editor overwrote'},pid),/Refresh the paragraph editor/)
+ await command('save',{...payload,document:null,revisionId:saved.revisionId,requestId:randomUUID(),title:'Metadata only'},pid)
+ assert.deepEqual((await section(n.id,pid)).document,document)
+ const archive=await command<{revisions:Array<{document:unknown}>}>('archive-export',{},pid);assert.deepEqual(archive.revisions.find(r=>r.document&&JSON.stringify(r.document).includes('A paragraph.'))?.document,document)
+})
+
+test('starter arrangements are optional, atomic and never duplicated on a creation retry',async()=>{
+ const pid=randomUUID()
+ await command('create',{title:'Chaptered',starter:'chaptered'},pid)
+ const first=await command<ProjectState>('state',{},pid)
+ assert.equal(first.nodes.length,2);const folder=first.nodes.find(n=>n.kind==='folder')!,opening=first.nodes.find(n=>n.kind==='section')!
+ assert.equal(opening.parentId,folder.id);assert.equal((await section(opening.id,pid)).document?.type,'doc')
+ await command('create',{title:'Chaptered',starter:'chaptered'},pid)
+ assert.equal((await command<ProjectState>('state',{},pid)).nodes.length,2)
+ const invalid=randomUUID();await assert.rejects(command('create',{title:'Invalid',starter:'invented'},invalid),/starting arrangement/)
+ assert.equal((await db.query('select id from public.writer_projects where id=$1',[invalid])).rows.length,0)
 })

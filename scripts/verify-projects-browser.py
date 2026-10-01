@@ -34,8 +34,19 @@ def seed(ctx, label):
     return pid,ids
 
 def open_node(page,nid):
-    page.locator('[data-node-id="'+nid+'"]').get_by_role('button',name='Write',exact=True).click()
-    expect(page.get_by_label('Manuscript',exact=True)).to_be_visible(timeout=30000)
+    page.locator('[data-tree-node="'+nid+'"]').click()
+    expect(page.get_by_role('textbox',name='Manuscript',exact=True)).to_be_visible(timeout=30000)
+
+def fill_manuscript(page,text):
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    field.click();page.keyboard.press('ControlOrMeta+A')
+    paragraphs=text.replace('\r\n','\n').split('\n\n')
+    for index,paragraph in enumerate(paragraphs):
+        if index:page.keyboard.press('Enter')
+        for j,line in enumerate(paragraph.split('\n')):
+            if j:page.keyboard.press('Shift+Enter')
+            if line:page.keyboard.insert_text(line)
+    if not text:page.keyboard.press('Backspace')
 
 def saved(page):
     expect(page.get_by_text('Saved to your account',exact=True)).to_be_visible(timeout=20000)
@@ -56,10 +67,26 @@ with sync_playwright() as p:
             page.screenshot(path=str(OUT/(engine+'-cards.png')),full_page=True)
             open_node(page,a)
             exact='Eleanor kept the letter.\n\n  She had not decided whether to open it. Café, “quotes”, and an em dash — intact.'
-            page.get_by_label('Manuscript',exact=True).fill(exact); saved(page)
+            fill_manuscript(page,exact); saved(page)
             assert call(c,'section',pid,{'nodeId':a})['body']==exact
-            page.reload(wait_until='networkidle');open_node(page,a);expect(page.get_by_label('Manuscript',exact=True)).to_have_value(exact)
+            page.reload(wait_until='networkidle');open_node(page,a);expect(page.get_by_role('textbox',name='Manuscript',exact=True)).to_contain_text('Eleanor kept the letter.')
             passed(engine+': cloud acknowledgement, exact text and reload persistence')
+            field=page.get_by_role('textbox',name='Manuscript',exact=True)
+            field.click();page.keyboard.press('ControlOrMeta+End');page.keyboard.press('Enter')
+            page.keyboard.insert_text('“I will stay,” she said.');page.keyboard.press('Shift+Enter');page.keyboard.insert_text('For one more night.')
+            page.keyboard.press('Tab');expect(field).to_be_focused();saved(page)
+            paragraph_doc=call(c,'section',pid,{'nodeId':a})['document']
+            assert paragraph_doc['content'][-1]['attrs']['firstLineIndent']=='indent'
+            assert any(x['type']=='hardBreak' for x in paragraph_doc['content'][-1]['content'])
+            page.keyboard.press('Shift+Tab');expect(field).to_be_focused();saved(page)
+            assert call(c,'section',pid,{'nodeId':a})['document']['content'][-1]['attrs']['firstLineIndent']=='none'
+            page.keyboard.press('ControlOrMeta+z');saved(page)
+            assert call(c,'section',pid,{'nodeId':a})['document']['content'][-1]['attrs']['firstLineIndent']=='indent'
+            page.keyboard.press('Escape');expect(page.get_by_role('button',name='Indent paragraph',exact=True)).to_be_focused()
+            expect(page.get_by_role('tree',name='Manuscript structure')).to_be_visible()
+            page.screenshot(path=str(OUT/(engine+'-paragraphs-and-tree.png')),full_page=True)
+            fill_manuscript(page,exact);saved(page)
+            passed(engine+': Enter/soft break, Tab/Shift+Tab, undo, keyboard exit and persistent tree')
 
             page.get_by_label('Section title',exact=True).fill('')
             expect(page.get_by_text('Not saved — retry or download your copy',exact=True)).to_be_visible(timeout=20000)
@@ -74,7 +101,7 @@ with sync_playwright() as p:
                     dropped['done']=True; route.fetch(); route.abort('failed')
                 else: route.continue_()
             page.route('**/api/project-browser-test',lose_ack)
-            page.get_by_label('Manuscript',exact=True).fill(exact+'\n\nA saved ending despite the dropped response.')
+            fill_manuscript(page,exact+'\n\nA saved ending despite the dropped response.')
             expect(page.get_by_text('Not saved — retry or download your copy',exact=True)).to_be_visible(timeout=20000)
             page.get_by_role('button',name='Save / retry',exact=True).click();saved(page)
             page.unroute('**/api/project-browser-test',lose_ack)
@@ -83,8 +110,8 @@ with sync_playwright() as p:
 
             c2=context(browser,viewport={'width':1100,'height':850}); other=c2.new_page()
             other.goto(BASE+'/project-browser-test?projectId='+pid,wait_until='networkidle');open_node(other,a)
-            page.get_by_label('Manuscript',exact=True).fill('A laptop version.');saved(page)
-            other.get_by_label('Manuscript',exact=True).fill('An iPad version.');expect(other.get_by_role('heading',name='Both versions are preserved')).to_be_visible(timeout=20000)
+            fill_manuscript(page,'A laptop version.');saved(page)
+            fill_manuscript(other,'An iPad version.');expect(other.get_by_role('heading',name='Both versions are preserved')).to_be_visible(timeout=20000)
             other.screenshot(path=str(OUT/(engine+'-conflict.png')),full_page=True)
             other.get_by_role('button',name='Continue with my version',exact=True).click();saved(other)
             assert call(c,'section',pid,{'nodeId':a})['body']=='An iPad version.'
@@ -97,7 +124,7 @@ with sync_playwright() as p:
             panel.get_by_label('Snapshot name (optional)',exact=True).fill('Before rearranging')
             panel.get_by_role('button',name='Take snapshot',exact=True).click()
             expect(panel.get_by_text('Before rearranging',exact=False)).to_be_visible(timeout=20000)
-            page.get_by_label('Manuscript',exact=True).fill('This change should be recoverable.');saved(page)
+            fill_manuscript(page,'This change should be recoverable.');saved(page)
             page.get_by_role('button',name='Cards',exact=True).click()
             page.locator('[data-node-id="'+b+'"]').drag_to(page.locator('[data-node-id="'+a+'"]'))
             for _ in range(50):
@@ -115,8 +142,8 @@ with sync_playwright() as p:
             root=sorted([n for n in state['nodes'] if n['parentId'] is None],key=lambda n:n['position']);assert root[0]['id']==a
             passed(engine+': pointer card ordering and whole-project snapshot restore with safety copy')
 
-            open_node(page,a);page.get_by_role('combobox',name=re.compile(r'^Move to')).select_option(folder)
-            page.get_by_role('button',name='Move here',exact=True).click()
+            open_node(page,a);page.get_by_role('combobox',name='Move selected item to',exact=True).select_option(folder)
+            page.get_by_role('button',name='Move selected item',exact=True).click()
             page.get_by_role('button',name='Outline',exact=True).click()
             f=page.locator('[data-node-id="'+folder+'"]');f.get_by_role('button',name='Collapse',exact=True).click()
             expect(page.locator('[data-node-id="'+a+'"]')).to_have_count(0)
@@ -127,9 +154,9 @@ with sync_playwright() as p:
             open_node(page,a)
             paragraph='She returned to the empty platform. The letter was still folded in her pocket, and the lights in the waiting room had gone out. Nobody had asked her to stay. '
             prose='\n\n'.join(paragraph*4 for _ in range(12))
-            page.get_by_label('Manuscript',exact=True).fill(prose);saved(page)
+            fill_manuscript(page,prose);saved(page)
             page.get_by_role('button',name='Compile manuscript',exact=True).click()
-            page.get_by_role('button',name='Clear',exact=True).click();page.get_by_label('Opening scene',exact=True).check()
+            page.get_by_role('button',name='Clear',exact=True).click();page.get_by_role('checkbox',name='Opening scene',exact=True).check()
             page.get_by_label('Anonymous competition copy',exact=True).check()
             page.get_by_label('Manuscript title',exact=True).fill('Anonymous platform story')
             page.get_by_role('button',name='Assemble and preview',exact=True).click()
@@ -163,7 +190,7 @@ with sync_playwright() as p:
             tp=tablet.new_page();tp.goto(BASE+'/project-browser-test?projectId='+pid,wait_until='networkidle')
             assert tp.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
             tp.get_by_role('button',name='Outline',exact=True).tap();open_node(tp,a)
-            expect(tp.get_by_role('combobox',name=re.compile(r'^Move to'))).to_be_visible()
+            expect(tp.get_by_role('combobox',name='Move selected item to',exact=True)).to_be_visible()
             tp.screenshot(path=str(OUT/(engine+'-tablet.png')),full_page=True);tablet.close()
             passed(engine+': tablet layout and non-drag organising controls')
             assert not errors,errors

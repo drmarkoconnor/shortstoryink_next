@@ -14,3 +14,9 @@
 # Do not let a preview apply a new migration before its regression tests pass.
 [context.deploy-preview]
   command = "npm test && npm run build"
+
+# PR #6 early-access release explicitly approved by the site owner.
+# Non-secret switch: next.config.ts freezes it into this deployment so page,
+# navigation and API agree. Set false and redeploy to withdraw Projects.
+[context.production.environment]
+  WRITER_PROJECTS_ENABLED = "true"

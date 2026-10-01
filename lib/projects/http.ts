@@ -1,3 +1,4 @@
+import { validateProseDocument, proseText } from './paragraphs'
 import { compileDocx, compileHtml } from './compile'
 import { compiledText, downloadName, validateCompileSettings, type Compiled } from './model'
 export type ProjectContext = {
@@ -48,6 +49,7 @@ export async function handleProjectRequest(request:Request,context:ProjectContex
   const input={...value.input} as Record<string,unknown>
   for(const key of ['nodeId','parentId','requestId','revisionId','snapshotId','compileId','workshopId','sourceSubmissionId'])if(input[key]!==undefined&&input[key]!==null&&(typeof input[key]!=='string'||!uuid.test(input[key] as string)))return json({error:'Invalid '+key+'.'},400)
   if(action==='compile'){try{input.settings=validateCompileSettings(input.settings)}catch(e){return json({error:e instanceof Error?e.message:'Invalid formatting.'},400)}}
+  if((action==='add'||action==='save') && input.document!=null){try{input.document=validateProseDocument(input.document);if(proseText(input.document as ReturnType<typeof validateProseDocument>)!==input.body)throw new Error('Paragraph content does not match the manuscript.');}catch(e){return json({error:e instanceof Error?e.message:'Invalid paragraph content.'},400)}}
   // Ignore supplied actor/owner fields. The verified session is authoritative.
   const result=await context.execute(context.actorId,id,action,input)
   if(action==='submit'&&context.afterSubmit){try{await context.afterSubmit(result as Record<string,unknown>,input)}catch{/* A saved submission survives a mail outage. */}}

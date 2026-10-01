@@ -1,6 +1,7 @@
+import type { ProseDocument } from './paragraphs'
 export type NodeStatus = 'Draft' | 'Revising' | 'Ready'
 export type ProjectNode = { id: string; parentId: string | null; kind: 'folder' | 'section'; position: number; revisionId: string; title: string; synopsis: string; status: NodeStatus }
-export type Section = ProjectNode & { body: string }
+export type Section = ProjectNode & { body: string; document?: ProseDocument | null }
 export type Snapshot = { id: string; nodeId: string | null; label: string; kind: 'named' | 'safety' | 'recovery'; createdAt: string }
 export type ProjectState = { project: { id: string; title: string; structureVersion: number; contentVersion: number; archivedAt: string | null }; nodes: ProjectNode[]; snapshots: Snapshot[] }
 export type ProjectListItem = { id: string; title: string; updatedAt: string; archivedAt: string | null }
