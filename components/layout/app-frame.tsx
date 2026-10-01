@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { AppNav } from '@/components/layout/app-nav'
 import { BrandWordmark } from '@/components/brand/brand-wordmark'
 import type { AppRole } from '@/lib/auth/get-current-profile'
 import type { StudioUser } from '@/lib/auth/studio-user'
 import { getCurrentProfile } from '@/lib/auth/get-current-profile'
 import { SignOutForm } from '@/components/auth/sign-out-form'
+import { projectsEnabled } from '@/lib/projects/server'
 
 const writerNavItems = [
-	{ href: '/app/writer', label: 'Writing' },
+	{ href: '/app/writer', label: 'Writing', matches: ['/app/writer/projects'] },
 	{ href: '/app/writer/feedback', label: 'Feedback' },
 	{ href: '/app/writer/reading-room', label: 'Reading', matches: ['/app/writer/documents', '/app/writer/examples'] },
 	{ href: '/app/writer/commonplace', label: 'Your notebook' },
@@ -53,6 +55,9 @@ export async function AppFrame({
 				<details className="studio-account">
 					<summary className="cursor-pointer text-sm">{displayName || 'Account'}</summary>
 					<div className="space-y-4">
+						{isWriter && projectsEnabled() ? (
+							<Link className="block studio-link" href="/app/writer/projects">Your projects</Link>
+						) : null}
 						<a className="block studio-link" href="/app/account">Account settings</a>
 						<a className="block studio-link" href="/guide/new-writers">How to use this site</a>
 						<SignOutForm ownerId={user.id} />

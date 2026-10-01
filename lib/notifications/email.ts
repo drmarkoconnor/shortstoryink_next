@@ -34,7 +34,10 @@ async function sendEmail({
 	html: string
 	text: string
 }) {
-	// Preview rehearsals must never notify real students or teachers.
+	// Functions can have different variables from builds. An explicit preview
+	// suppression flag protects real writers even when CONTEXT is absent.
+	if (process.env.STUDIO_SUPPRESS_EMAIL === 'true') return
+	// Preview rehearsals must never notify real writers or editors.
 	if (process.env.CONTEXT && process.env.CONTEXT !== 'production') return
 	const recipients = (Array.isArray(to) ? to : [to])
 		.map((email) => email.trim())
