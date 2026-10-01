@@ -49,6 +49,8 @@ jobs:
           done
           cat artifacts/projects/browser/server.log
           exit 1
+      - name: Inspect synthetic paragraph cursor and save state
+        run: python scripts/diagnose-project-editor.py
       - name: Rehearse actual workspace in Chromium and WebKit without real accounts or mail
         run: python scripts/verify-projects-browser.py
       - name: Remove synthetic routes and restore the production configuration
