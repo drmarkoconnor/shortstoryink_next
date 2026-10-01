@@ -1,6 +1,19 @@
+import type { ProseDocument } from './paragraphs'
+export const documentLabels = ['Text', 'Chapter', 'Scene', 'Research', 'Notes'] as const
+export type DocumentLabel = typeof documentLabels[number]
+/** A label describes a text document. It never changes its parent or identity. */
+export function documentLabel(node: Pick<ProjectNode, 'kind' | 'documentLabel'>): string {
+ return node.kind === 'folder' ? 'Folder' : node.documentLabel ?? 'Text'
+}
+export function isSupportingDocument(node: Pick<ProjectNode, 'kind' | 'documentLabel'>): boolean {
+ return node.kind === 'section' && (node.documentLabel === 'Research' || node.documentLabel === 'Notes')
+}
+export function manuscriptDocuments(nodes: ProjectNode[]): ProjectNode[] {
+ return orderedNodes(nodes).filter(node => node.kind === 'section' && !isSupportingDocument(node))
+}
 export type NodeStatus = 'Draft' | 'Revising' | 'Ready'
-export type ProjectNode = { id: string; parentId: string | null; kind: 'folder' | 'section'; position: number; revisionId: string; title: string; synopsis: string; status: NodeStatus }
-export type Section = ProjectNode & { body: string }
+export type ProjectNode = { id: string; parentId: string | null; kind: 'folder' | 'section'; position: number; revisionId: string; title: string; synopsis: string; status: NodeStatus; documentLabel?: DocumentLabel | null }
+export type Section = ProjectNode & { body: string; document?: ProseDocument | null }
 export type Snapshot = { id: string; nodeId: string | null; label: string; kind: 'named' | 'safety' | 'recovery'; createdAt: string }
 export type ProjectState = { project: { id: string; title: string; structureVersion: number; contentVersion: number; archivedAt: string | null }; nodes: ProjectNode[]; snapshots: Snapshot[] }
 export type ProjectListItem = { id: string; title: string; updatedAt: string; archivedAt: string | null }

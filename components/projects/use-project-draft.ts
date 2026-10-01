@@ -4,7 +4,8 @@ import type { ProjectState, SaveReply, Section, Transport } from '@/lib/projects
 
 type Pending = { requestId: string; input: Record<string, unknown>; sent: Section }
 export function useProjectDraft(ownerId: string, projectId: string, api: Transport, onState: (s: ProjectState)=>void) {
- const [draft,setDraft]=useState<Section|null>(null), [status,setStatus]=useState('Choose a section'),[problem,setProblem]=useState(''),[conflict,setConflict]=useState<SaveReply|null>(null)
+ const [editorEpoch,setEditorEpoch]=useState(0)
+ const [draft,setDraft]=useState<Section|null>(null), [status,setStatus]=useState('Choose a document'),[problem,setProblem]=useState(''),[conflict,setConflict]=useState<SaveReply|null>(null)
  const ref=useRef<Section|null>(null),dirty=useRef(false),pending=useRef<Pending|null>(null),flight=useRef<Promise<boolean>|null>(null),blocked=useRef(false),stateCallback=useRef(onState)
  stateCallback.current=onState
  const key=useCallback((id:string)=>'shortstory:project:v1:'+ownerId+':'+projectId+':'+id,[ownerId,projectId])
@@ -14,7 +15,7 @@ export function useProjectDraft(ownerId: string, projectId: string, api: Transpo
   if(dirty.current || flight.current) throw new Error('Save the current section before changing it.')
   let next=section; pending.current=null; blocked.current=false;setConflict(null);setProblem('');dirty.current=false
   try {const raw=localStorage.getItem(key(section.id));if(raw){const saved=JSON.parse(raw);if(saved.draft?.id===section.id && typeof saved.draft.body==='string' && typeof saved.draft.revisionId==='string') {next={...section,...saved.draft};pending.current=saved.pending??null;dirty.current=true;setProblem('Recovered unsent writing from this device. It will be reconciled with the saved version, never silently overwritten.')}}}catch{setProblem('The local recovery copy could not be read. Cloud writing is still available.')}
-  ref.current=next;setDraft(next);setStatus(dirty.current?'Recovered changes — not yet saved':'Saved to your account')
+  ref.current=next;setDraft(next);setEditorEpoch(x=>x+1);setStatus(dirty.current?'Recovered changes — not yet saved':'Saved to your account')
  },[key])
  const edit=useCallback((change:Partial<Section>)=>{
   if(!ref.current || blocked.current)return
@@ -27,7 +28,7 @@ export function useProjectDraft(ownerId: string, projectId: string, api: Transpo
   if(!navigator.onLine){setStatus('Waiting for connection — not cloud-saved');persist();return false}
   const save=async()=>{
    const sent=pending.current?.sent ?? {...ref.current!}
-   const input=pending.current?.input ?? {nodeId:sent.id,revisionId:sent.revisionId,title:sent.title,body:sent.body,synopsis:sent.synopsis,status:sent.status}
+   const input=pending.current?.input ?? {nodeId:sent.id,revisionId:sent.revisionId,title:sent.title,body:sent.body,document:sent.document??null,synopsis:sent.synopsis,status:sent.status,documentLabel:sent.documentLabel??null}
    const requestId=pending.current?.requestId ?? crypto.randomUUID()
    pending.current={sent,input,requestId};persist();setStatus('Saving…')
    try {
@@ -36,7 +37,7 @@ export function useProjectDraft(ownerId: string, projectId: string, api: Transpo
     if(result.conflict){blocked.current=true;setConflict(result);setStatus('Two versions preserved — choose how to continue');persist();return false}
     if(!result.revisionId)throw new Error('Save not confirmed')
     const current=ref.current!
-    const changed=['title','body','synopsis','status'].some(k=>current[k as keyof Section]!==sent[k as keyof Section])
+    const changed=['title','body','synopsis','status','documentLabel'].some(k=>current[k as keyof Section]!==sent[k as keyof Section]) || JSON.stringify(current.document??null)!==JSON.stringify(sent.document??null)
     ref.current={...current,revisionId:result.revisionId};setDraft(ref.current);pending.current=null;dirty.current=changed
     if(changed){persist();setStatus('Unsaved changes')}else{clear(sent.id);setStatus('Saved to your account');setProblem('')}
     return !changed
@@ -67,13 +68,13 @@ export function useProjectDraft(ownerId: string, projectId: string, api: Transpo
   else {
    // Preserve the very latest local text as a conflict revision, including edits
    // typed while the earlier request was in flight, before adopting the remote copy.
-   try {const local=ref.current;const result=await api<SaveReply>('save',projectId,{requestId:crypto.randomUUID(),nodeId:local.id,revisionId:local.revisionId,title:local.title,body:local.body,synopsis:local.synopsis,status:local.status})
+   try {const local=ref.current;const result=await api<SaveReply>('save',projectId,{requestId:crypto.randomUUID(),nodeId:local.id,revisionId:local.revisionId,title:local.title,body:local.body,document:local.document??null,synopsis:local.synopsis,status:local.status,documentLabel:local.documentLabel??null})
     if(!result.current){setProblem('The saved version changed again. Reload before resolving.');return}
-    const remote={...local,...result.current};ref.current=remote;setDraft(remote);dirty.current=false;pending.current=null;blocked.current=false;setConflict(null);clear(local.id);setStatus('Saved to your account');stateCallback.current(result.state)
+    const remote={...local,...result.current};ref.current=remote;setDraft(remote);setEditorEpoch(x=>x+1);dirty.current=false;pending.current=null;blocked.current=false;setConflict(null);clear(local.id);setStatus('Saved to your account');stateCallback.current(result.state)
    }catch(e){setProblem(e instanceof Error?e.message:'Both versions remain available; try again.')}
   }
  }
- const discardSelection=()=>{if(dirty.current || flight.current)throw new Error('Unsaved changes');ref.current=null;setDraft(null);setConflict(null);setStatus('Choose a section')}
+ const discardSelection=()=>{if(dirty.current || flight.current)throw new Error('Unsaved changes');ref.current=null;setDraft(null);setConflict(null);setStatus('Choose a document')}
  const download=()=>{if(!ref.current)return;const a=document.createElement('a'),url=URL.createObjectURL(new Blob([ref.current.body],{type:'text/plain;charset=utf-8'}));a.href=url;a.download=(ref.current.title||'Unsaved writing')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
- return {draft,status,problem,conflict,load,edit,save:flush,resolve,discardSelection,download,hasUnsaved:()=>dirty.current}
+ return {draft,editorEpoch,status,problem,conflict,load,edit,save:flush,resolve,discardSelection,download,hasUnsaved:()=>dirty.current}
 }

@@ -1,5 +1,6 @@
+import { sectionParagraphs, firstLineIndented } from './paragraphs'
 import { Buffer } from 'node:buffer'
-import { compiledText, countWords, escapeMarkup, paragraphs, validateCompileSettings, type Compiled } from './model'
+import { compiledText, countWords, escapeMarkup, validateCompileSettings, type Compiled } from './model'
 
 const xmlHeader='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 function crc32(bytes: Buffer): number { let crc=0xffffffff; for(const byte of bytes) {crc^=byte; for(let i=0;i<8;i++) crc=(crc>>>1)^((crc&1)?0xedb88320:0)} return (crc^0xffffffff)>>>0 }
@@ -29,7 +30,7 @@ export function compileDocx(input: Compiled): Buffer {
  input.nodes.forEach((node,index)=>{
   if(index && !s.pageBreaks) content+=para('#','center')
   if(s.headings) content+=para(node.title,'center',false,index>0 && s.pageBreaks)
-  paragraphs(node.body).forEach((text,p)=>{ content+=para(text,'left',s.indent && p>0,!s.headings && index>0 && p===0 && s.pageBreaks) })
+  sectionParagraphs(node).forEach((paragraph,p)=>{ content+=para(paragraph.text,'left',firstLineIndented(paragraph.indent,p,s.indent),!s.headings && index>0 && p===0 && s.pageBreaks) })
  })
  const width=s.paper==='A4'?11906:12240,height=s.paper==='A4'?16838:15840
  const section='<w:sectPr><w:headerReference w:type="default" r:id="rHeader"/><w:footerReference w:type="default" r:id="rFooter"/><w:pgSz w:w="'+width+'" w:h="'+height+'"/><w:pgMar w:top="'+margin+'" w:right="'+margin+'" w:bottom="'+margin+'" w:left="'+margin+'" w:header="500" w:footer="500"/>'+(s.titlePage?'<w:titlePg/><w:pgNumType w:start="0"/>':'')+'</w:sectPr>'
@@ -49,6 +50,6 @@ export function compileDocx(input: Compiled): Buffer {
 }
 export function compileHtml(input: Compiled): string {
  const s=validateCompileSettings(input.settings), e=escapeMarkup, cssText=(text:string)=>JSON.stringify(text).replace(/</g,'\\3c ')
- const content=input.nodes.map((n,i)=>'<section class="section '+(i>0 && s.pageBreaks?'new-page':'')+'">'+(i>0&&!s.pageBreaks?'<p class="separator">#</p>':'')+(s.headings?'<h2>'+e(n.title)+'</h2>':'')+paragraphs(n.body).map((p,j)=>'<p class="body '+(j===0?'opening':'')+'">'+e(p).replace(/\n/g,'<br>')+'</p>').join('')+'</section>').join('')
+ const content=input.nodes.map((n,i)=>'<section class="section '+(i>0 && s.pageBreaks?'new-page':'')+'">'+(i>0&&!s.pageBreaks?'<p class="separator">#</p>':'')+(s.headings?'<h2>'+e(n.title)+'</h2>':'')+sectionParagraphs(n).map((p,j)=>'<p class="body" style="text-indent:'+(firstLineIndented(p.indent,j,s.indent)?'12.7mm':'0')+'">'+e(p.text).replace(/\n/g,'<br>')+'</p>').join('')+'</section>').join('')
  return '<!doctype html><html lang="en-GB"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+e(s.title)+'</title><style>@page{size:'+s.paper+';margin:'+s.margins+'mm;@bottom-center{content:counter(page);font-size:12pt}@top-right{content:'+cssText(s.title)+';font-size:10pt}}*{box-sizing:border-box}body{margin:0;background:#eee;color:#000;font-family:"'+s.font+'",serif;font-size:'+s.size+'pt;line-height:'+s.spacing+'}.controls{font:15px/1.5 system-ui;padding:20px;margin:auto;max-width:900px}.controls button{padding:10px}main{background:#fff;margin:20px auto;padding:'+s.margins+'mm;max-width:'+(s.paper==='A4'?210:215.9)+'mm}h1,h2{font-size:inherit;font-weight:normal;text-align:center;margin:0 0 1em;break-after:avoid}p{margin:0;padding:0;white-space:pre-wrap;overflow-wrap:anywhere}.body{text-indent:'+(s.indent?'12.7mm':'0')+';orphans:2;widows:2}.opening{ text-indent:0}.separator{text-align:center;margin:1em 0}.count{text-align:right}.author{text-align:center}.title-page{break-after:page;min-height:180mm}.new-page{break-before:page}@media print{body{background:white}main{padding:0;margin:0;max-width:none}.controls{display:none}}</style></head><body><aside class="controls"><button id="print">Print / Save as PDF</button><p>This is a fixed compiled copy, not your working project. Use 100% scale and turn off the browser’s own headers and footers. Check page numbers and the installed font in the resulting PDF. Browser font fallback and print support vary; the Word download explicitly requests '+e(s.font)+'.</p>'+(s.anonymous?'<p>Anonymous export excludes account and author metadata. Check the title, manuscript text and filename yourself for identifying details.</p>':'')+'</aside><main><header class="'+(s.titlePage?'title-page':'')+'">'+(s.wordCount?'<p class="count">'+countWords(compiledText(input))+' words</p>':'')+'<h1>'+e(s.title)+'</h1>'+(!s.anonymous&&s.author?'<p class="author">'+e(s.author)+'</p>':'')+'</header>'+content+'</main><script>document.getElementById("print").addEventListener("click",function(){window.print()});</script></body></html>'
 }

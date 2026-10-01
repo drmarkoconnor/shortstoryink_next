@@ -1,7 +1,7 @@
 """Actual project UI + HTTP + migrated isolated PostgreSQL, synthetic sessions only.
 This is not a Netlify Identity sign-in test. Never sends real email.
 """
-import json, os, re, time, uuid, zipfile
+import json, os, re, time, traceback, uuid, zipfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 BASE=os.environ.get('PROJECT_BROWSER_BASE','http://127.0.0.1:3100')
@@ -34,8 +34,33 @@ def seed(ctx, label):
     return pid,ids
 
 def open_node(page,nid):
-    page.locator('[data-node-id="'+nid+'"]').get_by_role('button',name='Write',exact=True).click()
-    expect(page.get_by_label('Manuscript',exact=True)).to_be_visible(timeout=30000)
+    page.locator('[data-tree-node="'+nid+'"]').click()
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    expect(field).to_be_visible(timeout=30000)
+    expect(field).to_have_attribute('contenteditable','true')
+    expect(page.get_by_text('Opening the paragraph editor…',exact=True)).not_to_be_visible()
+
+def end_of_manuscript(page):
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    field.click();field.press('ControlOrMeta+End')
+    # Native selectionchange is asynchronous. Do not type Enter against the
+    # previous ProseMirror selection or mistake the wrong paragraph for a Tab bug.
+    page.wait_for_function('''() => {
+        const editor=document.querySelector('[role="textbox"][aria-label="Manuscript"]')?.editor
+        return editor && editor.state.selection.empty &&
+            editor.state.selection.to === editor.state.doc.content.size - 1
+    }''',timeout=5000)
+
+def fill_manuscript(page,text):
+    field=page.get_by_role('textbox',name='Manuscript',exact=True)
+    field.click();page.keyboard.press('ControlOrMeta+A')
+    paragraphs=text.replace('\r\n','\n').split('\n\n')
+    for index,paragraph in enumerate(paragraphs):
+        if index:page.keyboard.press('Enter')
+        for j,line in enumerate(paragraph.split('\n')):
+            if j:page.keyboard.press('Shift+Enter')
+            if line:page.keyboard.insert_text(line)
+    if not text:page.keyboard.press('Backspace')
 
 def saved(page):
     expect(page.get_by_text('Saved to your account',exact=True)).to_be_visible(timeout=20000)
@@ -56,14 +81,32 @@ with sync_playwright() as p:
             page.screenshot(path=str(OUT/(engine+'-cards.png')),full_page=True)
             open_node(page,a)
             exact='Eleanor kept the letter.\n\n  She had not decided whether to open it. Café, “quotes”, and an em dash — intact.'
-            page.get_by_label('Manuscript',exact=True).fill(exact); saved(page)
+            fill_manuscript(page,exact); saved(page)
             assert call(c,'section',pid,{'nodeId':a})['body']==exact
-            page.reload(wait_until='networkidle');open_node(page,a);expect(page.get_by_label('Manuscript',exact=True)).to_have_value(exact)
+            page.reload(wait_until='networkidle');open_node(page,a);expect(page.get_by_role('textbox',name='Manuscript',exact=True)).to_contain_text('Eleanor kept the letter.')
             passed(engine+': cloud acknowledgement, exact text and reload persistence')
+            field=page.get_by_role('textbox',name='Manuscript',exact=True)
+            end_of_manuscript(page);page.keyboard.press('Enter')
+            expect(field.locator('p')).to_have_count(3)
+            page.keyboard.insert_text('“I will stay,” she said.');page.keyboard.press('Shift+Enter');page.keyboard.insert_text('For one more night.')
+            page.keyboard.press('Tab');expect(field).to_be_focused();saved(page)
+            paragraph_doc=call(c,'section',pid,{'nodeId':a})['document']
+            assert paragraph_doc['content'][-1]['attrs']['firstLineIndent']=='indent', paragraph_doc
+            assert call(c,'section',pid,{'nodeId':a})['body']==exact+'\n\n“I will stay,” she said.\nFor one more night.'
+            assert any(x['type']=='hardBreak' for x in paragraph_doc['content'][-1]['content'])
+            page.keyboard.press('Shift+Tab');expect(field).to_be_focused();saved(page)
+            assert call(c,'section',pid,{'nodeId':a})['document']['content'][-1]['attrs']['firstLineIndent']=='none'
+            page.keyboard.press('ControlOrMeta+z');saved(page)
+            assert call(c,'section',pid,{'nodeId':a})['document']['content'][-1]['attrs']['firstLineIndent']=='indent'
+            page.keyboard.press('Escape');expect(page.get_by_role('button',name='Indent paragraph',exact=True)).to_be_focused()
+            expect(page.get_by_role('tree',name='Manuscript structure')).to_be_visible()
+            page.screenshot(path=str(OUT/(engine+'-paragraphs-and-tree.png')),full_page=True)
+            fill_manuscript(page,exact);saved(page)
+            passed(engine+': Enter/soft break, Tab/Shift+Tab, undo, keyboard exit and persistent tree')
 
-            page.get_by_label('Section title',exact=True).fill('')
+            page.get_by_label('Document title',exact=True).fill('')
             expect(page.get_by_text('Not saved — retry or download your copy',exact=True)).to_be_visible(timeout=20000)
-            page.get_by_label('Section title',exact=True).fill('Opening scene')
+            page.get_by_label('Document title',exact=True).fill('Opening scene')
             page.get_by_role('button',name='Save / retry',exact=True).click();saved(page)
             passed(engine+': rejected save can be corrected without a stuck retry payload')
 
@@ -74,7 +117,7 @@ with sync_playwright() as p:
                     dropped['done']=True; route.fetch(); route.abort('failed')
                 else: route.continue_()
             page.route('**/api/project-browser-test',lose_ack)
-            page.get_by_label('Manuscript',exact=True).fill(exact+'\n\nA saved ending despite the dropped response.')
+            fill_manuscript(page,exact+'\n\nA saved ending despite the dropped response.')
             expect(page.get_by_text('Not saved — retry or download your copy',exact=True)).to_be_visible(timeout=20000)
             page.get_by_role('button',name='Save / retry',exact=True).click();saved(page)
             page.unroute('**/api/project-browser-test',lose_ack)
@@ -83,8 +126,8 @@ with sync_playwright() as p:
 
             c2=context(browser,viewport={'width':1100,'height':850}); other=c2.new_page()
             other.goto(BASE+'/project-browser-test?projectId='+pid,wait_until='networkidle');open_node(other,a)
-            page.get_by_label('Manuscript',exact=True).fill('A laptop version.');saved(page)
-            other.get_by_label('Manuscript',exact=True).fill('An iPad version.');expect(other.get_by_role('heading',name='Both versions are preserved')).to_be_visible(timeout=20000)
+            fill_manuscript(page,'A laptop version.');saved(page)
+            fill_manuscript(other,'An iPad version.');expect(other.get_by_role('heading',name='Both versions are preserved')).to_be_visible(timeout=20000)
             other.screenshot(path=str(OUT/(engine+'-conflict.png')),full_page=True)
             other.get_by_role('button',name='Continue with my version',exact=True).click();saved(other)
             assert call(c,'section',pid,{'nodeId':a})['body']=='An iPad version.'
@@ -97,7 +140,7 @@ with sync_playwright() as p:
             panel.get_by_label('Snapshot name (optional)',exact=True).fill('Before rearranging')
             panel.get_by_role('button',name='Take snapshot',exact=True).click()
             expect(panel.get_by_text('Before rearranging',exact=False)).to_be_visible(timeout=20000)
-            page.get_by_label('Manuscript',exact=True).fill('This change should be recoverable.');saved(page)
+            fill_manuscript(page,'This change should be recoverable.');saved(page)
             page.get_by_role('button',name='Cards',exact=True).click()
             page.locator('[data-node-id="'+b+'"]').drag_to(page.locator('[data-node-id="'+a+'"]'))
             for _ in range(50):
@@ -115,8 +158,8 @@ with sync_playwright() as p:
             root=sorted([n for n in state['nodes'] if n['parentId'] is None],key=lambda n:n['position']);assert root[0]['id']==a
             passed(engine+': pointer card ordering and whole-project snapshot restore with safety copy')
 
-            open_node(page,a);page.get_by_role('combobox',name=re.compile(r'^Move to')).select_option(folder)
-            page.get_by_role('button',name='Move here',exact=True).click()
+            open_node(page,a);page.get_by_role('combobox',name='Move selected item to',exact=True).select_option(folder)
+            page.get_by_role('button',name='Move selected item',exact=True).click()
             page.get_by_role('button',name='Outline',exact=True).click()
             f=page.locator('[data-node-id="'+folder+'"]');f.get_by_role('button',name='Collapse',exact=True).click()
             expect(page.locator('[data-node-id="'+a+'"]')).to_have_count(0)
@@ -127,9 +170,9 @@ with sync_playwright() as p:
             open_node(page,a)
             paragraph='She returned to the empty platform. The letter was still folded in her pocket, and the lights in the waiting room had gone out. Nobody had asked her to stay. '
             prose='\n\n'.join(paragraph*4 for _ in range(12))
-            page.get_by_label('Manuscript',exact=True).fill(prose);saved(page)
+            fill_manuscript(page,prose);saved(page)
             page.get_by_role('button',name='Compile manuscript',exact=True).click()
-            page.get_by_role('button',name='Clear',exact=True).click();page.get_by_label('Opening scene',exact=True).check()
+            page.get_by_role('button',name='Clear',exact=True).click();page.get_by_role('checkbox',name='Opening scene',exact=True).check()
             page.get_by_label('Anonymous competition copy',exact=True).check()
             page.get_by_label('Manuscript title',exact=True).fill('Anonymous platform story')
             page.get_by_role('button',name='Assemble and preview',exact=True).click()
@@ -151,6 +194,54 @@ with sync_playwright() as p:
             printed.screenshot(path=str(OUT/(engine+'-print.png')),full_page=True);printed.close()
             passed(engine+': actual Word download and clean anonymous multi-page print/PDF selection')
 
+            # Create a text document labelled Research through the real controls.
+            page.get_by_role('button',name='Cards',exact=True).click()
+            page.get_by_role('button',name='Whole project',exact=True).first.click()
+            form=page.get_by_role('form',name='Add to project')
+            form.get_by_role('radio',name=re.compile('^Document')).check()
+            form.get_by_label('Document title',exact=True).fill('Historical research')
+            form.get_by_role('combobox',name='Label',exact=True).select_option('Research')
+            expect(form.get_by_role('button',name='Add document',exact=True)).to_be_visible()
+            form.get_by_role('button',name='Add document',exact=True).click()
+            expect(page.get_by_role('heading',name='Historical research',exact=True)).to_be_visible(timeout=20000)
+            state=call(c,'state',pid); research=next(n for n in state['nodes'] if n['title']=='Historical research')
+            assert research['kind']=='section' and research['documentLabel']=='Research'
+            open_node(page,research['id'])
+            fill_manuscript(page,'PRIVATE RESEARCH SENTINEL — not part of the story.');saved(page)
+            page.reload(wait_until='networkidle');open_node(page,research['id'])
+            expect(page.get_by_role('combobox',name='Document label',exact=True)).to_have_value('Research')
+            assert call(c,'section',pid,{'nodeId':research['id']})['body']=='PRIVATE RESEARCH SENTINEL — not part of the story.'
+            page.get_by_role('button',name='Read manuscript',exact=True).click()
+            expect(page.get_by_text('PRIVATE RESEARCH SENTINEL — not part of the story.',exact=True)).to_have_count(0)
+            page.get_by_role('checkbox',name='Include research and notes in this reading view',exact=True).check()
+            expect(page.get_by_text('PRIVATE RESEARCH SENTINEL — not part of the story.',exact=True)).to_be_visible()
+            page.get_by_role('button',name='Compile manuscript',exact=True).click()
+            research_option=page.get_by_role('checkbox',name='Historical research',exact=True)
+            expect(research_option).not_to_be_checked()
+            page.get_by_role('button',name='Assemble and preview',exact=True).click()
+            expect(page.get_by_role('link',name='Download Word (.docx)',exact=True)).to_be_visible(timeout=20000)
+            with page.expect_download() as safe_download:
+                page.get_by_role('link',name='Download Word (.docx)',exact=True).click()
+            safe_dest=OUT/(engine+'-manuscript-without-research.docx');safe_download.value.save_as(str(safe_dest))
+            with zipfile.ZipFile(safe_dest) as z:
+                assert 'PRIVATE RESEARCH SENTINEL' not in z.read('word/document.xml').decode()
+            research_option.check()
+            expect(page.get_by_role('button',name='Assemble and preview',exact=True)).to_be_disabled()
+            confirm=page.get_by_role('checkbox',name='Include the selected research and notes in this compiled copy',exact=True)
+            confirm.check()
+            page.get_by_role('button',name='Assemble and preview',exact=True).click()
+            page.screenshot(path=str(OUT/(engine+'-document-labels-and-compile.png')),full_page=True)
+            page.get_by_role('button',name='Cards',exact=True).click()
+            page.get_by_role('button',name='Whole project',exact=True).first.click()
+            form.get_by_role('radio',name=re.compile('^Folder')).check()
+            expect(form.get_by_role('button',name='Create folder',exact=True)).to_be_visible()
+            expect(form.get_by_role('combobox',name='Label',exact=True)).to_have_count(0)
+            form.get_by_label('Folder name',exact=True).fill('Research collection')
+            form.get_by_role('button',name='Create folder',exact=True).click()
+            expect(page.get_by_role('heading',name='Research collection',exact=True)).to_be_visible(timeout=20000)
+            page.screenshot(path=str(OUT/(engine+'-clear-document-and-folder-controls.png')),full_page=True)
+            passed(engine+': document/folder creation, durable labels and research excluded unless deliberately compiled')
+
             for role in ['peer','editor']:
                 denied=context(browser,role)
                 response=denied.request.get(BASE+'/api/project-browser-test?projectId='+pid+'&format=archive')
@@ -163,13 +254,17 @@ with sync_playwright() as p:
             tp=tablet.new_page();tp.goto(BASE+'/project-browser-test?projectId='+pid,wait_until='networkidle')
             assert tp.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
             tp.get_by_role('button',name='Outline',exact=True).tap();open_node(tp,a)
-            expect(tp.get_by_role('combobox',name=re.compile(r'^Move to'))).to_be_visible()
+            expect(tp.get_by_role('combobox',name='Move selected item to',exact=True)).to_be_visible()
             tp.screenshot(path=str(OUT/(engine+'-tablet.png')),full_page=True);tablet.close()
             passed(engine+': tablet layout and non-drag organising controls')
             assert not errors,errors
         except Exception as error:
             page.screenshot(path=str(OUT/(engine+'-failure.png')),full_page=True)
-            (OUT/(engine+'-failure.txt')).write_text(str(error)+'\n'+'\n'.join(errors))
+            (OUT/(engine+'-failure.txt')).write_text(traceback.format_exc()+'\n'+'\n'.join(errors))
+            field=page.get_by_role('textbox',name='Manuscript',exact=True)
+            if field.count():
+                state=field.evaluate('el => ({html:el.innerHTML,selection:el.editor?.state.selection.toJSON(),document:el.editor?.getJSON()})')
+                (OUT/(engine+'-editor-state.json')).write_text(json.dumps(state,indent=2))
             raise
         finally:
             (OUT/'report.json').write_text(json.dumps({'checks':checks,'identity':'synthetic isolated sessions; not live Netlify Identity','emails':'no real email sent'},indent=2))

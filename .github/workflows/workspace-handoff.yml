@@ -1,0 +1,63 @@
+name: Workspace source and production entry check
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: workspace-handoff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  evidence:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Archive tracked application source only, no credentials or runtime data
+        run: |
+          mkdir -p /tmp/workspace-evidence
+          git rev-parse HEAD > /tmp/workspace-evidence/commit.txt
+          git archive --format=tar.gz -o /tmp/workspace-evidence/source.tgz HEAD app components lib tests scripts netlify docs .github package.json package-lock.json next.config.ts tsconfig.json tailwind.config.ts postcss.config.mjs eslint.config.mjs
+      - name: Read-only production entry check
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import { writeFileSync } from 'node:fs'
+          import { setTimeout as sleep } from 'node:timers/promises'
+          const base = 'https://shortstory.ink'
+          let response
+          for (let i=0; i<24; i++) {
+            response = await fetch(base+'/api/writer/projects?release_check=pr6', {redirect:'manual',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)})
+            if (response.status===401) break
+            await response.arrayBuffer()
+            await sleep(10000)
+          }
+          assert.equal(response.status,401,'Production Projects must be enabled but still require sign-in')
+          const error=await response.json()
+          assert.match(error.error ?? '',/sign in/i)
+          const page=await fetch(base+'/app/writer/projects',{redirect:'manual',signal:AbortSignal.timeout(20000)})
+          assert.ok([302,303,307,308].includes(page.status),'A guest must be redirected to sign-in')
+          const destination=new URL(page.headers.get('location'),base)
+          assert.equal(destination.origin,base)
+          assert.equal(destination.pathname,'/auth/sign-in')
+          await page.arrayBuffer()
+          const signIn=await fetch(destination,{redirect:'manual',signal:AbortSignal.timeout(20000)})
+          assert.equal(signIn.status,200)
+          await signIn.arrayBuffer()
+          const result={checkedAt:new Date().toISOString(),site:base,apiStatus:401,guestPageStatus:page.status,signInStatus:200,note:'Read-only, unauthenticated entry/configuration check. No accounts, manuscript writes, emails, or authentication bypass. Not an authenticated save/export or backup-restore test.'}
+          writeFileSync('/tmp/workspace-evidence/production-entry.json',JSON.stringify(result,null,2))
+          console.log(JSON.stringify(result,null,2))
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workspace-source-and-production-entry
+          path: /tmp/workspace-evidence
+          retention-days: 3

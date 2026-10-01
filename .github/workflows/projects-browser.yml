@@ -7,6 +7,7 @@ on:
       - 'app/**/projects/**'
       - 'netlify/database/migrations/**'
       - 'tests/project-browser-fixture.ts'
+      - 'tests/manuscript-editor-keys.test.ts'
       - 'scripts/*project*'
       - '.github/workflows/projects-browser.yml'
 permissions:
@@ -17,7 +18,13 @@ concurrency:
 jobs:
   browser:
     runs-on: ubuntu-latest
+    # Matching preinstalled browsers avoid repeated, sometimes stalled apt installs.
+    # The job only visits this checkout's synthetic local application, never user data.
+    container: mcr.microsoft.com/playwright/python:v1.57.0-noble
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     env:
       PROJECT_BROWSER_FIXTURE: 'true'
       NEXT_TELEMETRY_DISABLED: '1'
@@ -30,12 +37,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - run: npm ci
       - run: python -m pip install playwright==1.57.0
-      - run: python -m playwright install --with-deps chromium webkit
       - name: Generate isolated test routes, not a production authentication shortcut
         run: node scripts/prepare-project-browser-fixture.mjs
       - name: Start local rehearsal server
@@ -58,7 +61,7 @@ jobs:
           if [ -f "$RUNNER_TEMP/project-browser.pid" ]; then kill "$(cat "$RUNNER_TEMP/project-browser.pid")" || true; fi
           test ! -e app/project-browser-test
           test ! -e app/api/project-browser-test
-          git diff --exit-code -- next.config.ts
+          git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code -- next.config.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
